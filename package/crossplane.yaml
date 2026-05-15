@@ -1,0 +1,13 @@
+apiVersion: meta.pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-anthropic-platform
+  annotations:
+    meta.crossplane.io/maintainer: "Jonasz Lasut"
+    meta.crossplane.io/source: "github.com/jonasz-lasut/provider-anthropic-platform"
+    meta.crossplane.io/license: "Apache-2.0"
+    meta.crossplane.io/description: |
+      A Crossplane provider for the Anthropic platform Managed Agents beta API.
+spec:
+  capabilities:
+    - SafeStart

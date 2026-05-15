@@ -1,0 +1,7 @@
+bin/
+*.xpkg
+*.test
+*.out
+vendor/
+_output/
+.cache/

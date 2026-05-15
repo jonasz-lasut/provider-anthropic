@@ -1,0 +1,19 @@
+---
+apiVersion: beta.anthropic.crossplane.io/v1alpha1
+kind: Agent
+metadata:
+  name: example-agent
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: beta/v1alpha1/agent
+spec:
+  forProvider:
+    model: claude-opus-4-7
+    name: example-agent
+    description: Example agent for E2E testing.
+    metadata:
+      example: "true"
+    tools:
+      - type: agent_toolset_20260401
