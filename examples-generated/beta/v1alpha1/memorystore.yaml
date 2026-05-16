@@ -1,0 +1,16 @@
+---
+apiVersion: beta.anthropic.crossplane.io/v1alpha1
+kind: MemoryStore
+metadata:
+  name: example-memorystore
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: beta/v1alpha1/memorystore
+spec:
+  forProvider:
+    name: example-memorystore
+    description: Example memory store for E2E testing.
+    metadata:
+      example: "true"
