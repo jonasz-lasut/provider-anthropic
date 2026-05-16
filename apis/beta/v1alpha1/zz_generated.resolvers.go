@@ -26,6 +26,33 @@ import (
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// ResolveReferences of this MemoryStoreMemory.
+func (mg *MemoryStoreMemory) ResolveReferences(ctx context.Context, c client.Reader) error {
+	r := reference.NewAPINamespacedResolver(c, mg)
+
+	var rsp reference.NamespacedResolutionResponse
+	var err error
+
+	rsp, err = r.Resolve(ctx, reference.NamespacedResolutionRequest{
+		CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.MemoryStoreID),
+		Extract:      extractors.ComputedFieldExtractor("id"),
+		Namespace:    mg.GetNamespace(),
+		Reference:    mg.Spec.ForProvider.MemoryStoreIDRef,
+		Selector:     mg.Spec.ForProvider.MemoryStoreIDSelector,
+		To: reference.To{
+			List:    &MemoryStoreList{},
+			Managed: &MemoryStore{},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "mg.Spec.ForProvider.MemoryStoreID")
+	}
+	mg.Spec.ForProvider.MemoryStoreID = reference.ToPtrValue(rsp.ResolvedValue)
+	mg.Spec.ForProvider.MemoryStoreIDRef = rsp.ResolvedReference
+
+	return nil
+}
+
 // ResolveReferences of this Session.
 func (mg *Session) ResolveReferences(ctx context.Context, c client.Reader) error {
 	r := reference.NewAPINamespacedResolver(c, mg)
@@ -66,6 +93,33 @@ func (mg *Session) ResolveReferences(ctx context.Context, c client.Reader) error
 	}
 	mg.Spec.ForProvider.EnvironmentID = reference.ToPtrValue(rsp.ResolvedValue)
 	mg.Spec.ForProvider.EnvironmentIDRef = rsp.ResolvedReference
+
+	return nil
+}
+
+// ResolveReferences of this VaultCredential.
+func (mg *VaultCredential) ResolveReferences(ctx context.Context, c client.Reader) error {
+	r := reference.NewAPINamespacedResolver(c, mg)
+
+	var rsp reference.NamespacedResolutionResponse
+	var err error
+
+	rsp, err = r.Resolve(ctx, reference.NamespacedResolutionRequest{
+		CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.VaultID),
+		Extract:      extractors.ComputedFieldExtractor("id"),
+		Namespace:    mg.GetNamespace(),
+		Reference:    mg.Spec.ForProvider.VaultIDRef,
+		Selector:     mg.Spec.ForProvider.VaultIDSelector,
+		To: reference.To{
+			List:    &VaultList{},
+			Managed: &Vault{},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "mg.Spec.ForProvider.VaultID")
+	}
+	mg.Spec.ForProvider.VaultID = reference.ToPtrValue(rsp.ResolvedValue)
+	mg.Spec.ForProvider.VaultIDRef = rsp.ResolvedReference
 
 	return nil
 }

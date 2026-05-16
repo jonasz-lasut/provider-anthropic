@@ -161,7 +161,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	// Store ID in external-name (primary key) and mirror it in AtProvider
-	// so cross-resource references can extract it via ExtractParamPath("id", true).
+	// so cross-resource references can extract it via ComputedFieldExtractor("id").
 	meta.SetExternalName(sess, resp.ID)
 	sess.Status.AtProvider.ID = &resp.ID
 
