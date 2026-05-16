@@ -24,6 +24,7 @@ import (
 
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/agent"
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/environment"
+	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/memorystore"
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/providerconfig"
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/session"
 )
@@ -38,6 +39,9 @@ func SetupProviders(mgr ctrl.Manager, o controller.Options) error {
 		return err
 	}
 	if err := environment.SetupGated(mgr, o); err != nil {
+		return err
+	}
+	if err := memorystore.SetupGated(mgr, o); err != nil {
 		return err
 	}
 	if err := session.SetupGated(mgr, o); err != nil {
