@@ -28,7 +28,7 @@ metadata:
   labels:
     testing.upbound.io/example-name: example
   annotations:
-    meta.upbound.io/example-id: beta/v1alpha1/agent
+    meta.upbound.io/example-id: beta/v1alpha1/session
 spec:
   forProvider:
     model: claude-opus-4-7
@@ -47,7 +47,7 @@ metadata:
   labels:
     testing.upbound.io/example-name: example
   annotations:
-    meta.upbound.io/example-id: beta/v1alpha1/environment
+    meta.upbound.io/example-id: beta/v1alpha1/session
 spec:
   forProvider:
     name: example-environment

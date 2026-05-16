@@ -92,7 +92,7 @@ ID *string `json:"id,omitempty"`
 
 The reconciler sets `AtProvider.ID` in both `Observe()` (from the Get response) and `Create()` (from the New response), immediately after calling `meta.SetExternalName`. This mirrors the external-name in a field that other resources can reference via `internal/extractors.ComputedFieldExtractor("id")`.
 
-Also include: CreatedAt, UpdatedAt, ArchivedAt (as `*string`), Version (as `*int64` if present).
+Also include: CreatedAt, UpdatedAt, ArchivedAt (as `*string`), Version (as `*string` if present).
 
 **DO add `<Other>ID *string` fields** for any cross-resource reference IDs returned by the API response — these are the observed resolved values, with no markers and no `Ref`/`Selector` companions:
 ```go

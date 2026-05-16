@@ -65,7 +65,7 @@ spec:
 Every namespaced resource (managed resources and the namespaced `ProviderConfig`) MUST use `namespace: crossplane-system`. Cluster-scoped kinds (e.g. `ClusterProviderConfig`) omit `metadata.namespace` entirely.
 
 - The `testing.upbound.io/example-name: example` label is what other examples' `*IDSelector.matchLabels` resolves against — every generated managed resource MUST carry it. The value is the literal string `example`; Kubernetes label values cannot contain `/`.
-- The `meta.upbound.io/example-id` annotation carries the full path identifier (`<short-group>/<version>/<lowercase-kind>`, e.g. `beta/v1alpha1/agent`). Annotations allow slashes, so the full triple is preserved here for tooling like `uptest`.
+- The `meta.upbound.io/example-id` annotation carries the full path identifier of the **top-level (primary) resource of the file**, in the form `<short-group>/<version>/<lowercase-kind>` (e.g. `beta/v1alpha1/agent`). For the primary document this is its own triple. For any **inlined CRD document** added in Step 4, the value is the SAME — it tracks the example the doc belongs to, not the doc's own kind. Non-CRD inlined docs (e.g. Kubernetes `Secret`) carry no `meta.upbound.io/example-id` annotation at all.
 
 ### Populating `spec.forProvider`
 
@@ -131,8 +131,8 @@ For every kind that has at least one cross-resource reference, the generated fil
 Algorithm, per generated example:
 
 1. Write the primary resource as document #1.
-2. For each cross-resource reference field on that resource, append `---` and a copy of the example you generated for the referenced kind in Step 3 (same values, same label, same annotation). Do not change names — every generated resource uses `example-<singular>`, which is unique by kind.
-3. Recurse: if an inlined resource itself has cross-resource references, inline those too. Stop when the file is closed under the reference relation.
+2. For each cross-resource reference field on that resource, append `---` and a copy of the example you generated for the referenced kind in Step 3 (same `spec`, same `metadata.name`/`metadata.namespace`, same `testing.upbound.io/example-name: example` label). **Rewrite the inlined doc's `meta.upbound.io/example-id` annotation to the TOP-LEVEL file's triple** (e.g. when inlining `Vault` inside `vaultcredential.yaml`, the Vault doc's annotation becomes `beta/v1alpha1/vaultcredential`, NOT `beta/v1alpha1/vault`). Do not change names — every generated resource uses `example-<singular>`, which is unique by kind.
+3. Recurse: if an inlined resource itself has cross-resource references, inline those too with the same annotation-rewrite rule. Stop when the file is closed under the reference relation.
 
 After Step 4, for this provider's current CRD set:
 - `agent.yaml` — `Agent` only (no refs)
