@@ -76,16 +76,11 @@ spec:
                         description: MCPServerConfig configures a single MCP server for an agent.
                         properties:
                           name:
-                            description: Name is a unique identifier for this MCP server within the agent.
-                            minLength: 1
+                            description: 'Required: Name is a unique identifier for this MCP server within the agent.'
                             type: string
                           url:
-                            description: URL is the endpoint of the MCP server.
-                            minLength: 1
+                            description: 'Required: URL is the endpoint of the MCP server.'
                             type: string
-                        required:
-                          - name
-                          - url
                         type: object
                       maxItems: 20
                       type: array
@@ -97,13 +92,11 @@ spec:
                         Maximum 16 pairs; keys up to 64 chars, values up to 512 chars.
                       type: object
                     model:
-                      description: Model is the model identifier for the agent, e.g. "claude-opus-4-7".
-                      minLength: 1
+                      description: 'Required: Model is the model identifier for the agent, e.g. "claude-opus-4-7".'
                       type: string
                     name:
-                      description: Name is the human-readable name for the agent (1–256 characters).
+                      description: 'Required: Name is the human-readable name for the agent (1–256 characters).'
                       maxLength: 256
-                      minLength: 1
                       type: string
                     skills:
                       description: Skills available to the agent. Maximum 20.
@@ -111,18 +104,14 @@ spec:
                         description: AgentSkillConfig configures a single skill for an agent.
                         properties:
                           skillId:
-                            description: SkillID is the identifier of the skill to attach.
-                            minLength: 1
+                            description: 'Required: SkillID is the identifier of the skill to attach.'
                             type: string
                           type:
-                            description: Type is either "anthropic" or "custom".
+                            description: 'Required: Type is either "anthropic" or "custom".'
                             enum:
                               - anthropic
                               - custom
                             type: string
-                        required:
-                          - skillId
-                          - type
                         type: object
                       maxItems: 20
                       type: array
@@ -139,18 +128,12 @@ spec:
                             type: string
                           type:
                             description: |-
-                              Type identifies the toolset kind. Currently only "agent_toolset_20260401"
-                              is supported for the standard Anthropic toolset.
-                            minLength: 1
+                              Required: Type identifies the toolset kind; currently only
+                              "agent_toolset_20260401" is supported for the standard Anthropic toolset.
                             type: string
-                        required:
-                          - type
                         type: object
                       maxItems: 128
                       type: array
-                  required:
-                    - model
-                    - name
                   type: object
                 managementPolicies:
                   default:

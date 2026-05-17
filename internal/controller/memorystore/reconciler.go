@@ -215,8 +215,9 @@ func (e *external) Disconnect(_ context.Context) error { return nil }
 
 // buildNewParams converts ForProvider into the SDK create params.
 func buildNewParams(p betav1alpha1.MemoryStoreParameters) anthropic.BetaMemoryStoreNewParams {
-	params := anthropic.BetaMemoryStoreNewParams{
-		Name: p.Name,
+	params := anthropic.BetaMemoryStoreNewParams{}
+	if p.Name != nil {
+		params.Name = *p.Name
 	}
 	if p.Description != nil {
 		params.Description = anthropic.String(*p.Description)
@@ -229,8 +230,9 @@ func buildNewParams(p betav1alpha1.MemoryStoreParameters) anthropic.BetaMemorySt
 
 // buildUpdateParams converts ForProvider into the SDK update params.
 func buildUpdateParams(p betav1alpha1.MemoryStoreParameters) anthropic.BetaMemoryStoreUpdateParams {
-	params := anthropic.BetaMemoryStoreUpdateParams{
-		Name: anthropic.String(p.Name),
+	params := anthropic.BetaMemoryStoreUpdateParams{}
+	if p.Name != nil {
+		params.Name = anthropic.String(*p.Name)
 	}
 	if p.Description != nil {
 		params.Description = anthropic.String(*p.Description)
@@ -245,7 +247,7 @@ func buildUpdateParams(p betav1alpha1.MemoryStoreParameters) anthropic.BetaMemor
 func isUpToDate(ms *betav1alpha1.MemoryStore, resp *anthropic.BetaManagedAgentsMemoryStore) bool {
 	p := ms.Spec.ForProvider
 
-	if p.Name != resp.Name {
+	if p.Name != nil && *p.Name != resp.Name {
 		return false
 	}
 	if p.Description != nil && *p.Description != resp.Description {

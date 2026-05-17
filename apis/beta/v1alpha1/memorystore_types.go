@@ -27,11 +27,11 @@ import (
 // These fields map to BetaMemoryStoreNewParams / BetaMemoryStoreUpdateParams
 // from the Anthropic SDK.
 type MemoryStoreParameters struct {
-	// Name is the human-readable name for the store. 1–255 characters.
+	// Required: Name is the human-readable name for the store. Up to 255 characters.
 	// The mount-path slug under /mnt/memory/ is derived from this name.
-	// +kubebuilder:validation:MinLength=1
+	// +optional
 	// +kubebuilder:validation:MaxLength=255
-	Name string `json:"name"`
+	Name *string `json:"name,omitempty"`
 
 	// Description is a free-text description of what the store contains,
 	// up to 1024 characters. Included in the agent's system prompt when

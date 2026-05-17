@@ -68,7 +68,7 @@ spec:
                   properties:
                     content:
                       description: |-
-                        Content is the UTF-8 text content of the memory. Maximum 100 kB
+                        Required: Content is the UTF-8 text content of the memory. Maximum 100 kB
                         (102,400 bytes). Pass "" explicitly to create an empty memory.
                       maxLength: 102400
                       type: string
@@ -159,16 +159,12 @@ spec:
                       type: object
                     path:
                       description: |-
-                        Path is the hierarchical path of the memory within the store, e.g.
+                        Required: Path is the hierarchical path of the memory within the store, e.g.
                         "/projects/foo/notes.md". Must start with "/", be at most 1,024 bytes,
                         and contain no empty/"."/".." segments. Renaming is supported via update.
                       maxLength: 1024
-                      minLength: 2
                       pattern: ^/.+
                       type: string
-                  required:
-                    - content
-                    - path
                   type: object
                 managementPolicies:
                   default:

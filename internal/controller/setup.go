@@ -26,6 +26,7 @@ import (
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/environment"
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/memorystore"
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/memorystorememory"
+	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/observedagentcollection"
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/providerconfig"
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/session"
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/vault"
@@ -57,6 +58,9 @@ func SetupProviders(mgr ctrl.Manager, o controller.Options) error {
 		return err
 	}
 	if err := vaultcredential.SetupGated(mgr, o); err != nil {
+		return err
+	}
+	if err := observedagentcollection.SetupGated(mgr, o); err != nil {
 		return err
 	}
 	return nil

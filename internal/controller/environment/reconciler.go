@@ -221,8 +221,9 @@ func (e *external) Disconnect(_ context.Context) error { return nil }
 
 // buildNewParams converts ForProvider into the SDK create params.
 func buildNewParams(p betav1alpha1.EnvironmentParameters) anthropic.BetaEnvironmentNewParams {
-	params := anthropic.BetaEnvironmentNewParams{
-		Name: p.Name,
+	params := anthropic.BetaEnvironmentNewParams{}
+	if p.Name != nil {
+		params.Name = *p.Name
 	}
 	if p.Description != nil {
 		params.Description = anthropic.String(*p.Description)
@@ -238,8 +239,9 @@ func buildNewParams(p betav1alpha1.EnvironmentParameters) anthropic.BetaEnvironm
 
 // buildUpdateParams converts ForProvider into the SDK update params.
 func buildUpdateParams(p betav1alpha1.EnvironmentParameters) anthropic.BetaEnvironmentUpdateParams {
-	params := anthropic.BetaEnvironmentUpdateParams{
-		Name: anthropic.String(p.Name),
+	params := anthropic.BetaEnvironmentUpdateParams{}
+	if p.Name != nil {
+		params.Name = anthropic.String(*p.Name)
 	}
 	if p.Description != nil {
 		params.Description = anthropic.String(*p.Description)
@@ -257,7 +259,11 @@ func buildUpdateParams(p betav1alpha1.EnvironmentParameters) anthropic.BetaEnvir
 func buildCloudConfigParams(cfg *betav1alpha1.EnvironmentCloudConfig) anthropic.BetaCloudConfigParams {
 	params := anthropic.BetaCloudConfigParams{}
 	if cfg.Networking != nil {
-		switch cfg.Networking.Type {
+		netType := ""
+		if cfg.Networking.Type != nil {
+			netType = *cfg.Networking.Type
+		}
+		switch netType {
 		case "unrestricted":
 			unr := anthropic.NewBetaUnrestrictedNetworkParam()
 			params.Networking = anthropic.BetaCloudConfigParamsNetworkingUnion{
@@ -296,7 +302,7 @@ func buildCloudConfigParams(cfg *betav1alpha1.EnvironmentCloudConfig) anthropic.
 func isUpToDate(env *betav1alpha1.Environment, resp *anthropic.BetaEnvironment) bool {
 	p := env.Spec.ForProvider
 
-	if p.Name != resp.Name {
+	if p.Name != nil && *p.Name != resp.Name {
 		return false
 	}
 	if p.Description != nil && *p.Description != resp.Description {
@@ -317,10 +323,10 @@ func isUpToDate(env *betav1alpha1.Environment, resp *anthropic.BetaEnvironment) 
 	if p.Config != nil {
 		if p.Config.Networking != nil {
 			n := p.Config.Networking
-			if n.Type != resp.Config.Networking.Type {
+			if n.Type != nil && *n.Type != resp.Config.Networking.Type {
 				return false
 			}
-			if n.Type == "limited" {
+			if n.Type != nil && *n.Type == "limited" {
 				if n.AllowMCPServers != nil && *n.AllowMCPServers != resp.Config.Networking.AllowMCPServers {
 					return false
 				}

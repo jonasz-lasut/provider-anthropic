@@ -290,13 +290,11 @@ spec:
                                 description: Sha is the full commit SHA to check out (when type=commit).
                                 type: string
                               type:
-                                description: Type is "branch" or "commit".
+                                description: 'Required: Type is "branch" or "commit".'
                                 enum:
                                   - branch
                                   - commit
                                 type: string
-                            required:
-                              - type
                             type: object
                           fileId:
                             description: FileID is the ID of a previously uploaded file (file type).
@@ -316,7 +314,7 @@ spec:
                               /mnt/session/uploads/<file_id> for file resources.
                             type: string
                           type:
-                            description: Type identifies the resource variant.
+                            description: 'Required: Type identifies the resource variant.'
                             enum:
                               - github_repository
                               - file
@@ -325,8 +323,6 @@ spec:
                           url:
                             description: URL is the GitHub repository URL (github_repository type).
                             type: string
-                        required:
-                          - type
                         type: object
                       type: array
                     title:

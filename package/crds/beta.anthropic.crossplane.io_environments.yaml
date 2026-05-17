@@ -100,14 +100,12 @@ spec:
                               type: array
                             type:
                               description: |-
-                                Type is the network policy: "unrestricted" allows full outbound access,
+                                Required: Type is the network policy: "unrestricted" allows full outbound access,
                                 "limited" restricts outbound traffic to the hosts listed in AllowedHosts.
                               enum:
                                 - unrestricted
                                 - limited
                               type: string
-                          required:
-                            - type
                           type: object
                         packages:
                           description: |-
@@ -155,11 +153,8 @@ spec:
                       description: Metadata is arbitrary key-value data attached to the environment.
                       type: object
                     name:
-                      description: Name is the human-readable name for the environment.
-                      minLength: 1
+                      description: 'Required: Name is the human-readable name for the environment.'
                       type: string
-                  required:
-                    - name
                   type: object
                 managementPolicies:
                   default:

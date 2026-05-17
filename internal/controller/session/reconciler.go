@@ -277,7 +277,11 @@ func buildUpdateParams(p betav1alpha1.SessionParameters) anthropic.BetaSessionUp
 
 // buildResourceParam converts a SessionResource into the SDK union type.
 func buildResourceParam(res betav1alpha1.SessionResource) anthropic.BetaSessionNewParamsResourceUnion {
-	switch res.Type {
+	resType := ""
+	if res.Type != nil {
+		resType = *res.Type
+	}
+	switch resType {
 	case "github_repository":
 		ghParams := anthropic.BetaManagedAgentsGitHubRepositoryResourceParams{
 			Type: anthropic.BetaManagedAgentsGitHubRepositoryResourceParamsTypeGitHubRepository,
@@ -292,7 +296,11 @@ func buildResourceParam(res betav1alpha1.SessionResource) anthropic.BetaSessionN
 			ghParams.MountPath = anthropic.String(*res.MountPath)
 		}
 		if res.Checkout != nil {
-			switch res.Checkout.Type {
+			checkoutType := ""
+			if res.Checkout.Type != nil {
+				checkoutType = *res.Checkout.Type
+			}
+			switch checkoutType {
 			case "branch":
 				if res.Checkout.Name != nil {
 					ghParams.Checkout = anthropic.BetaManagedAgentsGitHubRepositoryResourceParamsCheckoutUnion{

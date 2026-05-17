@@ -272,10 +272,18 @@ func buildUpdateParams(p betav1alpha1.VaultCredentialParameters) anthropic.BetaV
 
 // buildNewAuthUnion converts the auth spec into the SDK create union variant.
 func buildNewAuthUnion(a betav1alpha1.VaultCredentialAuth) anthropic.BetaVaultCredentialNewParamsAuthUnion {
-	switch a.Type {
+	authType := ""
+	if a.Type != nil {
+		authType = *a.Type
+	}
+	mcpServerURL := ""
+	if a.MCPServerURL != nil {
+		mcpServerURL = *a.MCPServerURL
+	}
+	switch authType {
 	case "static_bearer":
 		sb := &anthropic.BetaManagedAgentsStaticBearerCreateParams{
-			MCPServerURL: a.MCPServerURL,
+			MCPServerURL: mcpServerURL,
 			Type:         anthropic.BetaManagedAgentsStaticBearerCreateParamsTypeStaticBearer,
 		}
 		if a.Token != nil {
@@ -285,7 +293,7 @@ func buildNewAuthUnion(a betav1alpha1.VaultCredentialAuth) anthropic.BetaVaultCr
 
 	case "mcp_oauth":
 		oauth := &anthropic.BetaManagedAgentsMCPOAuthCreateParams{
-			MCPServerURL: a.MCPServerURL,
+			MCPServerURL: mcpServerURL,
 			Type:         anthropic.BetaManagedAgentsMCPOAuthCreateParamsTypeMCPOAuth,
 		}
 		if a.AccessToken != nil {
@@ -307,7 +315,11 @@ func buildNewAuthUnion(a betav1alpha1.VaultCredentialAuth) anthropic.BetaVaultCr
 
 // buildUpdateAuthUnion converts the auth spec into the SDK update union variant.
 func buildUpdateAuthUnion(a betav1alpha1.VaultCredentialAuth) anthropic.BetaVaultCredentialUpdateParamsAuthUnion {
-	switch a.Type {
+	authType := ""
+	if a.Type != nil {
+		authType = *a.Type
+	}
+	switch authType {
 	case "static_bearer":
 		sb := &anthropic.BetaManagedAgentsStaticBearerUpdateParams{
 			Type: anthropic.BetaManagedAgentsStaticBearerUpdateParamsTypeStaticBearer,
@@ -341,10 +353,16 @@ func buildUpdateAuthUnion(a betav1alpha1.VaultCredentialAuth) anthropic.BetaVaul
 // buildRefreshCreateParams converts the spec refresh block into SDK create params.
 func buildRefreshCreateParams(r betav1alpha1.VaultCredentialRefresh) anthropic.BetaManagedAgentsMCPOAuthRefreshParams {
 	out := anthropic.BetaManagedAgentsMCPOAuthRefreshParams{
-		ClientID:          r.ClientID,
-		RefreshToken:      r.RefreshToken,
-		TokenEndpoint:     r.TokenEndpoint,
 		TokenEndpointAuth: buildTokenEndpointAuthCreate(r.TokenEndpointAuth),
+	}
+	if r.ClientID != nil {
+		out.ClientID = *r.ClientID
+	}
+	if r.RefreshToken != nil {
+		out.RefreshToken = *r.RefreshToken
+	}
+	if r.TokenEndpoint != nil {
+		out.TokenEndpoint = *r.TokenEndpoint
 	}
 	if r.Resource != nil {
 		out.Resource = anthropic.String(*r.Resource)
@@ -360,8 +378,10 @@ func buildRefreshCreateParams(r betav1alpha1.VaultCredentialRefresh) anthropic.B
 // client_id and token_endpoint are immutable.
 func buildRefreshUpdateParams(r betav1alpha1.VaultCredentialRefresh) anthropic.BetaManagedAgentsMCPOAuthRefreshUpdateParams {
 	out := anthropic.BetaManagedAgentsMCPOAuthRefreshUpdateParams{
-		RefreshToken:      anthropic.String(r.RefreshToken),
 		TokenEndpointAuth: buildTokenEndpointAuthUpdate(r.TokenEndpointAuth),
+	}
+	if r.RefreshToken != nil {
+		out.RefreshToken = anthropic.String(*r.RefreshToken)
 	}
 	if r.Scope != nil {
 		out.Scope = anthropic.String(*r.Scope)
@@ -372,7 +392,11 @@ func buildRefreshUpdateParams(r betav1alpha1.VaultCredentialRefresh) anthropic.B
 // buildTokenEndpointAuthCreate selects the token-endpoint-auth union variant
 // for create requests.
 func buildTokenEndpointAuthCreate(t betav1alpha1.VaultCredentialTokenEndpointAuth) anthropic.BetaManagedAgentsMCPOAuthRefreshParamsTokenEndpointAuthUnion {
-	switch t.Type {
+	tType := ""
+	if t.Type != nil {
+		tType = *t.Type
+	}
+	switch tType {
 	case "none":
 		return anthropic.BetaManagedAgentsMCPOAuthRefreshParamsTokenEndpointAuthUnion{
 			OfNone: &anthropic.BetaManagedAgentsTokenEndpointAuthNoneParam{
@@ -402,7 +426,11 @@ func buildTokenEndpointAuthCreate(t betav1alpha1.VaultCredentialTokenEndpointAut
 // buildTokenEndpointAuthUpdate selects the token-endpoint-auth union variant
 // for update requests. The update API does not support the "none" variant.
 func buildTokenEndpointAuthUpdate(t betav1alpha1.VaultCredentialTokenEndpointAuth) anthropic.BetaManagedAgentsMCPOAuthRefreshUpdateParamsTokenEndpointAuthUnion {
-	switch t.Type {
+	tType := ""
+	if t.Type != nil {
+		tType = *t.Type
+	}
+	switch tType {
 	case "client_secret_basic":
 		p := &anthropic.BetaManagedAgentsTokenEndpointAuthBasicUpdateParam{
 			Type: anthropic.BetaManagedAgentsTokenEndpointAuthBasicUpdateParamTypeClientSecretBasic,
