@@ -213,7 +213,23 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 func (e *external) Disconnect(_ context.Context) error { return nil }
 
 func buildNewParams(p betav1alpha1.<Resource>Parameters) anthropic.Beta<Resource>NewParams {
-	// TODO: map ForProvider fields to SDK params
+	// TODO: map ForProvider fields to SDK params.
+	//
+	// SecretRef-backed fields are resolved by the CALLER (Create/Update),
+	// not here, so this helper can stay pure. Plumb the resolved string
+	// through the function signature, e.g.:
+	//
+	//     // In Create:
+	//     token, err := clients.ResolveLocalSecretKey(ctx, e.kube, p.TokenSecretRef, res.GetNamespace())
+	//     if err != nil { return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate) }
+	//     params := buildNewParams(p, token)
+	//
+	//     // In buildNewParams:
+	//     if token != "" { params.Token = token }
+	//
+	// In Observe, resolve the same SecretRef and pass it to isUpToDate so
+	// drift detection uses the current Secret bytes (hash-compare if
+	// available, string-compare otherwise; skip if write-only).
 	return anthropic.Beta<Resource>NewParams{}
 }
 

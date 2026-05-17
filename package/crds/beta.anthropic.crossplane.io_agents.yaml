@@ -115,9 +115,21 @@ spec:
                         type: object
                       maxItems: 20
                       type: array
-                    system:
-                      description: System is the system prompt for the agent. Up to 100,000 characters.
-                      type: string
+                    systemSecretRef:
+                      description: |-
+                        SystemSecretRef references a Secret in the MR's namespace holding the
+                        system prompt at the given key. Up to 100,000 characters; the API
+                        rejects larger payloads. Leave Name empty to omit the system prompt.
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          description: Name of the secret.
+                          type: string
+                      required:
+                        - key
+                        - name
+                      type: object
                     tools:
                       description: Tools available to the agent. Maximum 128 tools across all toolsets.
                       items:
@@ -134,6 +146,8 @@ spec:
                         type: object
                       maxItems: 128
                       type: array
+                  required:
+                    - systemSecretRef
                   type: object
                 managementPolicies:
                   default:

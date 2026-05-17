@@ -274,10 +274,8 @@ func populateForProvider(p *betav1alpha1.AgentParameters, item *anthropic.BetaMa
 		d := item.Description
 		p.Description = &d
 	}
-	if item.System != "" {
-		s := item.System
-		p.System = &s
-	}
+	// SystemSecretRef cannot be back-populated from the API response;
+	// collection children use an empty ref (no system prompt in spec).
 	if len(item.Metadata) > 0 {
 		p.Metadata = item.Metadata
 	}

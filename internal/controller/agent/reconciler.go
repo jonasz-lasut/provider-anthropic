@@ -88,12 +88,13 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, xperrors.Wrap(err, errNewClient)
 	}
 
-	return &external{client: cl}, nil
+	return &external{client: cl, kube: c.kube}, nil
 }
 
 // external implements managed.ExternalClient for Anthropic Agents.
 type external struct {
 	client *anthropic.Client
+	kube   client.Client
 }
 
 func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -133,7 +134,11 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	ag.SetConditions(xpv1.Available())
 
-	upToDate := isUpToDate(ag, resp)
+	system, err := clients.ResolveLocalSecretKey(ctx, e.kube, ag.Spec.ForProvider.SystemSecretRef, ag.GetNamespace())
+	if err != nil {
+		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
+	}
+	upToDate := isUpToDate(ag, resp, system)
 	return managed.ExternalObservation{
 		ResourceExists:   true,
 		ResourceUpToDate: upToDate,
@@ -146,7 +151,11 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, xperrors.New(errNotAgent)
 	}
 
-	params := buildNewParams(ag.Spec.ForProvider)
+	system, err := clients.ResolveLocalSecretKey(ctx, e.kube, ag.Spec.ForProvider.SystemSecretRef, ag.GetNamespace())
+	if err != nil {
+		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
+	}
+	params := buildNewParams(ag.Spec.ForProvider, system)
 	resp, err := e.client.Beta.Agents.New(ctx, params)
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
@@ -176,7 +185,11 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, xperrors.New("version not yet observed; skipping update")
 	}
 
-	params := buildUpdateParams(ag.Spec.ForProvider, *ag.Status.AtProvider.Version)
+	system, err := clients.ResolveLocalSecretKey(ctx, e.kube, ag.Spec.ForProvider.SystemSecretRef, ag.GetNamespace())
+	if err != nil {
+		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
+	}
+	params := buildUpdateParams(ag.Spec.ForProvider, *ag.Status.AtProvider.Version, system)
 	if _, err := e.client.Beta.Agents.Update(ctx, agentID, params); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
@@ -210,7 +223,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 func (e *external) Disconnect(_ context.Context) error { return nil }
 
 // buildNewParams converts ForProvider into the SDK create params.
-func buildNewParams(p betav1alpha1.AgentParameters) anthropic.BetaAgentNewParams {
+func buildNewParams(p betav1alpha1.AgentParameters, system string) anthropic.BetaAgentNewParams {
 	params := anthropic.BetaAgentNewParams{}
 
 	if p.Name != nil {
@@ -223,8 +236,8 @@ func buildNewParams(p betav1alpha1.AgentParameters) anthropic.BetaAgentNewParams
 	if p.Description != nil {
 		params.Description = anthropic.String(*p.Description)
 	}
-	if p.System != nil {
-		params.System = anthropic.String(*p.System)
+	if system != "" {
+		params.System = anthropic.String(system)
 	}
 	if p.Metadata != nil {
 		params.Metadata = p.Metadata
@@ -258,7 +271,7 @@ func buildNewParams(p betav1alpha1.AgentParameters) anthropic.BetaAgentNewParams
 
 // buildUpdateParams converts ForProvider into the SDK update params.
 // version is the optimistic-concurrency token required by the API.
-func buildUpdateParams(p betav1alpha1.AgentParameters, version int64) anthropic.BetaAgentUpdateParams {
+func buildUpdateParams(p betav1alpha1.AgentParameters, version int64, system string) anthropic.BetaAgentUpdateParams {
 	params := anthropic.BetaAgentUpdateParams{
 		Version: version,
 	}
@@ -273,8 +286,8 @@ func buildUpdateParams(p betav1alpha1.AgentParameters, version int64) anthropic.
 	if p.Description != nil {
 		params.Description = anthropic.String(*p.Description)
 	}
-	if p.System != nil {
-		params.System = anthropic.String(*p.System)
+	if system != "" {
+		params.System = anthropic.String(system)
 	}
 	if p.Metadata != nil {
 		params.Metadata = p.Metadata
@@ -350,7 +363,12 @@ func toolToUpdateParam(_ betav1alpha1.AgentToolConfig) anthropic.BetaAgentUpdate
 }
 
 // isUpToDate compares the desired state with the observed agent.
-func isUpToDate(ag *betav1alpha1.Agent, resp *anthropic.BetaManagedAgentsAgent) bool {
+// system is the resolved system-prompt string (from SystemSecretRef);
+// an empty value means "no Secret content provided" and the field is
+// not diffed. The Agent API returns the full system prompt back in
+// resp.System, so we string-compare directly — no hash is available on
+// this resource (unlike MemoryStoreMemory.ContentSha256).
+func isUpToDate(ag *betav1alpha1.Agent, resp *anthropic.BetaManagedAgentsAgent, system string) bool {
 	p := ag.Spec.ForProvider
 
 	if p.Name != nil && *p.Name != resp.Name {
@@ -362,7 +380,7 @@ func isUpToDate(ag *betav1alpha1.Agent, resp *anthropic.BetaManagedAgentsAgent) 
 	if p.Description != nil && *p.Description != resp.Description {
 		return false
 	}
-	if p.System != nil && *p.System != resp.System {
+	if system != "" && system != resp.System {
 		return false
 	}
 

@@ -20,6 +20,8 @@ package memorystorememory
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"time"
 
@@ -91,12 +93,13 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, xperrors.Wrap(err, errNewClient)
 	}
 
-	return &external{client: cl}, nil
+	return &external{client: cl, kube: c.kube}, nil
 }
 
 // external implements managed.ExternalClient for Anthropic MemoryStoreMemories.
 type external struct {
 	client *anthropic.Client
+	kube   client.Client
 }
 
 func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -139,9 +142,13 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	m.SetConditions(xpv1.Available())
 
+	desired, err := clients.ResolveLocalSecretKey(ctx, e.kube, m.Spec.ForProvider.ContentSecretRef, m.GetNamespace())
+	if err != nil {
+		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
+	}
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: isUpToDate(m, resp),
+		ResourceUpToDate: isUpToDate(m, resp, desired),
 	}, nil
 }
 
@@ -159,8 +166,12 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if m.Spec.ForProvider.Path != nil {
 		params.Path = *m.Spec.ForProvider.Path
 	}
-	if m.Spec.ForProvider.Content != nil {
-		params.Content = anthropic.String(*m.Spec.ForProvider.Content)
+	content, err := clients.ResolveLocalSecretKey(ctx, e.kube, m.Spec.ForProvider.ContentSecretRef, m.GetNamespace())
+	if err != nil {
+		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
+	}
+	if content != "" {
+		params.Content = anthropic.String(content)
 	}
 	resp, err := e.client.Beta.MemoryStores.Memories.New(ctx, *m.Spec.ForProvider.MemoryStoreID, params)
 	if err != nil {
@@ -195,8 +206,12 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if m.Spec.ForProvider.Path != nil {
 		params.Path = anthropic.String(*m.Spec.ForProvider.Path)
 	}
-	if m.Spec.ForProvider.Content != nil {
-		params.Content = anthropic.String(*m.Spec.ForProvider.Content)
+	content, err := clients.ResolveLocalSecretKey(ctx, e.kube, m.Spec.ForProvider.ContentSecretRef, m.GetNamespace())
+	if err != nil {
+		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
+	}
+	if content != "" {
+		params.Content = anthropic.String(content)
 	}
 	if _, err := e.client.Beta.MemoryStores.Memories.Update(ctx, memID, params); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
@@ -238,16 +253,20 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 func (e *external) Disconnect(_ context.Context) error { return nil }
 
 // isUpToDate compares the desired state with the observed memory.
-func isUpToDate(m *betav1alpha1.MemoryStoreMemory, resp *anthropic.BetaManagedAgentsMemory) bool {
+// resolvedContent is the bytes currently in the referenced Secret; passing
+// an empty string means "no Secret content provided" and the field is not
+// diffed.
+func isUpToDate(m *betav1alpha1.MemoryStoreMemory, resp *anthropic.BetaManagedAgentsMemory, resolvedContent string) bool {
 	p := m.Spec.ForProvider
 
 	if p.Path != nil && *p.Path != resp.Path {
 		return false
 	}
-	// resp.Content is populated because we requested view=full in Observe.
-	if p.Content != nil && *p.Content != resp.Content {
-		return false
+	if resolvedContent != "" {
+		sum := sha256.Sum256([]byte(resolvedContent))
+		if hex.EncodeToString(sum[:]) != resp.ContentSha256 {
+			return false
+		}
 	}
-
 	return true
 }

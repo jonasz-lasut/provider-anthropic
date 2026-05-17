@@ -27,7 +27,17 @@ import (
 // These fields map to Beta<Resource>NewParams / Beta<Resource>UpdateParams
 // from the Anthropic SDK.
 type <Resource>Parameters struct {
-	// TODO: add ForProvider fields from SDK NewParams/UpdateParams
+	// TODO: add ForProvider fields from SDK NewParams/UpdateParams.
+	//
+	// SecretRef-backed fields (see [[feedback-secret-ref-shape]]): when a
+	// field holds sensitive data or very long content, declare it as an
+	// xpv1.LocalSecretKeySelector VALUE — not a pointer — with NO omitempty.
+	// Drop MaxLength/Pattern markers; constraints go in the godoc prose
+	// (see [[feedback-no-client-side-validation]]). Example:
+	//
+	//     // Required: TokenSecretRef references a Secret in the MR's
+	//     // namespace holding the bearer token at the given key.
+	//     TokenSecretRef xpv1.LocalSecretKeySelector `json:"tokenSecretRef"`
 }
 
 // <Resource>Observation holds the observed state of an Anthropic <Resource>

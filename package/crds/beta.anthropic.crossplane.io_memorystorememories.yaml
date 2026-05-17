@@ -66,12 +66,21 @@ spec:
                     ForProvider holds the configuration the provider reconciles against the
                     Anthropic API on every loop.
                   properties:
-                    content:
+                    contentSecretRef:
                       description: |-
-                        Required: Content is the UTF-8 text content of the memory. Maximum 100 kB
-                        (102,400 bytes). Pass "" explicitly to create an empty memory.
-                      maxLength: 102400
-                      type: string
+                        Required: ContentSecretRef references a Secret in the MR's namespace
+                        holding the UTF-8 text content of the memory at the given key. Maximum
+                        100 kB (102,400 bytes); the API rejects larger payloads.
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          description: Name of the secret.
+                          type: string
+                      required:
+                        - key
+                        - name
+                      type: object
                     memoryStoreId:
                       description: |-
                         MemoryStoreID is the ID of the parent MemoryStore that holds this
@@ -165,6 +174,8 @@ spec:
                       maxLength: 1024
                       pattern: ^/.+
                       type: string
+                  required:
+                    - contentSecretRef
                   type: object
                 managementPolicies:
                   default:
