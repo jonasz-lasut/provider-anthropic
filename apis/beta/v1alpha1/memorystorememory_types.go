@@ -51,11 +51,11 @@ type MemoryStoreMemoryParameters struct {
 	// +kubebuilder:validation:Pattern=`^/.+`
 	Path *string `json:"path,omitempty"`
 
-	// Required: Content is the UTF-8 text content of the memory. Maximum 100 kB
-	// (102,400 bytes). Pass "" explicitly to create an empty memory.
+	// Required: ContentSecretRef references a Secret in the MR's namespace
+	// holding the UTF-8 text content of the memory at the given key. Maximum
+	// 100 kB (102,400 bytes); the API rejects larger payloads.
 	// +optional
-	// +kubebuilder:validation:MaxLength=102400
-	Content *string `json:"content,omitempty"`
+	ContentSecretRef *xpv1.LocalSecretKeySelector `json:"contentSecretRef,omitempty"`
 }
 
 // MemoryStoreMemoryObservation holds the observed state of an Anthropic

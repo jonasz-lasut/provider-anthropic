@@ -142,9 +142,9 @@ func (in *AgentParameters) DeepCopyInto(out *AgentParameters) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.System != nil {
-		in, out := &in.System, &out.System
-		*out = new(string)
+	if in.SystemSecretRef != nil {
+		in, out := &in.SystemSecretRef, &out.SystemSecretRef
+		*out = new(v1.LocalSecretKeySelector)
 		**out = **in
 	}
 	if in.MCPServers != nil {
@@ -762,9 +762,9 @@ func (in *MemoryStoreMemoryParameters) DeepCopyInto(out *MemoryStoreMemoryParame
 		*out = new(string)
 		**out = **in
 	}
-	if in.Content != nil {
-		in, out := &in.Content, &out.Content
-		*out = new(string)
+	if in.ContentSecretRef != nil {
+		in, out := &in.ContentSecretRef, &out.ContentSecretRef
+		*out = new(v1.LocalSecretKeySelector)
 		**out = **in
 	}
 }
@@ -1499,14 +1499,14 @@ func (in *VaultCredentialAuth) DeepCopyInto(out *VaultCredentialAuth) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.Token != nil {
-		in, out := &in.Token, &out.Token
-		*out = new(string)
+	if in.TokenSecretRef != nil {
+		in, out := &in.TokenSecretRef, &out.TokenSecretRef
+		*out = new(v1.LocalSecretKeySelector)
 		**out = **in
 	}
-	if in.AccessToken != nil {
-		in, out := &in.AccessToken, &out.AccessToken
-		*out = new(string)
+	if in.AccessTokenSecretRef != nil {
+		in, out := &in.AccessTokenSecretRef, &out.AccessTokenSecretRef
+		*out = new(v1.LocalSecretKeySelector)
 		**out = **in
 	}
 	if in.ExpiresAt != nil {
@@ -1659,9 +1659,9 @@ func (in *VaultCredentialRefresh) DeepCopyInto(out *VaultCredentialRefresh) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.RefreshToken != nil {
-		in, out := &in.RefreshToken, &out.RefreshToken
-		*out = new(string)
+	if in.RefreshTokenSecretRef != nil {
+		in, out := &in.RefreshTokenSecretRef, &out.RefreshTokenSecretRef
+		*out = new(v1.LocalSecretKeySelector)
 		**out = **in
 	}
 	if in.TokenEndpoint != nil {
@@ -1734,9 +1734,9 @@ func (in *VaultCredentialTokenEndpointAuth) DeepCopyInto(out *VaultCredentialTok
 		*out = new(string)
 		**out = **in
 	}
-	if in.ClientSecret != nil {
-		in, out := &in.ClientSecret, &out.ClientSecret
-		*out = new(string)
+	if in.ClientSecretSecretRef != nil {
+		in, out := &in.ClientSecretSecretRef, &out.ClientSecretSecretRef
+		*out = new(v1.LocalSecretKeySelector)
 		**out = **in
 	}
 }

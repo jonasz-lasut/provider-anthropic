@@ -141,6 +141,61 @@ var (
 )
 ```
 
+## Step 3a — Identify SecretRef candidates
+
+After writing `<Resource>Parameters`, scan every string-typed field you
+just declared and flag candidates for conversion to a Kubernetes Secret
+reference.
+
+A field is a **candidate** when it is a `string`/`*string` and matches AT
+LEAST ONE of:
+
+- **Sensitive name** (case-insensitive substring of the Go field name):
+  `token`, `secret`, `password`, `apikey`, `api_key`, `accesskey`,
+  `privatekey`, `credential`.
+- **Long content**: a `+kubebuilder:validation:MaxLength=N` marker with
+  `N > 4096`, OR the godoc contains a phrase like `"up to <N>
+  characters"` / `"<N>kB"` with `N > 4096`.
+
+And matches NONE of these exclusions:
+
+- Field name ends in `Endpoint`, `URL`, `URI`, `Type`, `ID`/`Id`, `Ref`,
+  `Selector`, or `Name`.
+- Field is the discriminator of a union (a `*string` with a
+  `+kubebuilder:validation:Enum` marker).
+- Field type is a struct, slice, or map.
+
+For **each** candidate, ASK the user: `"<Field> looks like a candidate
+for SecretRef conversion (reason: <which rule matched>). Convert?
+[y/N]"`. DO NOT auto-convert. One question per candidate.
+
+For each confirmed candidate, REWRITE the field in the types file:
+
+- Type becomes `xpv1.LocalSecretKeySelector` — VALUE, not a pointer
+  (see [[feedback-secret-ref-shape]]).
+- JSON tag becomes `<lowerCamelName>SecretRef` with NO `omitempty`.
+- Drop any `+kubebuilder:validation:MaxLength` / `+kubebuilder:validation:Pattern`
+  markers. The constraint moves to godoc prose; the API enforces it
+  (see [[feedback-no-client-side-validation]]).
+- Update the godoc: prefix with `Required:` if API-required, name the
+  ref ("references a Secret in the MR's namespace holding ... at the
+  given key"), and mention any size/format limit in prose.
+
+Example before/after:
+
+```go
+// before
+// Required: Content is the UTF-8 text content of the memory. Maximum 100 kB.
+// +optional
+// +kubebuilder:validation:MaxLength=102400
+Content *string `json:"content,omitempty"`
+
+// after
+// Required: ContentSecretRef references a Secret in the MR's namespace
+// holding the UTF-8 memory content at the given key. Maximum 100 kB.
+ContentSecretRef xpv1.LocalSecretKeySelector `json:"contentSecretRef"`
+```
+
 ## Step 4 — Create the reconciler
 
 Create `internal/controller/<lowercase-resource>/reconciler.go`.
@@ -163,6 +218,27 @@ Cross-resource reference resolution is handled automatically before `Observe()` 
 1. Build NewParams from ForProvider (use `res.Spec.ForProvider.<Other>ID` for resolved reference IDs)
 2. Call SDK `New(ctx, params)`
 3. `meta.SetExternalName(res, resp.ID)` then `res.Status.AtProvider.ID = &resp.ID`
+
+For each SecretRef field on the resource, resolve the value with
+`clients.ResolveLocalSecretKey(ctx, e.kube, ref, res.GetNamespace())`
+BEFORE building SDK params, propagate the error if any, and only set
+the corresponding SDK field when the resolved string is non-empty.
+The same call also runs in `Observe` for drift detection:
+
+- **Write-only fields** (API never returns the value, e.g. tokens):
+  skip the diff in `isUpToDate`; touching the spec is the only way to
+  rotate. No `Observe` resolution needed.
+- **Readable fields with a hash on the response** (e.g.
+  `ContentSha256` on `MemoryStoreMemory`): resolve in `Observe`,
+  compute `sha256.Sum256` of the bytes, compare to the observed hash.
+- **Readable fields without a hash** (e.g. Agent `system`): resolve in
+  `Observe` and string-compare to the response field — one Secret read
+  per poll, but correct.
+
+Pass the resolved string into both `buildNewParams`/`buildUpdateParams`
+and `isUpToDate` as an explicit parameter so the builders stay pure.
+The reconciler's `external` struct grows a `kube client.Client` field
+populated in `Connect`.
 
 ### Update
 1. `resID := meta.GetExternalName(res)` — if equal to `res.GetName()`, return error

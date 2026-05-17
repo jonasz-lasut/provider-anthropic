@@ -31,10 +31,11 @@ type VaultCredentialTokenEndpointAuth struct {
 	// +kubebuilder:validation:Enum=none;client_secret_basic;client_secret_post
 	Type *string `json:"type,omitempty"`
 
-	// ClientSecret is the OAuth client secret (required for client_secret_basic
-	// and client_secret_post; omit for none).
+	// ClientSecretSecretRef references a Secret in the MR's namespace
+	// holding the OAuth client secret at the given key. Required for
+	// client_secret_basic and client_secret_post; omit for the none variant.
 	// +optional
-	ClientSecret *string `json:"clientSecret,omitempty"`
+	ClientSecretSecretRef *xpv1.LocalSecretKeySelector `json:"clientSecretSecretRef,omitempty"`
 }
 
 // VaultCredentialRefresh configures OAuth refresh-token support for an
@@ -44,9 +45,10 @@ type VaultCredentialRefresh struct {
 	// +optional
 	ClientID *string `json:"clientId,omitempty"`
 
-	// Required: RefreshToken is the OAuth refresh token.
+	// Required: RefreshTokenSecretRef references a Secret in the MR's
+	// namespace holding the OAuth refresh token at the given key.
 	// +optional
-	RefreshToken *string `json:"refreshToken,omitempty"`
+	RefreshTokenSecretRef *xpv1.LocalSecretKeySelector `json:"refreshTokenSecretRef,omitempty"`
 
 	// Required: TokenEndpoint is the URL used to refresh the access token.
 	// +optional
@@ -77,13 +79,17 @@ type VaultCredentialAuth struct {
 	// +optional
 	MCPServerURL *string `json:"mcpServerUrl,omitempty"`
 
-	// Token is the static bearer token value (static_bearer variant).
+	// TokenSecretRef references a Secret in the MR's namespace holding the
+	// static bearer token at the given key (static_bearer variant). Omit
+	// for the mcp_oauth variant.
 	// +optional
-	Token *string `json:"token,omitempty"`
+	TokenSecretRef *xpv1.LocalSecretKeySelector `json:"tokenSecretRef,omitempty"`
 
-	// AccessToken is the OAuth access token (mcp_oauth variant).
+	// AccessTokenSecretRef references a Secret in the MR's namespace
+	// holding the OAuth access token at the given key (mcp_oauth variant).
+	// Omit for the static_bearer variant.
 	// +optional
-	AccessToken *string `json:"accessToken,omitempty"`
+	AccessTokenSecretRef *xpv1.LocalSecretKeySelector `json:"accessTokenSecretRef,omitempty"`
 
 	// ExpiresAt is the RFC 3339 timestamp at which the access token expires
 	// (mcp_oauth variant).

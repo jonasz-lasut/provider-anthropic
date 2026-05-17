@@ -41,9 +41,11 @@ type AgentParameters struct {
 	// +kubebuilder:validation:MaxLength=2048
 	Description *string `json:"description,omitempty"`
 
-	// System is the system prompt for the agent. Up to 100,000 characters.
+	// SystemSecretRef references a Secret in the MR's namespace holding the
+	// system prompt at the given key. Up to 100,000 characters; the API
+	// rejects larger payloads. Omit to send no system prompt.
 	// +optional
-	System *string `json:"system,omitempty"`
+	SystemSecretRef *xpv1.LocalSecretKeySelector `json:"systemSecretRef,omitempty"`
 
 	// MCPServers this agent connects to. Maximum 20. Names must be unique.
 	// +optional

@@ -11,11 +11,24 @@ metadata:
 spec:
   forProvider:
     path: /projects/example/notes.md
-    content: |
-      Example memory content for E2E testing.
+    contentSecretRef:
+      name: example-memorystorememory-content
+      key: content
     memoryStoreIdSelector:
       matchLabels:
         testing.upbound.io/example-name: example
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: example-memorystorememory-content
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+type: Opaque
+stringData:
+  content: |
+    Example memory content for E2E testing.
 ---
 apiVersion: beta.anthropic.crossplane.io/v1alpha1
 kind: MemoryStore
