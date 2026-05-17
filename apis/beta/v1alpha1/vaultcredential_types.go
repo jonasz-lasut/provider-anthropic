@@ -26,9 +26,10 @@ import (
 // VaultCredentialTokenEndpointAuth selects the token-endpoint authentication
 // scheme used by an MCP OAuth refresh.
 type VaultCredentialTokenEndpointAuth struct {
-	// Type is the auth scheme: "none", "client_secret_basic" or "client_secret_post".
+	// Required: Type is the auth scheme: "none", "client_secret_basic" or "client_secret_post".
+	// +optional
 	// +kubebuilder:validation:Enum=none;client_secret_basic;client_secret_post
-	Type string `json:"type"`
+	Type *string `json:"type,omitempty"`
 
 	// ClientSecret is the OAuth client secret (required for client_secret_basic
 	// and client_secret_post; omit for none).
@@ -39,14 +40,17 @@ type VaultCredentialTokenEndpointAuth struct {
 // VaultCredentialRefresh configures OAuth refresh-token support for an
 // mcp_oauth credential.
 type VaultCredentialRefresh struct {
-	// ClientID is the OAuth client ID.
-	ClientID string `json:"clientId"`
+	// Required: ClientID is the OAuth client ID.
+	// +optional
+	ClientID *string `json:"clientId,omitempty"`
 
-	// RefreshToken is the OAuth refresh token.
-	RefreshToken string `json:"refreshToken"`
+	// Required: RefreshToken is the OAuth refresh token.
+	// +optional
+	RefreshToken *string `json:"refreshToken,omitempty"`
 
-	// TokenEndpoint is the URL used to refresh the access token.
-	TokenEndpoint string `json:"tokenEndpoint"`
+	// Required: TokenEndpoint is the URL used to refresh the access token.
+	// +optional
+	TokenEndpoint *string `json:"tokenEndpoint,omitempty"`
 
 	// TokenEndpointAuth selects the auth scheme used at the token endpoint.
 	TokenEndpointAuth VaultCredentialTokenEndpointAuth `json:"tokenEndpointAuth"`
@@ -63,13 +67,15 @@ type VaultCredentialRefresh struct {
 // VaultCredentialAuth describes the credential payload. Type selects the
 // variant; only set the fields relevant to that variant.
 type VaultCredentialAuth struct {
-	// Type identifies the credential variant.
+	// Required: Type identifies the credential variant.
+	// +optional
 	// +kubebuilder:validation:Enum=mcp_oauth;static_bearer
-	Type string `json:"type"`
+	Type *string `json:"type,omitempty"`
 
-	// MCPServerURL is the URL of the MCP server this credential authenticates
+	// Required: MCPServerURL is the URL of the MCP server this credential authenticates
 	// against. Required for both variants. Immutable after creation.
-	MCPServerURL string `json:"mcpServerUrl"`
+	// +optional
+	MCPServerURL *string `json:"mcpServerUrl,omitempty"`
 
 	// Token is the static bearer token value (static_bearer variant).
 	// +optional

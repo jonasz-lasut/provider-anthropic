@@ -43,18 +43,19 @@ type MemoryStoreMemoryParameters struct {
 	// +kubebuilder:validation:Optional
 	MemoryStoreIDSelector *xpv1.NamespacedSelector `json:"memoryStoreIdSelector,omitempty"`
 
-	// Path is the hierarchical path of the memory within the store, e.g.
+	// Required: Path is the hierarchical path of the memory within the store, e.g.
 	// "/projects/foo/notes.md". Must start with "/", be at most 1,024 bytes,
 	// and contain no empty/"."/".." segments. Renaming is supported via update.
-	// +kubebuilder:validation:MinLength=2
+	// +optional
 	// +kubebuilder:validation:MaxLength=1024
 	// +kubebuilder:validation:Pattern=`^/.+`
-	Path string `json:"path"`
+	Path *string `json:"path,omitempty"`
 
-	// Content is the UTF-8 text content of the memory. Maximum 100 kB
+	// Required: Content is the UTF-8 text content of the memory. Maximum 100 kB
 	// (102,400 bytes). Pass "" explicitly to create an empty memory.
+	// +optional
 	// +kubebuilder:validation:MaxLength=102400
-	Content string `json:"content"`
+	Content *string `json:"content,omitempty"`
 }
 
 // MemoryStoreMemoryObservation holds the observed state of an Anthropic

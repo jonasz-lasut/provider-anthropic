@@ -27,14 +27,14 @@ import (
 // These fields map directly to the BetaAgentNewParams / BetaAgentUpdateParams
 // from the Anthropic SDK and are always reconciled against the external API.
 type AgentParameters struct {
-	// Model is the model identifier for the agent, e.g. "claude-opus-4-7".
-	// +kubebuilder:validation:MinLength=1
-	Model string `json:"model"`
+	// Required: Model is the model identifier for the agent, e.g. "claude-opus-4-7".
+	// +optional
+	Model *string `json:"model,omitempty"`
 
-	// Name is the human-readable name for the agent (1–256 characters).
-	// +kubebuilder:validation:MinLength=1
+	// Required: Name is the human-readable name for the agent (1–256 characters).
+	// +optional
 	// +kubebuilder:validation:MaxLength=256
-	Name string `json:"name"`
+	Name *string `json:"name,omitempty"`
 
 	// Description of what the agent does. Up to 2048 characters.
 	// +optional
@@ -68,32 +68,33 @@ type AgentParameters struct {
 
 // MCPServerConfig configures a single MCP server for an agent.
 type MCPServerConfig struct {
-	// Name is a unique identifier for this MCP server within the agent.
-	// +kubebuilder:validation:MinLength=1
-	Name string `json:"name"`
+	// Required: Name is a unique identifier for this MCP server within the agent.
+	// +optional
+	Name *string `json:"name,omitempty"`
 
-	// URL is the endpoint of the MCP server.
-	// +kubebuilder:validation:MinLength=1
-	URL string `json:"url"`
+	// Required: URL is the endpoint of the MCP server.
+	// +optional
+	URL *string `json:"url,omitempty"`
 }
 
 // AgentSkillConfig configures a single skill for an agent.
 type AgentSkillConfig struct {
-	// Type is either "anthropic" or "custom".
+	// Required: Type is either "anthropic" or "custom".
+	// +optional
 	// +kubebuilder:validation:Enum=anthropic;custom
-	Type string `json:"type"`
+	Type *string `json:"type,omitempty"`
 
-	// SkillID is the identifier of the skill to attach.
-	// +kubebuilder:validation:MinLength=1
-	SkillID string `json:"skillId"`
+	// Required: SkillID is the identifier of the skill to attach.
+	// +optional
+	SkillID *string `json:"skillId,omitempty"`
 }
 
 // AgentToolConfig configures a single tool (toolset) for an agent.
 type AgentToolConfig struct {
-	// Type identifies the toolset kind. Currently only "agent_toolset_20260401"
-	// is supported for the standard Anthropic toolset.
-	// +kubebuilder:validation:MinLength=1
-	Type string `json:"type"`
+	// Required: Type identifies the toolset kind; currently only
+	// "agent_toolset_20260401" is supported for the standard Anthropic toolset.
+	// +optional
+	Type *string `json:"type,omitempty"`
 
 	// Name is the toolset name as recognised by the Anthropic API.
 	// +optional

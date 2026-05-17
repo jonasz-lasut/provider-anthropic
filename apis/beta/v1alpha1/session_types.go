@@ -26,9 +26,10 @@ import (
 // SessionResourceCheckout specifies which branch or commit to check out in a
 // GitHub repository resource.
 type SessionResourceCheckout struct {
-	// Type is "branch" or "commit".
+	// Required: Type is "branch" or "commit".
+	// +optional
 	// +kubebuilder:validation:Enum=branch;commit
-	Type string `json:"type"`
+	Type *string `json:"type,omitempty"`
 
 	// Name is the branch name (when type=branch).
 	// +optional
@@ -43,9 +44,10 @@ type SessionResourceCheckout struct {
 // The Type field selects which variant is active; only supply the fields
 // relevant to that variant.
 type SessionResource struct {
-	// Type identifies the resource variant.
+	// Required: Type identifies the resource variant.
+	// +optional
 	// +kubebuilder:validation:Enum=github_repository;file;memory_store
-	Type string `json:"type"`
+	Type *string `json:"type,omitempty"`
 
 	// URL is the GitHub repository URL (github_repository type).
 	// +optional

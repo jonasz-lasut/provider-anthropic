@@ -215,8 +215,9 @@ func (e *external) Disconnect(_ context.Context) error { return nil }
 
 // buildNewParams converts ForProvider into the SDK create params.
 func buildNewParams(p betav1alpha1.VaultParameters) anthropic.BetaVaultNewParams {
-	params := anthropic.BetaVaultNewParams{
-		DisplayName: p.DisplayName,
+	params := anthropic.BetaVaultNewParams{}
+	if p.DisplayName != nil {
+		params.DisplayName = *p.DisplayName
 	}
 	if p.Metadata != nil {
 		params.Metadata = p.Metadata
@@ -226,8 +227,9 @@ func buildNewParams(p betav1alpha1.VaultParameters) anthropic.BetaVaultNewParams
 
 // buildUpdateParams converts ForProvider into the SDK update params.
 func buildUpdateParams(p betav1alpha1.VaultParameters) anthropic.BetaVaultUpdateParams {
-	params := anthropic.BetaVaultUpdateParams{
-		DisplayName: anthropic.String(p.DisplayName),
+	params := anthropic.BetaVaultUpdateParams{}
+	if p.DisplayName != nil {
+		params.DisplayName = anthropic.String(*p.DisplayName)
 	}
 	if p.Metadata != nil {
 		params.Metadata = p.Metadata
@@ -239,7 +241,7 @@ func buildUpdateParams(p betav1alpha1.VaultParameters) anthropic.BetaVaultUpdate
 func isUpToDate(v *betav1alpha1.Vault, resp *anthropic.BetaManagedAgentsVault) bool {
 	p := v.Spec.ForProvider
 
-	if p.DisplayName != resp.DisplayName {
+	if p.DisplayName != nil && *p.DisplayName != resp.DisplayName {
 		return false
 	}
 

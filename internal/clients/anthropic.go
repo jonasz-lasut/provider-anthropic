@@ -22,6 +22,7 @@ import (
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
+	xpcommon "github.com/crossplane/crossplane-runtime/v2/apis/common"
 	xperrors "github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 	xpresource "github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,13 +38,44 @@ const (
 	errGetCredentials    = "cannot get credentials"
 )
 
-// NewClient returns a pointer to an Anthropic SDK client authenticated with apiKey.
+// NewClient returns an Anthropic SDK client authenticated with the credentials
+// referenced by the supplied managed resource's ProviderConfig. It also tracks
+// usage via ProviderConfigUsage.
 func NewClient(ctx context.Context, crClient client.Client, mg xpresource.ModernManaged) (*anthropic.Client, error) {
-	pcSpec, err := resolveProviderConfigModern(ctx, crClient, mg)
+	pcSpec, err := resolveProviderConfig(ctx, crClient, mg.GetProviderConfigReference(), mg.GetNamespace())
 	if err != nil {
 		return nil, err
 	}
 
+	t := xpresource.NewProviderConfigUsageTracker(crClient, &pcv1alpha1.ProviderConfigUsage{})
+	if err := t.Track(ctx, mg); err != nil {
+		return nil, xperrors.Wrap(err, errTrackUsage)
+	}
+
+	return buildClientFromSpec(ctx, crClient, pcSpec)
+}
+
+// NewClientFromProviderConfig returns an Anthropic SDK client authenticated
+// with the credentials referenced by the supplied ProviderConfig reference.
+// It is intended for callers that are not Crossplane managed resources (such
+// as the Observed<R>Collection reconcilers) and therefore cannot use the
+// ProviderConfigUsage tracker.
+func NewClientFromProviderConfig(
+	ctx context.Context,
+	crClient client.Client,
+	configRef *xpcommon.ProviderConfigReference,
+	namespace string,
+) (*anthropic.Client, error) {
+	pcSpec, err := resolveProviderConfig(ctx, crClient, configRef, namespace)
+	if err != nil {
+		return nil, err
+	}
+	return buildClientFromSpec(ctx, crClient, pcSpec)
+}
+
+// buildClientFromSpec extracts credentials from the resolved ProviderConfig
+// spec and constructs an authenticated Anthropic SDK client.
+func buildClientFromSpec(ctx context.Context, crClient client.Client, pcSpec *pcv1alpha1.ProviderConfigSpec) (*anthropic.Client, error) {
 	creds, err := xpresource.CommonCredentialExtractor(
 		ctx,
 		pcSpec.Credentials.Source,
@@ -54,50 +86,46 @@ func NewClient(ctx context.Context, crClient client.Client, mg xpresource.Modern
 		return nil, xperrors.Wrap(err, errGetCredentials)
 	}
 
-	// only handle api key for now
+	// Only API-key authentication is supported today.
 	c := anthropic.NewClient(option.WithAPIKey(string(creds)))
 	return &c, nil
 }
 
-func resolveProviderConfigModern(ctx context.Context, crClient client.Client, mg xpresource.ModernManaged) (*pcv1alpha1.ProviderConfigSpec, error) {
-	configRef := mg.GetProviderConfigReference()
+func resolveProviderConfig(
+	ctx context.Context,
+	crClient client.Client,
+	configRef *xpcommon.ProviderConfigReference,
+	namespace string,
+) (*pcv1alpha1.ProviderConfigSpec, error) {
 	if configRef == nil {
 		return nil, xperrors.New(errNoProviderConfig)
 	}
 
 	pcRuntimeObj, err := crClient.Scheme().New(pcv1alpha1.SchemeGroupVersion.WithKind(configRef.Kind))
 	if err != nil {
-		return nil, xperrors.Wrapf(err, "referenced provider config kind %q is invalid for %s/%s", configRef.Kind, mg.GetNamespace(), mg.GetName())
+		return nil, xperrors.Wrapf(err, "referenced provider config kind %q is invalid", configRef.Kind)
 	}
 	pcObj, ok := pcRuntimeObj.(xpresource.ProviderConfig)
 	if !ok {
-		return nil, xperrors.Errorf("referenced provider config kind %q is not a provider config type %s/%s", configRef.Kind, mg.GetNamespace(), mg.GetName())
+		return nil, xperrors.Errorf("referenced provider config kind %q is not a provider config type", configRef.Kind)
 	}
 
-	// Namespace will be ignored if the PC is a cluster-scoped type
-	if err := crClient.Get(ctx, types.NamespacedName{Name: configRef.Name, Namespace: mg.GetNamespace()}, pcObj); err != nil {
+	// Namespace is ignored if the PC is a cluster-scoped type.
+	if err := crClient.Get(ctx, types.NamespacedName{Name: configRef.Name, Namespace: namespace}, pcObj); err != nil {
 		return nil, xperrors.Wrap(err, errGetProviderConfig)
 	}
 
-	var pcSpec pcv1alpha1.ProviderConfigSpec
 	switch pc := pcObj.(type) {
 	case *pcv1alpha1.ProviderConfig:
-		enrichLocalSecretRefs(pc, mg)
-		pcSpec = pc.Spec
+		// Patch the in-memory PC so local SecretRefs resolve in the caller's
+		// namespace. The fetched object is not cached, so in-place mutation is safe.
+		if pc.Spec.Credentials.SecretRef != nil {
+			pc.Spec.Credentials.SecretRef.Namespace = namespace
+		}
+		return &pc.Spec, nil
 	case *pcv1alpha1.ClusterProviderConfig:
-		pcSpec = pc.Spec
+		return &pc.Spec, nil
 	default:
-		return nil, xperrors.New("unknown")
-	}
-	t := xpresource.NewProviderConfigUsageTracker(crClient, &pcv1alpha1.ProviderConfigUsage{})
-	if err := t.Track(ctx, mg); err != nil {
-		return nil, xperrors.Wrap(err, errTrackUsage)
-	}
-	return &pcSpec, nil
-}
-
-func enrichLocalSecretRefs(pc *pcv1alpha1.ProviderConfig, mg xpresource.Managed) {
-	if pc != nil && pc.Spec.Credentials.SecretRef != nil {
-		pc.Spec.Credentials.SecretRef.Namespace = mg.GetNamespace()
+		return nil, xperrors.New("unknown ProviderConfig type")
 	}
 }

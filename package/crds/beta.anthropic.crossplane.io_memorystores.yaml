@@ -90,13 +90,10 @@ spec:
                       type: object
                     name:
                       description: |-
-                        Name is the human-readable name for the store. 1–255 characters.
+                        Required: Name is the human-readable name for the store. Up to 255 characters.
                         The mount-path slug under /mnt/memory/ is derived from this name.
                       maxLength: 255
-                      minLength: 1
                       type: string
-                  required:
-                    - name
                   type: object
                 managementPolicies:
                   default:

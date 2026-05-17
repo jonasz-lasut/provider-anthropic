@@ -5,7 +5,7 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.0
     anthropic.crossplane.io/sdk-version: v1.43.0
-  name: vaults.beta.anthropic.crossplane.io
+  name: observedagentcollections.beta.anthropic.crossplane.io
 spec:
   group: beta.anthropic.crossplane.io
   names:
@@ -13,12 +13,12 @@ spec:
       - crossplane
       - managed
       - anthropic
-    kind: Vault
-    listKind: VaultList
-    plural: vaults
+    kind: ObservedAgentCollection
+    listKind: ObservedAgentCollectionList
+    plural: observedagentcollections
     shortNames:
-      - vault
-    singular: vault
+      - obscoll-agent
+    singular: observedagentcollection
   scope: Namespaced
   versions:
     - additionalPrinterColumns:
@@ -28,9 +28,9 @@ spec:
         - jsonPath: .status.conditions[?(@.type=='Synced')].status
           name: SYNCED
           type: string
-        - jsonPath: .metadata.annotations.crossplane\.io/external-name
-          name: EXTERNAL-NAME
-          type: string
+        - jsonPath: .status.itemCount
+          name: ITEMS
+          type: integer
         - jsonPath: .metadata.creationTimestamp
           name: AGE
           type: date
@@ -38,8 +38,8 @@ spec:
       schema:
         openAPIV3Schema:
           description: |-
-            Vault is a managed resource representing an Anthropic credential vault
-            (beta API): a container for credentials that agents use during sessions.
+            ObservedAgentCollection materializes one Observe-only Agent per remote
+            agent matched by spec.predicates.
           properties:
             apiVersion:
               description: |-
@@ -59,66 +59,36 @@ spec:
             metadata:
               type: object
             spec:
-              description: VaultSpec defines the desired state of Vault.
+              description: |-
+                ObservedAgentCollectionSpec defines the desired state of
+                ObservedAgentCollection.
               properties:
-                forProvider:
+                predicates:
                   description: |-
-                    ForProvider holds the configuration the provider reconciles against the
-                    Anthropic API on every loop.
+                    Predicates filter the Anthropic List(agents) call. The reconciler maps
+                    fields to BetaAgentListParams when supported server-side and applies
+                    any remaining predicates client-side.
                   properties:
-                    anthropicDeletionPolicy:
-                      default: Archive
+                    createdAtGte:
                       description: |-
-                        AnthropicDeletionPolicy controls whether Crossplane calls Archive or
-                        Delete on the Anthropic API when the resource is deleted in Kubernetes.
-                      enum:
-                        - Archive
-                        - Delete
+                        CreatedAtGte matches resources created at or after this RFC3339
+                        timestamp (inclusive).
+                      format: date-time
                       type: string
-                    displayName:
-                      description: 'Required: DisplayName is the human-readable name for the vault. Up to 255 characters.'
-                      maxLength: 255
-                      type: string
-                    metadata:
-                      additionalProperties:
-                        type: string
+                    createdAtLte:
                       description: |-
-                        Metadata is arbitrary key-value data attached to the vault.
-                        Maximum 16 pairs; keys up to 64 chars, values up to 512 chars.
-                        On update this is a patch: omitted keys are preserved.
-                      type: object
+                        CreatedAtLte matches resources created at or before this RFC3339
+                        timestamp (inclusive).
+                      format: date-time
+                      type: string
                   type: object
-                managementPolicies:
-                  default:
-                    - '*'
-                  description: |-
-                    THIS IS A BETA FIELD. It is on by default but can be opted out
-                    through a Crossplane feature flag.
-                    ManagementPolicies specify the array of actions Crossplane is allowed to
-                    take on the managed and external resources.
-                    See the design doc for more information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223
-                    and this one: https://github.com/crossplane/crossplane/blob/444267e84783136daa93568b364a5f01228cacbe/design/one-pager-ignore-changes.md
-                  items:
-                    description: |-
-                      A ManagementAction represents an action that the Crossplane controllers
-                      can take on an external resource.
-                    enum:
-                      - Observe
-                      - Create
-                      - Update
-                      - Delete
-                      - LateInitialize
-                      - '*'
-                    type: string
-                  type: array
                 providerConfigRef:
                   default:
                     kind: ClusterProviderConfig
                     name: default
                   description: |-
-                    ProviderConfigReference specifies how the provider that will be used to
-                    create, observe, update, and delete this managed resource should be
-                    configured.
+                    ProviderConfigReference selects the ProviderConfig used to authenticate
+                    against the Anthropic API for this collection.
                   properties:
                     kind:
                       description: Kind of the referenced object.
@@ -130,43 +100,30 @@ spec:
                     - kind
                     - name
                   type: object
-                writeConnectionSecretToRef:
-                  description: |-
-                    WriteConnectionSecretToReference specifies the namespace and name of a
-                    Secret to which any connection details for this managed resource should
-                    be written. Connection details frequently include the endpoint, username,
-                    and password required to connect to the managed resource.
+                template:
+                  description: Template is applied to every Agent child created by this collection.
                   properties:
-                    name:
-                      description: Name of the secret.
-                      type: string
-                  required:
-                    - name
+                    metadata:
+                      description: |-
+                        ObservedCollectionTemplateMetadata is the label/annotation overlay applied
+                        to children.
+                      properties:
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        labels:
+                          additionalProperties:
+                            type: string
+                          type: object
+                      type: object
                   type: object
-              required:
-                - forProvider
               type: object
             status:
-              description: VaultStatus defines the observed state of Vault.
+              description: |-
+                ObservedAgentCollectionStatus defines the observed state of
+                ObservedAgentCollection.
               properties:
-                atProvider:
-                  description: AtProvider holds the observed state as returned by the Anthropic API.
-                  properties:
-                    archivedAt:
-                      description: ArchivedAt is set when the vault has been archived.
-                      type: string
-                    createdAt:
-                      description: CreatedAt is the RFC 3339 timestamp when the vault was created.
-                      type: string
-                    id:
-                      description: |-
-                        ID is the Anthropic-assigned vault identifier. Also stored in the
-                        external-name annotation, which the reconciler uses as the primary key.
-                      type: string
-                    updatedAt:
-                      description: UpdatedAt is the RFC 3339 timestamp of the last modification.
-                      type: string
-                  type: object
                 conditions:
                   description: Conditions of the resource.
                   items:
@@ -211,6 +168,35 @@ spec:
                   x-kubernetes-list-map-keys:
                     - type
                   x-kubernetes-list-type: map
+                itemCount:
+                  description: |-
+                    ItemCount mirrors len(Items) for use in a printer column (JSONPath
+                    does not support array length).
+                  format: int32
+                  type: integer
+                items:
+                  description: Items references children currently materialized by this collection.
+                  items:
+                    description: ObservedCollectionMember is one matched child managed resource.
+                    properties:
+                      id:
+                        description: ID is the Anthropic-assigned identifier of the observed resource.
+                        type: string
+                      name:
+                        description: Name of the child resource in the same namespace.
+                        type: string
+                    required:
+                      - id
+                      - name
+                    type: object
+                  type: array
+                membershipLabel:
+                  additionalProperties:
+                    type: string
+                  description: |-
+                    MembershipLabel is the label applied to every child Agent owned by
+                    this collection. Useful for `kubectl get agents -l <key>=<value>` queries.
+                  type: object
                 observedGeneration:
                   description: |-
                     ObservedGeneration is the latest metadata.generation

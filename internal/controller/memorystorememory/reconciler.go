@@ -155,9 +155,12 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, xperrors.New(errMissingStore)
 	}
 
-	params := anthropic.BetaMemoryStoreMemoryNewParams{
-		Path:    m.Spec.ForProvider.Path,
-		Content: anthropic.String(m.Spec.ForProvider.Content),
+	params := anthropic.BetaMemoryStoreMemoryNewParams{}
+	if m.Spec.ForProvider.Path != nil {
+		params.Path = *m.Spec.ForProvider.Path
+	}
+	if m.Spec.ForProvider.Content != nil {
+		params.Content = anthropic.String(*m.Spec.ForProvider.Content)
 	}
 	resp, err := e.client.Beta.MemoryStores.Memories.New(ctx, *m.Spec.ForProvider.MemoryStoreID, params)
 	if err != nil {
@@ -188,8 +191,12 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	params := anthropic.BetaMemoryStoreMemoryUpdateParams{
 		MemoryStoreID: *m.Spec.ForProvider.MemoryStoreID,
-		Path:          anthropic.String(m.Spec.ForProvider.Path),
-		Content:       anthropic.String(m.Spec.ForProvider.Content),
+	}
+	if m.Spec.ForProvider.Path != nil {
+		params.Path = anthropic.String(*m.Spec.ForProvider.Path)
+	}
+	if m.Spec.ForProvider.Content != nil {
+		params.Content = anthropic.String(*m.Spec.ForProvider.Content)
 	}
 	if _, err := e.client.Beta.MemoryStores.Memories.Update(ctx, memID, params); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
@@ -234,11 +241,11 @@ func (e *external) Disconnect(_ context.Context) error { return nil }
 func isUpToDate(m *betav1alpha1.MemoryStoreMemory, resp *anthropic.BetaManagedAgentsMemory) bool {
 	p := m.Spec.ForProvider
 
-	if p.Path != resp.Path {
+	if p.Path != nil && *p.Path != resp.Path {
 		return false
 	}
 	// resp.Content is populated because we requested view=full in Observe.
-	if p.Content != resp.Content {
+	if p.Content != nil && *p.Content != resp.Content {
 		return false
 	}
 

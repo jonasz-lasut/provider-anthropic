@@ -80,6 +80,23 @@ Map each SDK NewParams/UpdateParams field:
   - `reference:extractor` — `internal/extractors.ComputedFieldExtractor("id")` reads `status.atProvider.id` of the referenced object via `fieldpath.PaveObject`. Do NOT use upjet's `resource.ExtractParamPath("id", true)` — it only works on upjet-generated Terraform-state resources and silently returns an empty string for handwritten managed resources, causing the resolver to fail with `referenced field was empty (referenced resource may not yet be ready)` even when the referenced resource is fully Ready. `ComputedFieldExtractor` works for any Go struct because it JSON-marshals the resource and walks the resulting map by path.
   - Use `xpv1.NamespacedReference` / `xpv1.NamespacedSelector` because all managed resources here are namespace-scoped. angryjet generates `ResolveReferences` in `zz_generated.resolvers.go` that uses these fields.
 
+**Required-marker convention:** Mark every `ForProvider` field `// +optional`
+regardless of whether the Anthropic API treats it as required. Anthropic
+generates resource IDs server-side, so no client-supplied field is a
+true identifier. Document required-by-API nature in the field's godoc with a
+`Required:` prefix. Do not add `+kubebuilder:validation:MinLength` or
+`+kubebuilder:validation:MinItems`, and always include `// +optional`.
+`MaxLength`/`MaxItems`/`Enum`/`Pattern` markers stay — they bound or
+constrain values, they don't require them.
+
+**`,omitempty` and nil-able types:** `,omitempty` may only appear on a type
+that has a nil representation — pointers, slices, or maps. Non-pointer
+scalar fields (`string`, `int64`, `bool`) must be declared as pointers
+(`*string`, `*int64`, `*bool`) before adding `,omitempty`. Reconcilers
+that read these fields must nil-check before dereferencing. In
+`isUpToDate`, a nil pointer means "user does not care about this field" —
+never report it as drift.
+
 ### AtProvider (`<Resource>Observation`)
 Include all read-only response fields. Always start with `ID`:
 

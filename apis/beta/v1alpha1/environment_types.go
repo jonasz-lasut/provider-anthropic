@@ -25,10 +25,11 @@ import (
 
 // EnvironmentNetworkingConfig configures the network policy for a cloud environment.
 type EnvironmentNetworkingConfig struct {
-	// Type is the network policy: "unrestricted" allows full outbound access,
+	// Required: Type is the network policy: "unrestricted" allows full outbound access,
 	// "limited" restricts outbound traffic to the hosts listed in AllowedHosts.
+	// +optional
 	// +kubebuilder:validation:Enum=unrestricted;limited
-	Type string `json:"type"`
+	Type *string `json:"type,omitempty"`
 
 	// AllowMCPServers permits outbound access to MCP server endpoints configured
 	// on the agent, beyond those listed in AllowedHosts. Limited networking only.
@@ -89,9 +90,9 @@ type EnvironmentCloudConfig struct {
 // These fields map to BetaEnvironmentNewParams / BetaEnvironmentUpdateParams
 // from the Anthropic SDK.
 type EnvironmentParameters struct {
-	// Name is the human-readable name for the environment.
-	// +kubebuilder:validation:MinLength=1
-	Name string `json:"name"`
+	// Required: Name is the human-readable name for the environment.
+	// +optional
+	Name *string `json:"name,omitempty"`
 
 	// Description is an optional description of the environment.
 	// +optional

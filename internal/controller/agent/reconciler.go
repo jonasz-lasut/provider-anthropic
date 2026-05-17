@@ -211,9 +211,13 @@ func (e *external) Disconnect(_ context.Context) error { return nil }
 
 // buildNewParams converts ForProvider into the SDK create params.
 func buildNewParams(p betav1alpha1.AgentParameters) anthropic.BetaAgentNewParams {
-	params := anthropic.BetaAgentNewParams{
-		Name:  p.Name,
-		Model: anthropic.BetaManagedAgentsModelConfigParams{ID: p.Model},
+	params := anthropic.BetaAgentNewParams{}
+
+	if p.Name != nil {
+		params.Name = *p.Name
+	}
+	if p.Model != nil {
+		params.Model = anthropic.BetaManagedAgentsModelConfigParams{ID: *p.Model}
 	}
 
 	if p.Description != nil {
@@ -227,11 +231,16 @@ func buildNewParams(p betav1alpha1.AgentParameters) anthropic.BetaAgentNewParams
 	}
 
 	for _, s := range p.MCPServers {
-		params.MCPServers = append(params.MCPServers, anthropic.BetaManagedAgentsURLMCPServerParams{
-			Name: s.Name,
+		srv := anthropic.BetaManagedAgentsURLMCPServerParams{
 			Type: anthropic.BetaManagedAgentsURLMCPServerParamsTypeURL,
-			URL:  s.URL,
-		})
+		}
+		if s.Name != nil {
+			srv.Name = *s.Name
+		}
+		if s.URL != nil {
+			srv.URL = *s.URL
+		}
+		params.MCPServers = append(params.MCPServers, srv)
 	}
 
 	for _, sk := range p.Skills {
@@ -252,8 +261,13 @@ func buildNewParams(p betav1alpha1.AgentParameters) anthropic.BetaAgentNewParams
 func buildUpdateParams(p betav1alpha1.AgentParameters, version int64) anthropic.BetaAgentUpdateParams {
 	params := anthropic.BetaAgentUpdateParams{
 		Version: version,
-		Name:    anthropic.String(p.Name),
-		Model:   anthropic.BetaManagedAgentsModelConfigParams{ID: p.Model},
+	}
+
+	if p.Name != nil {
+		params.Name = anthropic.String(*p.Name)
+	}
+	if p.Model != nil {
+		params.Model = anthropic.BetaManagedAgentsModelConfigParams{ID: *p.Model}
 	}
 
 	if p.Description != nil {
@@ -267,11 +281,16 @@ func buildUpdateParams(p betav1alpha1.AgentParameters, version int64) anthropic.
 	}
 
 	for _, s := range p.MCPServers {
-		params.MCPServers = append(params.MCPServers, anthropic.BetaManagedAgentsURLMCPServerParams{
-			Name: s.Name,
+		srv := anthropic.BetaManagedAgentsURLMCPServerParams{
 			Type: anthropic.BetaManagedAgentsURLMCPServerParamsTypeURL,
-			URL:  s.URL,
-		})
+		}
+		if s.Name != nil {
+			srv.Name = *s.Name
+		}
+		if s.URL != nil {
+			srv.URL = *s.URL
+		}
+		params.MCPServers = append(params.MCPServers, srv)
 	}
 
 	for _, sk := range p.Skills {
@@ -288,18 +307,26 @@ func buildUpdateParams(p betav1alpha1.AgentParameters, version int64) anthropic.
 }
 
 func skillToParam(s betav1alpha1.AgentSkillConfig) anthropic.BetaManagedAgentsSkillParamsUnion {
-	switch s.Type {
+	skillID := ""
+	if s.SkillID != nil {
+		skillID = *s.SkillID
+	}
+	skillType := ""
+	if s.Type != nil {
+		skillType = *s.Type
+	}
+	switch skillType {
 	case "anthropic":
 		return anthropic.BetaManagedAgentsSkillParamsUnion{
 			OfAnthropic: &anthropic.BetaManagedAgentsAnthropicSkillParams{
-				SkillID: s.SkillID,
+				SkillID: skillID,
 				Type:    anthropic.BetaManagedAgentsAnthropicSkillParamsTypeAnthropic,
 			},
 		}
 	default: // "custom"
 		return anthropic.BetaManagedAgentsSkillParamsUnion{
 			OfCustom: &anthropic.BetaManagedAgentsCustomSkillParams{
-				SkillID: s.SkillID,
+				SkillID: skillID,
 				Type:    anthropic.BetaManagedAgentsCustomSkillParamsTypeCustom,
 			},
 		}
@@ -326,10 +353,10 @@ func toolToUpdateParam(_ betav1alpha1.AgentToolConfig) anthropic.BetaAgentUpdate
 func isUpToDate(ag *betav1alpha1.Agent, resp *anthropic.BetaManagedAgentsAgent) bool {
 	p := ag.Spec.ForProvider
 
-	if p.Name != resp.Name {
+	if p.Name != nil && *p.Name != resp.Name {
 		return false
 	}
-	if resp.Model.ID != p.Model {
+	if p.Model != nil && resp.Model.ID != *p.Model {
 		return false
 	}
 	if p.Description != nil && *p.Description != resp.Description {
@@ -344,7 +371,10 @@ func isUpToDate(ag *betav1alpha1.Agent, resp *anthropic.BetaManagedAgentsAgent) 
 		return false
 	}
 	for i, s := range p.MCPServers {
-		if s.Name != resp.MCPServers[i].Name || s.URL != resp.MCPServers[i].URL {
+		if s.Name != nil && *s.Name != resp.MCPServers[i].Name {
+			return false
+		}
+		if s.URL != nil && *s.URL != resp.MCPServers[i].URL {
 			return false
 		}
 	}

@@ -27,10 +27,10 @@ import (
 // These fields map to BetaVaultNewParams / BetaVaultUpdateParams from the
 // Anthropic SDK.
 type VaultParameters struct {
-	// DisplayName is the human-readable name for the vault. 1–255 characters.
-	// +kubebuilder:validation:MinLength=1
+	// Required: DisplayName is the human-readable name for the vault. Up to 255 characters.
+	// +optional
 	// +kubebuilder:validation:MaxLength=255
-	DisplayName string `json:"displayName"`
+	DisplayName *string `json:"displayName,omitempty"`
 
 	// Metadata is arbitrary key-value data attached to the vault.
 	// Maximum 16 pairs; keys up to 64 chars, values up to 512 chars.

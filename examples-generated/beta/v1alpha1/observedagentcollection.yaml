@@ -1,0 +1,50 @@
+---
+apiVersion: beta.anthropic.crossplane.io/v1alpha1
+kind: ObservedAgentCollection
+metadata:
+  name: example-observed-agents
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: beta/v1alpha1/observedagentcollection
+spec:
+  predicates: {}
+---
+apiVersion: beta.anthropic.crossplane.io/v1alpha1
+kind: Agent
+metadata:
+  name: agent-1
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: beta/v1alpha1/observedagentcollection
+spec:
+  forProvider:
+    model: claude-sonnet-4-6
+    name: agent-1
+    description: Example agent 1 for ObservedAgentCollection.
+    metadata:
+      example: "true"
+    tools:
+      - type: agent_toolset_20260401
+---
+apiVersion: beta.anthropic.crossplane.io/v1alpha1
+kind: Agent
+metadata:
+  name: agent-2
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: beta/v1alpha1/observedagentcollection
+spec:
+  forProvider:
+    model: claude-sonnet-4-6
+    name: agent-2
+    description: Example agent 2 for ObservedAgentCollection.
+    metadata:
+      example: "true"
+    tools:
+      - type: agent_toolset_20260401

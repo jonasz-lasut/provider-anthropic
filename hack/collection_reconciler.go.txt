@@ -1,0 +1,316 @@
+/*
+Copyright 2025 The provider-anthropic-platform Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+// Package observed<lowercase-resource>collection reconciles
+// Observed<Resource>Collection resources by listing <Resource>s from the
+// Anthropic API and materializing one Observe-only <Resource> per match.
+package observed<lowercase-resource>collection
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	anthropic "github.com/anthropics/anthropic-sdk-go"
+	"github.com/pkg/errors"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	xperrors "github.com/crossplane/crossplane-runtime/v2/pkg/errors"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+
+	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1"
+	"github.com/jonasz-lasut/provider-anthropic-platform/internal/clients"
+)
+
+const (
+	errGetCollection   = "cannot get Observed<Resource>Collection"
+	errNewClient       = "cannot build Anthropic client"
+	errListUpstream    = "cannot list <Resource>s from Anthropic API"
+	errPatchChild      = "cannot apply observed <Resource> child"
+	errListChildren    = "cannot list child <Resource>s"
+	errDeleteChild     = "cannot delete stale observed <Resource> child"
+	errStatusUpdate    = "cannot update Observed<Resource>Collection status"
+	membershipLabelKey = "anthropic.crossplane.io/owned-by-collection"
+	fieldOwner         = client.FieldOwner("anthropic.crossplane.io/observed-<lowercase-resource>-collection-controller")
+)
+
+// Reconciler observes <Resource>s from the Anthropic API matched by
+// Observed<Resource>Collection.Spec.Predicates.
+type Reconciler struct {
+	client       client.Client
+	log          logging.Logger
+	pollInterval func() time.Duration
+}
+
+// Setup registers the controller with the supplied manager.
+func Setup(mgr ctrl.Manager, o controller.Options) error {
+	name := "observed<lowercase-resource>collection"
+	r := &Reconciler{
+		client:       mgr.GetClient(),
+		log:          o.Logger.WithValues("controller", name),
+		pollInterval: func() time.Duration { return o.PollInterval },
+	}
+	return ctrl.NewControllerManagedBy(mgr).
+		Named(name).
+		For(&betav1alpha1.Observed<Resource>Collection{}).
+		WithEventFilter(resource.DesiredStateChanged()).
+		Complete(ratelimiter.NewReconciler(name, xperrors.WithSilentRequeueOnConflict(r), o.GlobalRateLimiter))
+}
+
+// SetupGated registers Setup behind the CRD-established gate, matching the
+// pattern used by the managed-resource controllers.
+func SetupGated(mgr ctrl.Manager, o controller.Options) error {
+	o.Gate.Register(func() {
+		if err := Setup(mgr, o); err != nil {
+			mgr.GetLogger().Error(err, "unable to setup reconciler", "gvk",
+				betav1alpha1.Observed<Resource>CollectionGroupVersionKind.String())
+		}
+	}, betav1alpha1.Observed<Resource>CollectionGroupVersionKind)
+	return nil
+}
+
+// Reconcile implements ctrl.Reconciler.
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log := r.log.WithValues("request", req)
+
+	c := &betav1alpha1.Observed<Resource>Collection{}
+	if err := r.client.Get(ctx, req.NamespacedName, c); err != nil {
+		if kerrors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, errors.Wrap(err, errGetCollection)
+	}
+
+	if meta.WasDeleted(c) {
+		// Children are GC'd via owner references; nothing to do.
+		return ctrl.Result{}, nil
+	}
+
+	if meta.IsPaused(c) {
+		c.Status.SetConditions(xpv1.ReconcilePaused())
+		return ctrl.Result{}, errors.Wrap(r.client.Status().Update(ctx, c), errStatusUpdate)
+	}
+
+	log.Info("Reconciling")
+
+	cl, err := clients.NewClientFromProviderConfig(ctx, r.client, &c.Spec.ProviderConfigReference, c.GetNamespace())
+	if err != nil {
+		werr := errors.Wrap(err, errNewClient)
+		c.Status.SetConditions(xpv1.ReconcileError(werr))
+		_ = r.client.Status().Update(ctx, c)
+		return ctrl.Result{}, werr
+	}
+
+	// 1. List all matching <Resource>s server-side, then apply any
+	// predicate the SDK does not support via clientSideFilter.
+	listParams := buildListParams(c.Spec.Predicates)
+	pager := cl.Beta.<Resource>s.ListAutoPaging(ctx, listParams)
+	// TODO: replace BetaManagedAgents<Resource> with the actual SDK response
+	// item type for this resource (often Beta<Resource> or BetaManagedAgents<Resource>).
+	var matches []anthropic.BetaManagedAgents<Resource>
+	for pager.Next() {
+		item := pager.Current()
+		if !clientSideFilter(c.Spec.Predicates, &item) {
+			continue
+		}
+		matches = append(matches, item)
+	}
+	if err := pager.Err(); err != nil {
+		werr := errors.Wrap(err, errListUpstream)
+		c.Status.SetConditions(xpv1.ReconcileError(werr))
+		_ = r.client.Status().Update(ctx, c)
+		return ctrl.Result{}, werr
+	}
+
+	// 2. SSA-patch one child per match.
+	ml := map[string]string{membershipLabelKey: c.Name}
+	keep := sets.New[string]()
+	items := make([]betav1alpha1.ObservedCollectionMember, 0, len(matches))
+	for i := range matches {
+		m := &matches[i]
+		childName := childResourceName(c.Name, m.ID)
+		child := buildChildPatch(c, childName, m, ml)
+		patchData, err := json.Marshal(child)
+		if err != nil {
+			werr := errors.Wrapf(err, "%s (id=%s)", errPatchChild, m.ID)
+			c.Status.SetConditions(xpv1.ReconcileError(werr))
+			_ = r.client.Status().Update(ctx, c)
+			return ctrl.Result{}, werr
+		}
+		if err := r.client.Patch(ctx, child, client.RawPatch(types.ApplyPatchType, patchData), fieldOwner, client.ForceOwnership); err != nil {
+			werr := errors.Wrapf(err, "%s (id=%s)", errPatchChild, m.ID)
+			c.Status.SetConditions(xpv1.ReconcileError(werr))
+			_ = r.client.Status().Update(ctx, c)
+			return ctrl.Result{}, werr
+		}
+		keep.Insert(childName)
+		items = append(items, betav1alpha1.ObservedCollectionMember{Name: childName, ID: m.ID})
+	}
+
+	// 3. Reap stale children — same membership label, name not in keep set.
+	childList := &betav1alpha1.<Resource>List{}
+	if err := r.client.List(ctx, childList,
+		client.MatchingLabels(ml),
+		client.InNamespace(c.GetNamespace()),
+	); err != nil {
+		werr := errors.Wrap(err, errListChildren)
+		c.Status.SetConditions(xpv1.ReconcileError(werr))
+		_ = r.client.Status().Update(ctx, c)
+		return ctrl.Result{}, werr
+	}
+	for i := range childList.Items {
+		if keep.Has(childList.Items[i].Name) {
+			continue
+		}
+		if err := r.client.Delete(ctx, &childList.Items[i]); err != nil && !kerrors.IsNotFound(err) {
+			werr := errors.Wrapf(err, "%s name=%s", errDeleteChild, childList.Items[i].Name)
+			c.Status.SetConditions(xpv1.ReconcileError(werr))
+			_ = r.client.Status().Update(ctx, c)
+			return ctrl.Result{}, werr
+		}
+	}
+
+	// 4. Status.
+	count := int32(len(items))
+	c.Status.Items = items
+	c.Status.ItemCount = &count
+	c.Status.MembershipLabel = ml
+	c.Status.SetConditions(xpv1.ReconcileSuccess(), xpv1.Available())
+
+	return ctrl.Result{RequeueAfter: r.pollInterval()}, r.client.Status().Update(ctx, c)
+}
+
+// childResourceName produces a stable, k8s-valid child name for a given
+// Anthropic ID. Format: <collection>-<sha256(id)[:7]>.
+func childResourceName(collection, id string) string {
+	h := sha256.Sum256([]byte(id))
+	return fmt.Sprintf("%s-%s", collection, fmt.Sprintf("%x", h)[:7])
+}
+
+// buildListParams translates the generic Predicates into the SDK's
+// Beta<Resource>ListParams. Map every Predicates field that the SDK
+// supports server-side here. Any predicate the SDK cannot express (because
+// the relevant ListParams field is absent) must be applied client-side
+// after the matches are listed — see clientSideFilter below.
+func buildListParams(p *betav1alpha1.Predicates) anthropic.Beta<Resource>ListParams {
+	params := anthropic.Beta<Resource>ListParams{}
+	if p == nil {
+		return params
+	}
+	// TODO: for each predicate the SDK supports, e.g.:
+	//   if p.CreatedAtGte != nil { params.CreatedAtGte = param.NewOpt(p.CreatedAtGte.Time) }
+	//   if p.CreatedAtLte != nil { params.CreatedAtLte = param.NewOpt(p.CreatedAtLte.Time) }
+	return params
+}
+
+// clientSideFilter applies any Predicates the SDK does not support
+// server-side. Return true to keep the item, false to drop it. If every
+// predicate is handled in buildListParams, this can simply `return true`.
+func clientSideFilter(p *betav1alpha1.Predicates, item *anthropic.BetaManagedAgents<Resource>) bool {
+	if p == nil {
+		return true
+	}
+	// TODO: for each predicate the SDK does NOT expose, filter here.
+	// Example (if CreatedAtGte had no server-side equivalent):
+	//   if p.CreatedAtGte != nil && item.CreatedAt.Before(p.CreatedAtGte.Time) {
+	//       return false
+	//   }
+	_ = item
+	return true
+}
+
+// buildChildPatch constructs an Observe-only <Resource> with owner reference
+// back to the collection, the external-name annotation set to the matched ID,
+// and the membership label applied.
+func buildChildPatch(
+	c *betav1alpha1.Observed<Resource>Collection,
+	childName string,
+	item *anthropic.BetaManagedAgents<Resource>,
+	membership map[string]string,
+) *betav1alpha1.<Resource> {
+	labels := map[string]string{}
+	for k, v := range membership {
+		labels[k] = v
+	}
+	annotations := map[string]string{
+		meta.AnnotationKeyExternalName: item.ID,
+	}
+	if t := c.Spec.Template; t != nil {
+		for k, v := range t.Metadata.Labels {
+			labels[k] = v
+		}
+		for k, v := range t.Metadata.Annotations {
+			annotations[k] = v
+		}
+	}
+
+	child := &betav1alpha1.<Resource>{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: betav1alpha1.GroupVersion.String(),
+			Kind:       betav1alpha1.<Resource>Kind,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        childName,
+			Namespace:   c.GetNamespace(),
+			Labels:      labels,
+			Annotations: annotations,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         betav1alpha1.GroupVersion.String(),
+					Kind:               betav1alpha1.Observed<Resource>CollectionKind,
+					Name:               c.GetName(),
+					UID:                c.GetUID(),
+					Controller:         ptrBool(true),
+					BlockOwnerDeletion: ptrBool(true),
+				},
+			},
+		},
+	}
+	// ManagedResourceSpec.ProviderConfigReference is *common.ProviderConfigReference;
+	// the Collection holds it as a value, so take its address.
+	pcRef := c.Spec.ProviderConfigReference
+	child.Spec.ProviderConfigReference = &pcRef
+	child.Spec.ManagementPolicies = xpv1.ManagementPolicies{xpv1.ManagementActionObserve}
+	populateForProvider(&child.Spec.ForProvider, item)
+	return child
+}
+
+// populateForProvider copies observable fields from the API item into
+// ForProvider so the child CRD admits successfully. Observe-only policy
+// prevents anything written here from being pushed back to the API.
+func populateForProvider(p *betav1alpha1.<Resource>Parameters, item *anthropic.BetaManagedAgents<Resource>) {
+	// TODO: copy fields like Name, Model from `item` into `p`. Remember that
+	// ForProvider fields are pointers (per project convention) — wrap values
+	// like:
+	//     name := item.Name
+	//     p.Name = &name
+	_ = p
+	_ = item
+}
+
+func ptrBool(b bool) *bool { return &b }
