@@ -43,8 +43,9 @@ type AgentParameters struct {
 
 	// SystemSecretRef references a Secret in the MR's namespace holding the
 	// system prompt at the given key. Up to 100,000 characters; the API
-	// rejects larger payloads. Leave Name empty to omit the system prompt.
-	SystemSecretRef xpv1.LocalSecretKeySelector `json:"systemSecretRef"`
+	// rejects larger payloads. Omit to send no system prompt.
+	// +optional
+	SystemSecretRef *xpv1.LocalSecretKeySelector `json:"systemSecretRef,omitempty"`
 
 	// MCPServers this agent connects to. Maximum 20. Names must be unique.
 	// +optional

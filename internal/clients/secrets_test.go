@@ -37,10 +37,22 @@ func newScheme(t *testing.T) *runtime.Scheme {
 	return s
 }
 
+func TestResolveLocalSecretKey_Nil_ReturnsEmpty(t *testing.T) {
+	kube := fake.NewClientBuilder().WithScheme(newScheme(t)).Build()
+
+	got, err := ResolveLocalSecretKey(context.Background(), kube, nil, "ns")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "" {
+		t.Fatalf("expected empty string, got %q", got)
+	}
+}
+
 func TestResolveLocalSecretKey_EmptyName_ReturnsEmpty(t *testing.T) {
 	kube := fake.NewClientBuilder().WithScheme(newScheme(t)).Build()
 
-	got, err := ResolveLocalSecretKey(context.Background(), kube, xpv1.LocalSecretKeySelector{}, "ns")
+	got, err := ResolveLocalSecretKey(context.Background(), kube, &xpv1.LocalSecretKeySelector{}, "ns")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -56,7 +68,7 @@ func TestResolveLocalSecretKey_Found(t *testing.T) {
 	}
 	kube := fake.NewClientBuilder().WithScheme(newScheme(t)).WithObjects(secret).Build()
 
-	ref := xpv1.LocalSecretKeySelector{
+	ref := &xpv1.LocalSecretKeySelector{
 		LocalSecretReference: xpv1.LocalSecretReference{Name: "creds"},
 		Key:                  "token",
 	}
@@ -72,7 +84,7 @@ func TestResolveLocalSecretKey_Found(t *testing.T) {
 func TestResolveLocalSecretKey_SecretMissing(t *testing.T) {
 	kube := fake.NewClientBuilder().WithScheme(newScheme(t)).Build()
 
-	ref := xpv1.LocalSecretKeySelector{
+	ref := &xpv1.LocalSecretKeySelector{
 		LocalSecretReference: xpv1.LocalSecretReference{Name: "creds"},
 		Key:                  "token",
 	}
@@ -92,7 +104,7 @@ func TestResolveLocalSecretKey_KeyMissing(t *testing.T) {
 	}
 	kube := fake.NewClientBuilder().WithScheme(newScheme(t)).WithObjects(secret).Build()
 
-	ref := xpv1.LocalSecretKeySelector{
+	ref := &xpv1.LocalSecretKeySelector{
 		LocalSecretReference: xpv1.LocalSecretReference{Name: "creds"},
 		Key:                  "token",
 	}

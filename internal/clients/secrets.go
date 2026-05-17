@@ -27,9 +27,9 @@ import (
 )
 
 // ResolveLocalSecretKey fetches the Secret named by ref in the supplied
-// namespace and returns the string value at ref.Key. If ref.Name is empty,
-// it returns "" and a nil error — callers use this as the signal "no
-// reference set" (for example, an inactive union variant).
+// namespace and returns the string value at ref.Key. If ref is nil or
+// ref.Name is empty, it returns "" and a nil error — callers use this as
+// the signal "no reference set" (for example, an inactive union variant).
 //
 // Errors:
 //   - Secret not found: wrapped error mentioning the secret name.
@@ -37,10 +37,10 @@ import (
 func ResolveLocalSecretKey(
 	ctx context.Context,
 	kube client.Client,
-	ref xpv1.LocalSecretKeySelector,
+	ref *xpv1.LocalSecretKeySelector,
 	namespace string,
 ) (string, error) {
-	if ref.Name == "" {
+	if ref == nil || ref.Name == "" {
 		return "", nil
 	}
 

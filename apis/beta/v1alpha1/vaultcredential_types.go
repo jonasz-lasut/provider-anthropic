@@ -33,9 +33,9 @@ type VaultCredentialTokenEndpointAuth struct {
 
 	// ClientSecretSecretRef references a Secret in the MR's namespace
 	// holding the OAuth client secret at the given key. Required for
-	// client_secret_basic and client_secret_post; leave Name empty for
-	// the none variant.
-	ClientSecretSecretRef xpv1.LocalSecretKeySelector `json:"clientSecretSecretRef"`
+	// client_secret_basic and client_secret_post; omit for the none variant.
+	// +optional
+	ClientSecretSecretRef *xpv1.LocalSecretKeySelector `json:"clientSecretSecretRef,omitempty"`
 }
 
 // VaultCredentialRefresh configures OAuth refresh-token support for an
@@ -47,7 +47,8 @@ type VaultCredentialRefresh struct {
 
 	// Required: RefreshTokenSecretRef references a Secret in the MR's
 	// namespace holding the OAuth refresh token at the given key.
-	RefreshTokenSecretRef xpv1.LocalSecretKeySelector `json:"refreshTokenSecretRef"`
+	// +optional
+	RefreshTokenSecretRef *xpv1.LocalSecretKeySelector `json:"refreshTokenSecretRef,omitempty"`
 
 	// Required: TokenEndpoint is the URL used to refresh the access token.
 	// +optional
@@ -79,14 +80,16 @@ type VaultCredentialAuth struct {
 	MCPServerURL *string `json:"mcpServerUrl,omitempty"`
 
 	// TokenSecretRef references a Secret in the MR's namespace holding the
-	// static bearer token at the given key (static_bearer variant). Leave
-	// Name empty for the mcp_oauth variant.
-	TokenSecretRef xpv1.LocalSecretKeySelector `json:"tokenSecretRef"`
+	// static bearer token at the given key (static_bearer variant). Omit
+	// for the mcp_oauth variant.
+	// +optional
+	TokenSecretRef *xpv1.LocalSecretKeySelector `json:"tokenSecretRef,omitempty"`
 
 	// AccessTokenSecretRef references a Secret in the MR's namespace
 	// holding the OAuth access token at the given key (mcp_oauth variant).
-	// Leave Name empty for the static_bearer variant.
-	AccessTokenSecretRef xpv1.LocalSecretKeySelector `json:"accessTokenSecretRef"`
+	// Omit for the static_bearer variant.
+	// +optional
+	AccessTokenSecretRef *xpv1.LocalSecretKeySelector `json:"accessTokenSecretRef,omitempty"`
 
 	// ExpiresAt is the RFC 3339 timestamp at which the access token expires
 	// (mcp_oauth variant).
