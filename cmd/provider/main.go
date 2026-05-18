@@ -42,14 +42,18 @@ import (
 
 func main() {
 	app := kingpin.New(filepath.Base(os.Args[0]), "Anthropic platform support for Crossplane.").DefaultEnvars()
+	debug := app.Flag("debug", "Run with debug logging.").Short('d').Bool()
 	skipDefaultMetadata := app.Flag(
 		"skip-default-metadata",
 		"Do not set default Crossplane identifiers on spec.forProvider.metadata.",
 	).Bool()
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 
-	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
-	log := logging.NewLogrLogger(ctrl.Log.WithName(filepath.Base(os.Args[0])))
+	zl := zap.New(zap.UseDevMode(*debug))
+	if *debug {
+		ctrl.SetLogger(zl)
+	}
+	log := logging.NewLogrLogger(zl.WithName(filepath.Base(os.Args[0])))
 
 	// Omitting Scheme makes controller-runtime fall back to client-go's default
 	// scheme, which is pre-populated with all standard Kubernetes types

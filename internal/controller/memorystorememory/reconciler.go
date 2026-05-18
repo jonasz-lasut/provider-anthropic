@@ -109,7 +109,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 
 	memID := meta.GetExternalName(m)
-	if memID == m.GetName() {
+	if memID == "" {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
@@ -192,7 +192,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	memID := meta.GetExternalName(m)
-	if memID == m.GetName() {
+	if memID == "" {
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
@@ -227,7 +227,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	memID := meta.GetExternalName(m)
-	if memID == m.GetName() {
+	if memID == "" {
 		return managed.ExternalDelete{}, nil
 	}
 

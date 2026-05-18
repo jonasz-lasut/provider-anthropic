@@ -115,7 +115,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// The external-name annotation holds the Anthropic agent ID once created.
 	// If it still equals the k8s object name the resource has never been created.
 	agentID := meta.GetExternalName(ag)
-	if agentID == ag.GetName() {
+	if agentID == "" {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
@@ -186,7 +186,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	agentID := meta.GetExternalName(ag)
-	if agentID == ag.GetName() {
+	if agentID == "" {
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
@@ -213,7 +213,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	agentID := meta.GetExternalName(ag)
-	if agentID == ag.GetName() {
+	if agentID == "" {
 		return managed.ExternalDelete{}, nil
 	}
 
