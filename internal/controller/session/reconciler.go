@@ -35,6 +35,7 @@ import (
 
 	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1"
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/clients"
+	"github.com/jonasz-lasut/provider-anthropic-platform/internal/initializer"
 )
 
 const (
@@ -47,26 +48,34 @@ const (
 )
 
 // Setup adds a controller for Session to the supplied manager.
-func Setup(mgr ctrl.Manager, o controller.Options) error {
+func Setup(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) error {
 	name := managed.ControllerName(betav1alpha1.SessionKind)
+
+	opts := []managed.ReconcilerOption{
+		managed.WithExternalConnector(&connector{kube: mgr.GetClient()}),
+		managed.WithLogger(o.Logger.WithValues("controller", name)),
+		managed.WithPollInterval(o.PollInterval),
+		managed.WithManagementPolicies(),
+	}
+	if !skipDefaultMetadata {
+		opts = append(opts, managed.WithInitializers(initializer.New(mgr.GetClient(), "metadata")))
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
 		For(&betav1alpha1.Session{}).
 		Complete(managed.NewReconciler(mgr,
 			resource.ManagedKind(betav1alpha1.SessionGroupVersionKind),
-			managed.WithExternalConnector(&connector{kube: mgr.GetClient()}),
-			managed.WithLogger(o.Logger.WithValues("controller", name)),
-			managed.WithPollInterval(o.PollInterval),
-			managed.WithManagementPolicies(),
+			opts...,
 		))
 }
 
 // SetupGated registers the Session controller to start only once the
 // Session CRD is established.
-func SetupGated(mgr ctrl.Manager, o controller.Options) error {
+func SetupGated(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) error {
 	o.Gate.Register(func() {
-		if err := Setup(mgr, o); err != nil {
+		if err := Setup(mgr, o, skipDefaultMetadata); err != nil {
 			panic(err)
 		}
 	}, betav1alpha1.SessionGroupVersionKind)

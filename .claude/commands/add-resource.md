@@ -202,6 +202,8 @@ Create `internal/controller/<lowercase-resource>/reconciler.go`.
 
 **Start from the template**: Read `hack/reconciler.go.txt` and substitute every `<Resource>` / `<lowercase-resource>` occurrence with the actual resource name. This gives you the license header, package declaration, imports, error constants, `Setup`/`SetupGated`, `connector`, `Connect`, `external`, and stubs for `Observe`, `Create`, `Update`, `Delete`, `Disconnect`, `buildNewParams`, `buildUpdateParams`, and `isUpToDate`.
 
+**Default-metadata wiring.** The template includes a `skipDefaultMetadata bool` parameter on `Setup`/`SetupGated` and conditionally registers `initializer.New(mgr.GetClient(), "metadata")` so the controller writes canonical Crossplane identifiers (`crossplane-kind`, `crossplane-name`, `crossplane-namespace`, `crossplane-providerconfig`, `crossplane-providerconfig-kind`) into `spec.forProvider.metadata`. **Keep this wiring only if `<Resource>Parameters` has a `Metadata map[string]string` field.** If your resource has no such field (e.g. observed-only collections), delete the `skipDefaultMetadata` parameter from both `Setup` and `SetupGated`, drop the conditional `if !skipDefaultMetadata { … }` block, and remove the `internal/initializer` import.
+
 Then fill in each method using the SDK surface found in Step 1. Key rules:
 
 ### Observe
@@ -255,11 +257,17 @@ Compare every mutable ForProvider field against the response. Use length + key-v
 
 ## Step 5 — Wire into setup.go
 
-Add the new controller to `internal/controller/setup.go`:
+Add the new controller to `internal/controller/setup.go`. `skipDefaultMetadata` is the bool parameter on `SetupProviders` itself — it is plumbed in from the `--skip-default-metadata` CLI flag in `cmd/provider/main.go`.
+
 ```go
 import "<module>/internal/controller/<lowercase-resource>"
 
-// in SetupProviders:
+// in SetupProviders — if <Resource>Parameters has a Metadata map field:
+if err := <lowercase-resource>.SetupGated(mgr, o, skipDefaultMetadata); err != nil {
+    return err
+}
+
+// OR, if the resource has no metadata field:
 if err := <lowercase-resource>.SetupGated(mgr, o); err != nil {
     return err
 }

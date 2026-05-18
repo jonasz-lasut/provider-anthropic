@@ -35,6 +35,7 @@ import (
 
 	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1"
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/clients"
+	"github.com/jonasz-lasut/provider-anthropic-platform/internal/initializer"
 )
 
 const (
@@ -46,27 +47,41 @@ const (
 	errDelete        = "cannot delete/archive <Resource>"
 )
 
-// Setup adds a controller for <Resource> to the supplied manager.
-func Setup(mgr ctrl.Manager, o controller.Options) error {
+// Setup adds a controller for <Resource> to the supplied manager. When
+// skipDefaultMetadata is false (the default), it registers an initializer
+// that writes canonical Crossplane identifiers into
+// spec.forProvider.metadata. Pass-through only — the initializer requires
+// that <Resource>Parameters has a `Metadata map[string]string` field.
+// If this resource has no such field, drop the skipDefaultMetadata
+// parameter (and the conditional below) from both Setup and SetupGated.
+func Setup(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) error {
 	name := managed.ControllerName(betav1alpha1.<Resource>Kind)
+
+	opts := []managed.ReconcilerOption{
+		managed.WithExternalConnector(&connector{kube: mgr.GetClient()}),
+		managed.WithLogger(o.Logger.WithValues("controller", name)),
+		managed.WithPollInterval(o.PollInterval),
+		managed.WithManagementPolicies(),
+	}
+	if !skipDefaultMetadata {
+		opts = append(opts, managed.WithInitializers(initializer.New(mgr.GetClient(), "metadata")))
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
 		For(&betav1alpha1.<Resource>{}).
 		Complete(managed.NewReconciler(mgr,
 			resource.ManagedKind(betav1alpha1.<Resource>GroupVersionKind),
-			managed.WithExternalConnector(&connector{kube: mgr.GetClient()}),
-			managed.WithLogger(o.Logger.WithValues("controller", name)),
-			managed.WithPollInterval(o.PollInterval),
-			managed.WithManagementPolicies(),
+			opts...,
 		))
 }
 
 // SetupGated registers the <Resource> controller to start only once the
 // <Resource> CRD is established.
-func SetupGated(mgr ctrl.Manager, o controller.Options) error {
+func SetupGated(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) error {
 	o.Gate.Register(func() {
-		if err := Setup(mgr, o); err != nil {
+		if err := Setup(mgr, o, skipDefaultMetadata); err != nil {
 			panic(err)
 		}
 	}, betav1alpha1.<Resource>GroupVersionKind)

@@ -3,6 +3,7 @@ module github.com/jonasz-lasut/provider-anthropic-platform
 go 1.25.9
 
 require (
+	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/anthropics/anthropic-sdk-go v1.43.0
 	github.com/crossplane/crossplane-runtime/v2 v2.2.1
 	github.com/crossplane/crossplane-tools v0.0.0-20251017183449-dd4517244339
@@ -16,7 +17,6 @@ require (
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
-	github.com/alecthomas/kingpin/v2 v2.4.0 // indirect
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect

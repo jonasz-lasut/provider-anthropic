@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/alecthomas/kingpin/v2"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -40,6 +41,13 @@ import (
 )
 
 func main() {
+	app := kingpin.New(filepath.Base(os.Args[0]), "Anthropic platform support for Crossplane.").DefaultEnvars()
+	skipDefaultMetadata := app.Flag(
+		"skip-default-metadata",
+		"Do not set default Crossplane identifiers on spec.forProvider.metadata.",
+	).Bool()
+	kingpin.MustParse(app.Parse(os.Args[1:]))
+
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 	log := logging.NewLogrLogger(ctrl.Log.WithName(filepath.Base(os.Args[0])))
 
@@ -90,7 +98,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := xpcontroller.SetupProviders(mgr, o); err != nil {
+	if err := xpcontroller.SetupProviders(mgr, o, *skipDefaultMetadata); err != nil {
 		log.Info("Cannot setup controllers", "error", err)
 		os.Exit(1)
 	}
