@@ -102,20 +102,20 @@ func TestClientSideFilter(t *testing.T) {
 		},
 		{
 			name: "celFilter field match passes",
-			pred: &betav1alpha1.Predicates{CELFilter: ptr(`object["name"] == "target"`)},
+			pred: &betav1alpha1.Predicates{CELFilter: ptr(`atProvider["name"] == "target"`)},
 			item: fakeResource{Name: "target"},
 			wantIncl: true,
 		},
 		{
 			name: "celFilter field match excluded",
-			pred: &betav1alpha1.Predicates{CELFilter: ptr(`object["name"] == "target"`)},
+			pred: &betav1alpha1.Predicates{CELFilter: ptr(`atProvider["name"] == "target"`)},
 			item: fakeResource{Name: "other"},
 			wantIncl: false,
 		},
 		{
 			name: "celFilter nested config field",
 			pred: &betav1alpha1.Predicates{
-				CELFilter: ptr(`object["config"]["networking"] == "unrestricted"`),
+				CELFilter: ptr(`atProvider["config"]["networking"] == "unrestricted"`),
 			},
 			item: fakeResource{
 				Config: map[string]any{"networking": "unrestricted"},
@@ -133,7 +133,7 @@ func TestClientSideFilter(t *testing.T) {
 			name: "both predicates pass",
 			pred: &betav1alpha1.Predicates{
 				MetadataMatch: map[string]string{"env": "prod"},
-				CELFilter:     ptr(`object["name"] == "svc"`),
+				CELFilter:     ptr(`atProvider["name"] == "svc"`),
 			},
 			item: fakeResource{
 				Name:     "svc",
@@ -154,7 +154,7 @@ func TestClientSideFilter(t *testing.T) {
 			name: "metadataMatch passes but CEL excludes",
 			pred: &betav1alpha1.Predicates{
 				MetadataMatch: map[string]string{"env": "prod"},
-				CELFilter:     ptr(`object["name"] == "svc"`),
+				CELFilter:     ptr(`atProvider["name"] == "svc"`),
 			},
 			item: fakeResource{
 				Name:     "other",

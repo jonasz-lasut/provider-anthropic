@@ -44,8 +44,8 @@ type Predicates struct {
 
 	// CELFilter is a CEL expression that must evaluate to a boolean. The
 	// expression receives the JSON-decoded API response item as the variable
-	// "object" (map[string]any). Use bracket notation for field access:
-	// object["name"] == "foo" or object["metadata"]["key"] == "val".
+	// "atProvider" (map[string]any). Use bracket notation for field access:
+	// atProvider["name"] == "foo" or atProvider["metadata"]["key"] == "val".
 	// Resources for which the expression evaluates to false are excluded.
 	// +optional
 	CELFilter *string `json:"celFilter,omitempty"`

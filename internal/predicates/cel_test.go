@@ -58,19 +58,19 @@ func TestPredicateDeriveFromCelQuery(t *testing.T) {
 		},
 		{
 			name:     "map key equality match",
-			query:    `object["name"] == "my-agent"`,
+			query:    `atProvider["name"] == "my-agent"`,
 			obj:      map[string]any{"name": "my-agent"},
 			wantIncl: true,
 		},
 		{
 			name:     "map key equality no match",
-			query:    `object["name"] == "my-agent"`,
+			query:    `atProvider["name"] == "my-agent"`,
 			obj:      map[string]any{"name": "other"},
 			wantIncl: false,
 		},
 		{
 			name:  "nested map key equality match",
-			query: `object["config"]["networking"] == "unrestricted"`,
+			query: `atProvider["config"]["networking"] == "unrestricted"`,
 			obj: map[string]any{
 				"config": map[string]any{"networking": "unrestricted"},
 			},
@@ -78,7 +78,7 @@ func TestPredicateDeriveFromCelQuery(t *testing.T) {
 		},
 		{
 			name:  "nested map key equality no match",
-			query: `object["config"]["networking"] == "unrestricted"`,
+			query: `atProvider["config"]["networking"] == "unrestricted"`,
 			obj: map[string]any{
 				"config": map[string]any{"networking": "private"},
 			},
@@ -86,7 +86,7 @@ func TestPredicateDeriveFromCelQuery(t *testing.T) {
 		},
 		{
 			name:  "metadata managed-by filter",
-			query: `object["metadata"]["managed-by"] == "crossplane"`,
+			query: `atProvider["metadata"]["managed-by"] == "crossplane"`,
 			obj: map[string]any{
 				"metadata": map[string]any{"managed-by": "crossplane"},
 			},
@@ -94,7 +94,7 @@ func TestPredicateDeriveFromCelQuery(t *testing.T) {
 		},
 		{
 			name:  "metadata managed-by filter no match",
-			query: `object["metadata"]["managed-by"] == "crossplane"`,
+			query: `atProvider["metadata"]["managed-by"] == "crossplane"`,
 			obj: map[string]any{
 				"metadata": map[string]any{"managed-by": "manual"},
 			},
@@ -102,25 +102,25 @@ func TestPredicateDeriveFromCelQuery(t *testing.T) {
 		},
 		{
 			name:     "key presence using in operator",
-			query:    `"model" in object`,
+			query:    `"model" in atProvider`,
 			obj:      map[string]any{"model": "claude-opus-4-7"},
 			wantIncl: true,
 		},
 		{
 			name:     "key absence using in operator",
-			query:    `"model" in object`,
+			query:    `"model" in atProvider`,
 			obj:      map[string]any{"name": "foo"},
 			wantIncl: false,
 		},
 		{
 			name:     "boolean conjunction all match",
-			query:    `object["env"] == "prod" && object["tier"] == "premium"`,
+			query:    `atProvider["env"] == "prod" && atProvider["tier"] == "premium"`,
 			obj:      map[string]any{"env": "prod", "tier": "premium"},
 			wantIncl: true,
 		},
 		{
 			name:     "boolean conjunction partial miss",
-			query:    `object["env"] == "prod" && object["tier"] == "premium"`,
+			query:    `atProvider["env"] == "prod" && atProvider["tier"] == "premium"`,
 			obj:      map[string]any{"env": "prod", "tier": "free"},
 			wantIncl: false,
 		},
