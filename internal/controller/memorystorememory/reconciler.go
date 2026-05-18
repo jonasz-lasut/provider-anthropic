@@ -108,8 +108,11 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, xperrors.New(errNotMemoryStoreMemory)
 	}
 
+	// Crossplane seeds external-name with the k8s object name before Create runs.
+	// The Memories API returns 400 (not 404) for non-mem_... IDs, so we detect
+	// "not yet created" by comparing against the k8s name rather than checking empty.
 	memID := meta.GetExternalName(m)
-	if memID == "" {
+	if memID == "" || memID == m.GetName() {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
@@ -190,7 +193,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	memID := meta.GetExternalName(m)
-	if memID == "" {
+	if memID == "" || memID == m.GetName() {
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
@@ -225,7 +228,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	memID := meta.GetExternalName(m)
-	if memID == "" {
+	if memID == "" || memID == m.GetName() {
 		return managed.ExternalDelete{}, nil
 	}
 

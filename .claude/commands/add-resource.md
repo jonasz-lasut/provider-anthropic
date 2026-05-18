@@ -228,7 +228,7 @@ Then fill in each method using the SDK surface found in Step 1. Key rules:
 
 ### Observe
 **External-name is the sole source of truth for the external resource ID.**
-1. `resID := meta.GetExternalName(res)` — if empty, return `ResourceExists: false`
+1. `resID := meta.GetExternalName(res)` — if empty **or equal to `res.GetName()`**, return `ResourceExists: false`. Crossplane seeds external-name with the k8s object name before `Create` runs; some Anthropic APIs return 400 (not 404) for names that lack the expected ID prefix, so checking the k8s name is the reliable "not yet created" gate.
 2. Call SDK `Get(ctx, resID, ...)`; on 404 return `ResourceExists: false`
 3. If `ArchivedAt` is non-empty/non-zero, return `ResourceExists: false`
 4. Populate AtProvider using `clients.PopulateAtProvider`:

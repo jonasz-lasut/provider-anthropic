@@ -113,10 +113,11 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, xperrors.New(errNotEnvironment)
 	}
 
-	// The external-name annotation holds the Anthropic environment ID once created.
-	// If it still equals the k8s object name the resource has never been created.
+	// Crossplane seeds external-name with the k8s object name before Create runs.
+	// Some Anthropic APIs return 400 (not 404) for non-prefixed IDs, so detect
+	// "not yet created" by comparing against the k8s name rather than checking empty.
 	envID := meta.GetExternalName(env)
-	if envID == "" {
+	if envID == "" || envID == env.GetName() {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
@@ -174,7 +175,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	envID := meta.GetExternalName(env)
-	if envID == "" {
+	if envID == "" || envID == env.GetName() {
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
@@ -193,7 +194,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	envID := meta.GetExternalName(env)
-	if envID == "" {
+	if envID == "" || envID == env.GetName() {
 		return managed.ExternalDelete{}, nil
 	}
 
