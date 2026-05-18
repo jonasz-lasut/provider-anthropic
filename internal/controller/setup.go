@@ -33,31 +33,35 @@ import (
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/vaultcredential"
 )
 
-// SetupProviders registers all controllers with the supplied manager.
-// Each controller is gated: it will only start once its CRD is established.
-func SetupProviders(mgr ctrl.Manager, o controller.Options) error {
+// SetupProviders registers all controllers with the supplied manager. Each
+// controller is gated: it will only start once its CRD is established.
+//
+// When skipDefaultMetadata is true, the metadata-bearing controllers (Agent,
+// Environment, MemoryStore, Session, Vault, VaultCredential) are configured
+// without the default-metadata initializer.
+func SetupProviders(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) error {
 	if err := providerconfig.SetupGated(mgr, o); err != nil {
 		return err
 	}
-	if err := agent.SetupGated(mgr, o); err != nil {
+	if err := agent.SetupGated(mgr, o, skipDefaultMetadata); err != nil {
 		return err
 	}
-	if err := environment.SetupGated(mgr, o); err != nil {
+	if err := environment.SetupGated(mgr, o, skipDefaultMetadata); err != nil {
 		return err
 	}
-	if err := memorystore.SetupGated(mgr, o); err != nil {
+	if err := memorystore.SetupGated(mgr, o, skipDefaultMetadata); err != nil {
 		return err
 	}
 	if err := memorystorememory.SetupGated(mgr, o); err != nil {
 		return err
 	}
-	if err := session.SetupGated(mgr, o); err != nil {
+	if err := session.SetupGated(mgr, o, skipDefaultMetadata); err != nil {
 		return err
 	}
-	if err := vault.SetupGated(mgr, o); err != nil {
+	if err := vault.SetupGated(mgr, o, skipDefaultMetadata); err != nil {
 		return err
 	}
-	if err := vaultcredential.SetupGated(mgr, o); err != nil {
+	if err := vaultcredential.SetupGated(mgr, o, skipDefaultMetadata); err != nil {
 		return err
 	}
 	if err := observedagentcollection.SetupGated(mgr, o); err != nil {

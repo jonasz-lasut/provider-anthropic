@@ -35,6 +35,7 @@ import (
 
 	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1"
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/clients"
+	"github.com/jonasz-lasut/provider-anthropic-platform/internal/initializer"
 )
 
 const (
@@ -47,26 +48,34 @@ const (
 )
 
 // Setup adds a controller for Session to the supplied manager.
-func Setup(mgr ctrl.Manager, o controller.Options) error {
+func Setup(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) error {
 	name := managed.ControllerName(betav1alpha1.SessionKind)
+
+	opts := []managed.ReconcilerOption{
+		managed.WithExternalConnector(&connector{kube: mgr.GetClient()}),
+		managed.WithLogger(o.Logger.WithValues("controller", name)),
+		managed.WithPollInterval(o.PollInterval),
+		managed.WithManagementPolicies(),
+	}
+	if !skipDefaultMetadata {
+		opts = append(opts, managed.WithInitializers(initializer.New(mgr.GetClient(), "metadata")))
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
 		For(&betav1alpha1.Session{}).
 		Complete(managed.NewReconciler(mgr,
 			resource.ManagedKind(betav1alpha1.SessionGroupVersionKind),
-			managed.WithExternalConnector(&connector{kube: mgr.GetClient()}),
-			managed.WithLogger(o.Logger.WithValues("controller", name)),
-			managed.WithPollInterval(o.PollInterval),
-			managed.WithManagementPolicies(),
+			opts...,
 		))
 }
 
 // SetupGated registers the Session controller to start only once the
 // Session CRD is established.
-func SetupGated(mgr ctrl.Manager, o controller.Options) error {
+func SetupGated(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) error {
 	o.Gate.Register(func() {
-		if err := Setup(mgr, o); err != nil {
+		if err := Setup(mgr, o, skipDefaultMetadata); err != nil {
 			panic(err)
 		}
 	}, betav1alpha1.SessionGroupVersionKind)
@@ -106,7 +115,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// The external-name annotation holds the Anthropic session ID once created.
 	// If it still equals the k8s object name the resource has never been created.
 	sessID := meta.GetExternalName(sess)
-	if sessID == sess.GetName() {
+	if sessID == "" {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
@@ -175,7 +184,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	sessID := meta.GetExternalName(sess)
-	if sessID == sess.GetName() {
+	if sessID == "" {
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
@@ -194,7 +203,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	sessID := meta.GetExternalName(sess)
-	if sessID == sess.GetName() {
+	if sessID == "" {
 		return managed.ExternalDelete{}, nil
 	}
 
