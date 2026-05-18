@@ -102,6 +102,28 @@ func IsSubsetEqual(desired, observed map[string]any) bool {
 			}
 		}
 
+		if dvSlice, ok := dv.([]any); ok {
+			ovSlice, ok := ov.([]any)
+			if !ok || len(dvSlice) != len(ovSlice) {
+				return false
+			}
+			for i, dvElem := range dvSlice {
+				ovElem := ovSlice[i]
+				if dvElemMap, ok := dvElem.(map[string]any); ok {
+					ovElemMap, ok := ovElem.(map[string]any)
+					if !ok {
+						return false
+					}
+					if !IsSubsetEqual(dvElemMap, ovElemMap) {
+						return false
+					}
+				} else if !reflect.DeepEqual(dvElem, ovElem) {
+					return false
+				}
+			}
+			continue
+		}
+
 		if !reflect.DeepEqual(dv, ov) {
 			return false
 		}
