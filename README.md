@@ -59,11 +59,12 @@ Use bracket notation for field access:
 ```yaml
 spec:
   predicates:
-    celFilter: 'atProvider["name"].startsWith("prod-") && atProvider["metadata"]["tier"] == "critical"'
+    celFilter: 'atProvider.name.startsWith("prod-") && atProvider.metadata.tier == "critical"'
 ```
 
 CEL gives you full boolean logic, string functions, and comparisons across any field returned by
-the API — use it when `metadataMatch` alone is not expressive enough.
+the API — use it when `metadataMatch` alone is not expressive enough. For keys that contain
+special characters such as hyphens, fall back to bracket notation: `atProvider.metadata["my-key"]`.
 
 ### Combining predicates
 
@@ -75,7 +76,7 @@ spec:
     createdAtGte: "2025-01-01T00:00:00Z"
     metadataMatch:
       environment: production
-    celFilter: 'atProvider["name"].startsWith("prod-")'
+    celFilter: 'atProvider.name.startsWith("prod-")'
 ```
 
 ## Install

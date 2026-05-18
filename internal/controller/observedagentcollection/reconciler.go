@@ -47,6 +47,7 @@ import (
 	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1"
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/clients"
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/predicates"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -266,8 +267,8 @@ func buildChildPatch(
 					Kind:               betav1alpha1.ObservedAgentCollectionKind,
 					Name:               c.GetName(),
 					UID:                c.GetUID(),
-					Controller:         ptrBool(true),
-					BlockOwnerDeletion: ptrBool(true),
+					Controller:         ptr.To(true),
+					BlockOwnerDeletion: ptr.To(true),
 				},
 			},
 		},
@@ -298,4 +299,3 @@ func populateForProvider(p *betav1alpha1.AgentParameters, item *anthropic.BetaMa
 	}
 }
 
-func ptrBool(b bool) *bool { return &b }

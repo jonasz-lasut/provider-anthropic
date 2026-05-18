@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1"
+	"k8s.io/utils/ptr"
 )
 
 // fakeResource is a stand-in for any Anthropic SDK response item.
@@ -28,8 +29,6 @@ type fakeResource struct {
 	Metadata map[string]string `json:"metadata,omitempty"`
 	Config   map[string]any    `json:"config,omitempty"`
 }
-
-func ptr(s string) *string { return &s }
 
 func TestClientSideFilter(t *testing.T) {
 	tests := []struct {
@@ -90,32 +89,32 @@ func TestClientSideFilter(t *testing.T) {
 		// CELFilter cases
 		{
 			name:     "celFilter literal true passes",
-			pred:     &betav1alpha1.Predicates{CELFilter: ptr(`true`)},
+			pred:     &betav1alpha1.Predicates{CELFilter: ptr.To(`true`)},
 			item:     fakeResource{Name: "foo"},
 			wantIncl: true,
 		},
 		{
 			name:     "celFilter literal false excluded",
-			pred:     &betav1alpha1.Predicates{CELFilter: ptr(`false`)},
+			pred:     &betav1alpha1.Predicates{CELFilter: ptr.To(`false`)},
 			item:     fakeResource{Name: "foo"},
 			wantIncl: false,
 		},
 		{
-			name: "celFilter field match passes",
-			pred: &betav1alpha1.Predicates{CELFilter: ptr(`atProvider["name"] == "target"`)},
-			item: fakeResource{Name: "target"},
+			name:     "celFilter field match passes",
+			pred:     &betav1alpha1.Predicates{CELFilter: ptr.To(`atProvider.name == "target"`)},
+			item:     fakeResource{Name: "target"},
 			wantIncl: true,
 		},
 		{
-			name: "celFilter field match excluded",
-			pred: &betav1alpha1.Predicates{CELFilter: ptr(`atProvider["name"] == "target"`)},
-			item: fakeResource{Name: "other"},
+			name:     "celFilter field match excluded",
+			pred:     &betav1alpha1.Predicates{CELFilter: ptr.To(`atProvider.name == "target"`)},
+			item:     fakeResource{Name: "other"},
 			wantIncl: false,
 		},
 		{
 			name: "celFilter nested config field",
 			pred: &betav1alpha1.Predicates{
-				CELFilter: ptr(`atProvider["config"]["networking"] == "unrestricted"`),
+				CELFilter: ptr.To(`atProvider.config.networking == "unrestricted"`),
 			},
 			item: fakeResource{
 				Config: map[string]any{"networking": "unrestricted"},
@@ -124,7 +123,7 @@ func TestClientSideFilter(t *testing.T) {
 		},
 		{
 			name:    "celFilter invalid expression yields error",
-			pred:    &betav1alpha1.Predicates{CELFilter: ptr(`not valid !!!`)},
+			pred:    &betav1alpha1.Predicates{CELFilter: ptr.To(`not valid !!!`)},
 			item:    fakeResource{Name: "foo"},
 			wantErr: true,
 		},
@@ -133,7 +132,7 @@ func TestClientSideFilter(t *testing.T) {
 			name: "both predicates pass",
 			pred: &betav1alpha1.Predicates{
 				MetadataMatch: map[string]string{"env": "prod"},
-				CELFilter:     ptr(`atProvider["name"] == "svc"`),
+				CELFilter:     ptr.To(`atProvider.name == "svc"`),
 			},
 			item: fakeResource{
 				Name:     "svc",
@@ -145,7 +144,7 @@ func TestClientSideFilter(t *testing.T) {
 			name: "metadataMatch fails short-circuits CEL",
 			pred: &betav1alpha1.Predicates{
 				MetadataMatch: map[string]string{"env": "prod"},
-				CELFilter:     ptr(`true`),
+				CELFilter:     ptr.To(`true`),
 			},
 			item:     fakeResource{Metadata: map[string]string{"env": "dev"}},
 			wantIncl: false,
@@ -154,7 +153,7 @@ func TestClientSideFilter(t *testing.T) {
 			name: "metadataMatch passes but CEL excludes",
 			pred: &betav1alpha1.Predicates{
 				MetadataMatch: map[string]string{"env": "prod"},
-				CELFilter:     ptr(`atProvider["name"] == "svc"`),
+				CELFilter:     ptr.To(`atProvider.name == "svc"`),
 			},
 			item: fakeResource{
 				Name:     "other",

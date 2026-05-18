@@ -35,7 +35,7 @@ const (
 // PredicateDeriveFromCelQuery evaluates celQuery against obj, returning true
 // if obj should be included. The variable name in CEL expressions is "atProvider".
 // obj should be the JSON-decoded API response item (map[string]any). Use
-// bracket notation for field access: atProvider["name"] == "foo".
+// dot notation for field access: atProvider.name == "foo".
 func PredicateDeriveFromCelQuery(celQuery string, obj map[string]any) (bool, error) {
 	env, err := celgo.NewEnv(
 		celgo.Variable("atProvider", celgo.AnyType),
