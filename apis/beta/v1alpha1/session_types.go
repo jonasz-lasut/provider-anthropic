@@ -73,8 +73,19 @@ type SessionResource struct {
 	FileID *string `json:"fileId,omitempty"`
 
 	// MemoryStoreID is the ID of a memory store to attach (memory_store type).
+	// Populate directly or via MemoryStoreIDRef / MemoryStoreIDSelector.
+	// +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1.MemoryStore
+	// +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic-platform/internal/extractors.ComputedFieldExtractor("id")
 	// +optional
 	MemoryStoreID *string `json:"memoryStoreId,omitempty"`
+
+	// Reference to a MemoryStore to populate memoryStoreId.
+	// +kubebuilder:validation:Optional
+	MemoryStoreIDRef *xpv1.NamespacedReference `json:"memoryStoreIdRef,omitempty"`
+
+	// Selector for a MemoryStore to populate memoryStoreId.
+	// +kubebuilder:validation:Optional
+	MemoryStoreIDSelector *xpv1.NamespacedSelector `json:"memoryStoreIdSelector,omitempty"`
 
 	// Instructions guide the agent on how to use this memory store (memory_store type).
 	// Maximum 4096 characters.
@@ -144,9 +155,21 @@ type SessionParameters struct {
 	Resources []SessionResource `json:"resources,omitempty"`
 
 	// VaultIDs lists vault IDs for stored credentials the agent can use.
+	// Populate directly or via VaultIDsRefs / VaultIDsSelector.
 	// Immutable after creation.
+	// +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1.Vault
+	// +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic-platform/internal/extractors.ComputedFieldExtractor("id")
 	// +optional
+	// +listType=set
 	VaultIDs []string `json:"vaultIds,omitempty"`
+
+	// References to Vaults used to populate vaultIds.
+	// +kubebuilder:validation:Optional
+	VaultIDsRefs []xpv1.NamespacedReference `json:"vaultIdsRefs,omitempty"`
+
+	// Selector for Vaults used to populate vaultIds.
+	// +kubebuilder:validation:Optional
+	VaultIDsSelector *xpv1.NamespacedSelector `json:"vaultIdsSelector,omitempty"`
 
 	// AnthropicDeletionPolicy controls whether Crossplane calls Archive or
 	// Delete on the Anthropic API when the resource is deleted in Kubernetes.

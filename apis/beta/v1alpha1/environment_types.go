@@ -44,6 +44,7 @@ type EnvironmentNetworkingConfig struct {
 	// AllowedHosts specifies additional domains the container can reach.
 	// Limited networking only.
 	// +optional
+	// +listType=set
 	AllowedHosts []string `json:"allowedHosts,omitempty"`
 }
 
@@ -51,26 +52,32 @@ type EnvironmentNetworkingConfig struct {
 type EnvironmentPackages struct {
 	// Apt lists Ubuntu/Debian packages to install.
 	// +optional
+	// +listType=set
 	Apt []string `json:"apt,omitempty"`
 
 	// Cargo lists Rust packages to install.
 	// +optional
+	// +listType=set
 	Cargo []string `json:"cargo,omitempty"`
 
 	// Gem lists Ruby packages to install.
 	// +optional
+	// +listType=set
 	Gem []string `json:"gem,omitempty"`
 
 	// Go lists Go packages to install.
 	// +optional
+	// +listType=set
 	Go []string `json:"go,omitempty"`
 
 	// Npm lists Node.js packages to install.
 	// +optional
+	// +listType=set
 	Npm []string `json:"npm,omitempty"`
 
 	// Pip lists Python packages to install.
 	// +optional
+	// +listType=set
 	Pip []string `json:"pip,omitempty"`
 }
 

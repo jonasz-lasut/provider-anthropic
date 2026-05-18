@@ -98,6 +98,7 @@ spec:
                               items:
                                 type: string
                               type: array
+                              x-kubernetes-list-type: set
                             type:
                               description: |-
                                 Required: Type is the network policy: "unrestricted" allows full outbound access,
@@ -117,31 +118,37 @@ spec:
                               items:
                                 type: string
                               type: array
+                              x-kubernetes-list-type: set
                             cargo:
                               description: Cargo lists Rust packages to install.
                               items:
                                 type: string
                               type: array
+                              x-kubernetes-list-type: set
                             gem:
                               description: Gem lists Ruby packages to install.
                               items:
                                 type: string
                               type: array
+                              x-kubernetes-list-type: set
                             go:
                               description: Go lists Go packages to install.
                               items:
                                 type: string
                               type: array
+                              x-kubernetes-list-type: set
                             npm:
                               description: Npm lists Node.js packages to install.
                               items:
                                 type: string
                               type: array
+                              x-kubernetes-list-type: set
                             pip:
                               description: Pip lists Python packages to install.
                               items:
                                 type: string
                               type: array
+                              x-kubernetes-list-type: set
                           type: object
                       type: object
                     description:
