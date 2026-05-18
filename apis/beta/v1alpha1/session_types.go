@@ -187,6 +187,30 @@ type SessionObservation struct {
 	// +optional
 	ID *string `json:"id,omitempty"`
 
+	// Title is the observed human-readable session title.
+	// +optional
+	Title *string `json:"title,omitempty"`
+
+	// Metadata is the observed key-value metadata map.
+	// +optional
+	Metadata map[string]string `json:"metadata,omitempty"`
+
+	// EnvironmentID is the observed environment ID returned by the API.
+	// +optional
+	EnvironmentID *string `json:"environmentId,omitempty"`
+
+	// AgentID is the ID of the agent snapshot bound to this session.
+	// +optional
+	AgentID *string `json:"agentId,omitempty"`
+
+	// VaultIDs is the observed list of vault IDs attached at creation.
+	// +optional
+	VaultIDs []string `json:"vaultIds,omitempty"`
+
+	// Status is the current session status.
+	// +optional
+	Status *string `json:"status,omitempty"`
+
 	// CreatedAt is the RFC 3339 timestamp when the session was created.
 	// +optional
 	CreatedAt *string `json:"createdAt,omitempty"`
@@ -198,18 +222,6 @@ type SessionObservation struct {
 	// ArchivedAt is set when the session has been archived.
 	// +optional
 	ArchivedAt *string `json:"archivedAt,omitempty"`
-
-	// EnvironmentID is the observed environment ID returned by the API.
-	// +optional
-	EnvironmentID *string `json:"environmentId,omitempty"`
-
-	// AgentID is the ID of the agent snapshot bound to this session.
-	// +optional
-	AgentID *string `json:"agentId,omitempty"`
-
-	// Status is the current session status.
-	// +optional
-	Status *string `json:"status,omitempty"`
 }
 
 // SessionSpec defines the desired state of Session.

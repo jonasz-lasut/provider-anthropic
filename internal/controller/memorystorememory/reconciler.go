@@ -22,8 +22,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
-	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -108,8 +108,11 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, xperrors.New(errNotMemoryStoreMemory)
 	}
 
+	// Crossplane seeds external-name with the k8s object name before Create runs.
+	// The Memories API returns 400 (not 404) for non-mem_... IDs, so we detect
+	// "not yet created" by comparing against the k8s name rather than checking empty.
 	memID := meta.GetExternalName(m)
-	if memID == "" {
+	if memID == "" || memID == m.GetName() {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
@@ -130,15 +133,13 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
 	}
 
+	// content excluded: it is sensitive and not declared in MemoryStoreMemoryObservation.
+	// PopulateAtProvider silently ignores fields absent from the target struct,
+	// so no explicit exclusion is needed — but we pass it for clarity.
+	if err := clients.PopulateAtProvider(resp, &m.Status.AtProvider, "content"); err != nil {
+		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
+	}
 	m.Status.AtProvider.ID = &resp.ID
-	m.Status.AtProvider.MemoryStoreID = &resp.MemoryStoreID
-	m.Status.AtProvider.MemoryVersionID = &resp.MemoryVersionID
-	m.Status.AtProvider.ContentSha256 = &resp.ContentSha256
-	m.Status.AtProvider.ContentSizeBytes = &resp.ContentSizeBytes
-	createdAt := resp.CreatedAt.Format(time.RFC3339)
-	updatedAt := resp.UpdatedAt.Format(time.RFC3339)
-	m.Status.AtProvider.CreatedAt = &createdAt
-	m.Status.AtProvider.UpdatedAt = &updatedAt
 
 	m.SetConditions(xpv1.Available())
 
@@ -148,7 +149,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: isUpToDate(m, resp, desired),
+		ResourceUpToDate: isUpToDate(m, desired),
 	}, nil
 }
 
@@ -192,7 +193,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	memID := meta.GetExternalName(m)
-	if memID == "" {
+	if memID == "" || memID == m.GetName() {
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
@@ -227,7 +228,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	memID := meta.GetExternalName(m)
-	if memID == "" {
+	if memID == "" || memID == m.GetName() {
 		return managed.ExternalDelete{}, nil
 	}
 
@@ -252,19 +253,33 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (e *external) Disconnect(_ context.Context) error { return nil }
 
-// isUpToDate compares the desired state with the observed memory.
-// resolvedContent is the bytes currently in the referenced Secret; passing
-// an empty string means "no Secret content provided" and the field is not
-// diffed.
-func isUpToDate(m *betav1alpha1.MemoryStoreMemory, resp *anthropic.BetaManagedAgentsMemory, resolvedContent string) bool {
-	p := m.Spec.ForProvider
-
-	if p.Path != nil && *p.Path != resp.Path {
+// isUpToDate performs a structured diff between spec.forProvider and
+// status.atProvider for non-secret fields, then separately checks content
+// drift by comparing the resolved secret's SHA-256 against the observed hash.
+func isUpToDate(m *betav1alpha1.MemoryStoreMemory, resolvedContent string) bool {
+	fpRaw, err := json.Marshal(m.Spec.ForProvider)
+	if err != nil {
+		return true
+	}
+	apRaw, err := json.Marshal(m.Status.AtProvider)
+	if err != nil {
+		return true
+	}
+	var fp, ap map[string]any
+	if err := json.Unmarshal(fpRaw, &fp); err != nil {
+		return true
+	}
+	if err := json.Unmarshal(apRaw, &ap); err != nil {
+		return true
+	}
+	if !clients.IsSubsetEqual(fp, ap) {
 		return false
 	}
+
+	// SecretRef drift: compare resolved content SHA-256 against observed hash.
 	if resolvedContent != "" {
 		sum := sha256.Sum256([]byte(resolvedContent))
-		if hex.EncodeToString(sum[:]) != resp.ContentSha256 {
+		if m.Status.AtProvider.ContentSha256 == nil || hex.EncodeToString(sum[:]) != *m.Status.AtProvider.ContentSha256 {
 			return false
 		}
 	}

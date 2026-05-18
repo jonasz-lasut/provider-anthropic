@@ -20,8 +20,8 @@ package memorystore
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -113,8 +113,11 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, xperrors.New(errNotMemoryStore)
 	}
 
+	// Crossplane seeds external-name with the k8s object name before Create runs.
+	// Some Anthropic APIs return 400 (not 404) for non-prefixed IDs, so detect
+	// "not yet created" by comparing against the k8s name rather than checking empty.
 	msID := meta.GetExternalName(ms)
-	if msID == "" {
+	if msID == "" || msID == ms.GetName() {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
@@ -132,21 +135,16 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	ms.Status.AtProvider.ID = &resp.ID
-	createdAt := resp.CreatedAt.Format(time.RFC3339)
-	updatedAt := resp.UpdatedAt.Format(time.RFC3339)
-	ms.Status.AtProvider.CreatedAt = &createdAt
-	ms.Status.AtProvider.UpdatedAt = &updatedAt
-	if !resp.ArchivedAt.IsZero() {
-		archivedAt := resp.ArchivedAt.Format(time.RFC3339)
-		ms.Status.AtProvider.ArchivedAt = &archivedAt
+	if err := clients.PopulateAtProvider(resp, &ms.Status.AtProvider, "archived_at"); err != nil {
+		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
 	}
+	ms.Status.AtProvider.ID = &resp.ID
 
 	ms.SetConditions(xpv1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: isUpToDate(ms, resp),
+		ResourceUpToDate: isUpToDate(ms),
 	}, nil
 }
 
@@ -175,7 +173,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	msID := meta.GetExternalName(ms)
-	if msID == "" {
+	if msID == "" || msID == ms.GetName() {
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
@@ -194,7 +192,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	msID := meta.GetExternalName(ms)
-	if msID == "" {
+	if msID == "" || msID == ms.GetName() {
 		return managed.ExternalDelete{}, nil
 	}
 
@@ -252,25 +250,24 @@ func buildUpdateParams(p betav1alpha1.MemoryStoreParameters) anthropic.BetaMemor
 	return params
 }
 
-// isUpToDate compares the desired state with the observed memory store.
-func isUpToDate(ms *betav1alpha1.MemoryStore, resp *anthropic.BetaManagedAgentsMemoryStore) bool {
-	p := ms.Spec.ForProvider
-
-	if p.Name != nil && *p.Name != resp.Name {
-		return false
+// isUpToDate performs a structured diff between spec.forProvider and
+// status.atProvider, skipping nil ForProvider fields and ForProvider-only
+// fields that have no AtProvider counterpart (e.g. AnthropicDeletionPolicy).
+func isUpToDate(ms *betav1alpha1.MemoryStore) bool {
+	fpRaw, err := json.Marshal(ms.Spec.ForProvider)
+	if err != nil {
+		return true
 	}
-	if p.Description != nil && *p.Description != resp.Description {
-		return false
+	apRaw, err := json.Marshal(ms.Status.AtProvider)
+	if err != nil {
+		return true
 	}
-
-	if len(p.Metadata) != len(resp.Metadata) {
-		return false
+	var fp, ap map[string]any
+	if err := json.Unmarshal(fpRaw, &fp); err != nil {
+		return true
 	}
-	for k, v := range p.Metadata {
-		if resp.Metadata[k] != v {
-			return false
-		}
+	if err := json.Unmarshal(apRaw, &ap); err != nil {
+		return true
 	}
-
-	return true
+	return clients.IsSubsetEqual(fp, ap)
 }

@@ -84,6 +84,10 @@ type MemoryStoreMemoryObservation struct {
 	// +optional
 	ContentSizeBytes *int64 `json:"contentSizeBytes,omitempty"`
 
+	// Path is the observed hierarchical path within the store.
+	// +optional
+	Path *string `json:"path,omitempty"`
+
 	// CreatedAt is the RFC 3339 timestamp when the memory was created.
 	// +optional
 	CreatedAt *string `json:"createdAt,omitempty"`

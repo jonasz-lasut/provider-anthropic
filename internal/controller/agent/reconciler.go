@@ -20,6 +20,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
@@ -112,10 +113,11 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, xperrors.New(errNotAgent)
 	}
 
-	// The external-name annotation holds the Anthropic agent ID once created.
-	// If it still equals the k8s object name the resource has never been created.
+	// Crossplane seeds external-name with the k8s object name before Create runs.
+	// Some Anthropic APIs return 400 (not 404) for non-prefixed IDs, so detect
+	// "not yet created" by comparing against the k8s name rather than checking empty.
 	agentID := meta.GetExternalName(ag)
-	if agentID == "" {
+	if agentID == "" || agentID == ag.GetName() {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
@@ -133,13 +135,12 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	// Populate observed state.
+	// Populate AtProvider from SDK response; archived_at excluded (zero time
+	// for active agents is ambiguous — already handled by the early return above).
+	if err := clients.PopulateAtProvider(resp, &ag.Status.AtProvider, "archived_at"); err != nil {
+		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
+	}
 	ag.Status.AtProvider.ID = &resp.ID
-	createdAt := resp.CreatedAt.String()
-	updatedAt := resp.UpdatedAt.String()
-	ag.Status.AtProvider.CreatedAt = &createdAt
-	ag.Status.AtProvider.UpdatedAt = &updatedAt
-	ag.Status.AtProvider.Version = &resp.Version
 
 	ag.SetConditions(xpv1.Available())
 
@@ -147,7 +148,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	if err != nil {
 		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
 	}
-	upToDate := isUpToDate(ag, resp, system)
+	upToDate := isUpToDate(ag, system)
 	return managed.ExternalObservation{
 		ResourceExists:   true,
 		ResourceUpToDate: upToDate,
@@ -186,7 +187,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	agentID := meta.GetExternalName(ag)
-	if agentID == "" {
+	if agentID == "" || agentID == ag.GetName() {
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
@@ -213,7 +214,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	agentID := meta.GetExternalName(ag)
-	if agentID == "" {
+	if agentID == "" || agentID == ag.GetName() {
 		return managed.ExternalDelete{}, nil
 	}
 
@@ -371,57 +372,35 @@ func toolToUpdateParam(_ betav1alpha1.AgentToolConfig) anthropic.BetaAgentUpdate
 	}
 }
 
-// isUpToDate compares the desired state with the observed agent.
-// system is the resolved system-prompt string (from SystemSecretRef);
-// an empty value means "no Secret content provided" and the field is
-// not diffed. The Agent API returns the full system prompt back in
-// resp.System, so we string-compare directly — no hash is available on
-// this resource (unlike MemoryStoreMemory.ContentSha256).
-func isUpToDate(ag *betav1alpha1.Agent, resp *anthropic.BetaManagedAgentsAgent, system string) bool {
-	p := ag.Spec.ForProvider
-
-	if p.Name != nil && *p.Name != resp.Name {
-		return false
+// isUpToDate performs a structured diff between spec.forProvider and
+// status.atProvider. Nil ForProvider fields (omitempty → absent from JSON)
+// are skipped. ForProvider-only fields (SystemSecretRef, Ref/Selector fields)
+// that have no AtProvider counterpart are also skipped automatically.
+// The system prompt is compared separately because its ForProvider
+// representation is a SecretRef, not a plain string.
+func isUpToDate(ag *betav1alpha1.Agent, system string) bool {
+	fpRaw, err := json.Marshal(ag.Spec.ForProvider)
+	if err != nil {
+		return true
 	}
-	if p.Model != nil && resp.Model.ID != *p.Model {
-		return false
+	apRaw, err := json.Marshal(ag.Status.AtProvider)
+	if err != nil {
+		return true
 	}
-	if p.Description != nil && *p.Description != resp.Description {
-		return false
+	var fp, ap map[string]any
+	if err := json.Unmarshal(fpRaw, &fp); err != nil {
+		return true
 	}
-	if system != "" && system != resp.System {
-		return false
+	if err := json.Unmarshal(apRaw, &ap); err != nil {
+		return true
 	}
-
-	// MCPServers
-	if len(p.MCPServers) != len(resp.MCPServers) {
-		return false
-	}
-	for i, s := range p.MCPServers {
-		if s.Name != nil && *s.Name != resp.MCPServers[i].Name {
-			return false
-		}
-		if s.URL != nil && *s.URL != resp.MCPServers[i].URL {
-			return false
-		}
-	}
-
-	// Skills
-	if len(p.Skills) != len(resp.Skills) {
+	if !clients.IsSubsetEqual(fp, ap) {
 		return false
 	}
 
-	// Tools
-	if len(p.Tools) != len(resp.Tools) {
-		return false
-	}
-
-	// Metadata
-	if len(p.Metadata) != len(resp.Metadata) {
-		return false
-	}
-	for k, v := range p.Metadata {
-		if resp.Metadata[k] != v {
+	// SecretRef drift: compare resolved system prompt against observed value.
+	if system != "" {
+		if ag.Status.AtProvider.System == nil || system != *ag.Status.AtProvider.System {
 			return false
 		}
 	}

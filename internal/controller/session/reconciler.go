@@ -20,6 +20,7 @@ package session
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
@@ -112,10 +113,11 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, xperrors.New(errNotSession)
 	}
 
-	// The external-name annotation holds the Anthropic session ID once created.
-	// If it still equals the k8s object name the resource has never been created.
+	// Crossplane seeds external-name with the k8s object name before Create runs.
+	// Some Anthropic APIs return 400 (not 404) for non-prefixed IDs, so detect
+	// "not yet created" by comparing against the k8s name rather than checking empty.
 	sessID := meta.GetExternalName(sess)
-	if sessID == "" {
+	if sessID == "" || sessID == sess.GetName() {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
@@ -133,27 +135,19 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	// Populate observed state.
-	sess.Status.AtProvider.ID = &resp.ID
-	createdAt := resp.CreatedAt.String()
-	updatedAt := resp.UpdatedAt.String()
-	sess.Status.AtProvider.CreatedAt = &createdAt
-	sess.Status.AtProvider.UpdatedAt = &updatedAt
-	if !resp.ArchivedAt.IsZero() {
-		archivedAt := resp.ArchivedAt.String()
-		sess.Status.AtProvider.ArchivedAt = &archivedAt
+	// archived_at excluded (zero-time ambiguity); agent excluded because
+	// the API returns a snapshot object while AtProvider stores a flat agentId.
+	if err := clients.PopulateAtProvider(resp, &sess.Status.AtProvider, "archived_at", "agent"); err != nil {
+		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
 	}
-	sess.Status.AtProvider.EnvironmentID = &resp.EnvironmentID
+	sess.Status.AtProvider.ID = &resp.ID
 	sess.Status.AtProvider.AgentID = &resp.Agent.ID
-	status := string(resp.Status)
-	sess.Status.AtProvider.Status = &status
 
 	sess.SetConditions(xpv1.Available())
 
-	upToDate := isUpToDate(sess, resp)
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: upToDate,
+		ResourceUpToDate: isUpToDate(sess),
 	}, nil
 }
 
@@ -184,7 +178,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	sessID := meta.GetExternalName(sess)
-	if sessID == "" {
+	if sessID == "" || sessID == sess.GetName() {
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
@@ -203,7 +197,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	sessID := meta.GetExternalName(sess)
-	if sessID == "" {
+	if sessID == "" || sessID == sess.GetName() {
 		return managed.ExternalDelete{}, nil
 	}
 
@@ -363,24 +357,26 @@ func buildResourceParam(res betav1alpha1.SessionResource) anthropic.BetaSessionN
 	return anthropic.BetaSessionNewParamsResourceUnion{}
 }
 
-// isUpToDate compares the mutable desired state against the observed session.
-// Resources, VaultIDs, EnvironmentID, and AgentID are immutable after creation
-// and are not compared here.
-func isUpToDate(sess *betav1alpha1.Session, resp *anthropic.BetaManagedAgentsSession) bool {
-	p := sess.Spec.ForProvider
-
-	if p.Title != nil && *p.Title != resp.Title {
-		return false
+// isUpToDate performs a structured diff between spec.forProvider and
+// status.atProvider. Immutable fields (AgentID, EnvironmentID, Resources,
+// VaultIDs) are included in the diff but never reported as drift because
+// the API ensures they never change after creation. Ref/Selector and
+// SecretRef ForProvider-only fields are absent from AtProvider and skipped.
+func isUpToDate(sess *betav1alpha1.Session) bool {
+	fpRaw, err := json.Marshal(sess.Spec.ForProvider)
+	if err != nil {
+		return true
 	}
-
-	if len(p.Metadata) != len(resp.Metadata) {
-		return false
+	apRaw, err := json.Marshal(sess.Status.AtProvider)
+	if err != nil {
+		return true
 	}
-	for k, v := range p.Metadata {
-		if resp.Metadata[k] != v {
-			return false
-		}
+	var fp, ap map[string]any
+	if err := json.Unmarshal(fpRaw, &fp); err != nil {
+		return true
 	}
-
-	return true
+	if err := json.Unmarshal(apRaw, &ap); err != nil {
+		return true
+	}
+	return clients.IsSubsetEqual(fp, ap)
 }

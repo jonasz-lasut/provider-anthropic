@@ -42,11 +42,36 @@ type <Resource>Parameters struct {
 
 // <Resource>Observation holds the observed state of an Anthropic <Resource>
 // as returned by the API. These fields are read-only.
+//
+// Design rules for AtProvider:
+//   - Include ALL non-sensitive fields from the SDK response struct.
+//   - Exclude sensitive fields (tokens, secrets, credentials) — they are
+//     write-only and never returned in a readable form.
+//   - For mutable ForProvider fields, use the SAME JSON tag so the
+//     structured diff in isUpToDate works automatically (json.Marshal both
+//     sides to map[string]any, then clients.IsSubsetEqual).
+//   - Use camelCase JSON tags (Kubernetes convention), matching the
+//     ForProvider tags for corresponding fields.
+//   - For nested SDK types that differ from ForProvider types (e.g. the
+//     SDK returns {id, type} while ForProvider holds a plain string ID),
+//     define a matching observation sub-type so PopulateAtProvider can
+//     unmarshal without errors.  clients.IsSubsetEqual handles the scalar-
+//     vs-id-object comparison automatically.
+//   - For resources with ArchivedAt: pass "archived_at" as an excludeKey to
+//     clients.PopulateAtProvider so the zero-time zero-value is not stored.
+//   - For SecretRef-backed fields: the ref itself has no API counterpart and
+//     is skipped by the diff; drift in the resolved value must be checked
+//     explicitly after calling isUpToDate (see agent/reconciler.go for the
+//     system-prompt pattern, memorystorememory/reconciler.go for the SHA-256
+//     hash pattern).
 type <Resource>Observation struct {
 	// ID is the Anthropic-assigned identifier. Also stored in the external-name
 	// annotation, which the reconciler uses as the primary key.
 	// +optional
 	ID *string `json:"id,omitempty"`
+
+	// TODO: add ALL mutable ForProvider fields here with matching JSON tags,
+	// then add the remaining read-only response fields below.
 
 	// CreatedAt is the RFC 3339 timestamp when the resource was created.
 	// +optional
@@ -59,8 +84,6 @@ type <Resource>Observation struct {
 	// ArchivedAt is set when the resource has been archived.
 	// +optional
 	ArchivedAt *string `json:"archivedAt,omitempty"`
-
-	// TODO: add additional read-only fields from the SDK response struct
 }
 
 // <Resource>Spec defines the desired state of <Resource>.

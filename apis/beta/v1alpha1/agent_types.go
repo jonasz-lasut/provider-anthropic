@@ -103,6 +103,13 @@ type AgentToolConfig struct {
 	Name *string `json:"name,omitempty"`
 }
 
+// AgentModelObservation is the observed model configuration returned by the API.
+type AgentModelObservation struct {
+	// ID is the model identifier, e.g. "claude-opus-4-7".
+	// +optional
+	ID *string `json:"id,omitempty"`
+}
+
 // AgentObservation holds the observed state of an Anthropic Managed Agent as
 // returned by the API.  These fields are read-only.
 type AgentObservation struct {
@@ -110,6 +117,39 @@ type AgentObservation struct {
 	// external-name annotation, which the reconciler uses as the primary key.
 	// +optional
 	ID *string `json:"id,omitempty"`
+
+	// Name is the observed human-readable name.
+	// +optional
+	Name *string `json:"name,omitempty"`
+
+	// Description is the observed description.
+	// +optional
+	Description *string `json:"description,omitempty"`
+
+	// Model is the observed model configuration.
+	// +optional
+	Model *AgentModelObservation `json:"model,omitempty"`
+
+	// System is the observed system prompt (populated from resp.System when the
+	// agent has a system prompt configured).
+	// +optional
+	System *string `json:"system,omitempty"`
+
+	// MCPServers is the observed list of MCP server configurations.
+	// +optional
+	MCPServers []MCPServerConfig `json:"mcpServers,omitempty"`
+
+	// Skills is the observed list of skill configurations.
+	// +optional
+	Skills []AgentSkillConfig `json:"skills,omitempty"`
+
+	// Tools is the observed list of tool configurations.
+	// +optional
+	Tools []AgentToolConfig `json:"tools,omitempty"`
+
+	// Metadata is the observed key-value metadata map.
+	// +optional
+	Metadata map[string]string `json:"metadata,omitempty"`
 
 	// CreatedAt is the RFC 3339 timestamp when the agent was created.
 	// +optional

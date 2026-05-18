@@ -20,6 +20,7 @@ package vaultcredential
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -115,8 +116,11 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, xperrors.New(errNotVaultCredential)
 	}
 
+	// Crossplane seeds external-name with the k8s object name before Create runs.
+	// Some Anthropic APIs return 400 (not 404) for non-prefixed IDs, so detect
+	// "not yet created" by comparing against the k8s name rather than checking empty.
 	credID := meta.GetExternalName(vc)
-	if credID == "" {
+	if credID == "" || credID == vc.GetName() {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
@@ -140,22 +144,19 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	vc.Status.AtProvider.ID = &resp.ID
-	vc.Status.AtProvider.VaultID = &resp.VaultID
-	createdAt := resp.CreatedAt.Format(time.RFC3339)
-	updatedAt := resp.UpdatedAt.Format(time.RFC3339)
-	vc.Status.AtProvider.CreatedAt = &createdAt
-	vc.Status.AtProvider.UpdatedAt = &updatedAt
-	if !resp.ArchivedAt.IsZero() {
-		archivedAt := resp.ArchivedAt.Format(time.RFC3339)
-		vc.Status.AtProvider.ArchivedAt = &archivedAt
+	// archived_at excluded (zero-time issue); auth populated by PopulateAtProvider
+	// but only safe fields survive because VaultCredentialAuthObservation only
+	// declares type and mcpServerUrl — tokens and refresh details are silently ignored.
+	if err := clients.PopulateAtProvider(resp, &vc.Status.AtProvider, "archived_at"); err != nil {
+		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
 	}
+	vc.Status.AtProvider.ID = &resp.ID
 
 	vc.SetConditions(xpv1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: isUpToDate(vc, resp),
+		ResourceUpToDate: isUpToDate(vc),
 	}, nil
 }
 
@@ -192,7 +193,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	credID := meta.GetExternalName(vc)
-	if credID == "" {
+	if credID == "" || credID == vc.GetName() {
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
@@ -218,7 +219,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	credID := meta.GetExternalName(vc)
-	if credID == "" {
+	if credID == "" || credID == vc.GetName() {
 		return managed.ExternalDelete{}, nil
 	}
 
@@ -531,21 +532,25 @@ func buildTokenEndpointAuthUpdate(ctx context.Context, kube client.Client, t bet
 // auth payload itself (token, access token) is write-only and never returned,
 // so we cannot diff it — callers who want to rotate must touch the spec to
 // trigger an Update.
-func isUpToDate(vc *betav1alpha1.VaultCredential, resp *anthropic.BetaManagedAgentsCredential) bool {
-	p := vc.Spec.ForProvider
-
-	if p.DisplayName != nil && *p.DisplayName != resp.DisplayName {
-		return false
+// isUpToDate performs a structured diff between spec.forProvider and
+// status.atProvider. Token-bearing ForProvider auth sub-fields (tokenSecretRef,
+// accessTokenSecretRef, refresh) are absent from AtProvider and therefore
+// skipped automatically — credential values are write-only.
+func isUpToDate(vc *betav1alpha1.VaultCredential) bool {
+	fpRaw, err := json.Marshal(vc.Spec.ForProvider)
+	if err != nil {
+		return true
 	}
-
-	if len(p.Metadata) != len(resp.Metadata) {
-		return false
+	apRaw, err := json.Marshal(vc.Status.AtProvider)
+	if err != nil {
+		return true
 	}
-	for k, v := range p.Metadata {
-		if resp.Metadata[k] != v {
-			return false
-		}
+	var fp, ap map[string]any
+	if err := json.Unmarshal(fpRaw, &fp); err != nil {
+		return true
 	}
-
-	return true
+	if err := json.Unmarshal(apRaw, &ap); err != nil {
+		return true
+	}
+	return clients.IsSubsetEqual(fp, ap)
 }

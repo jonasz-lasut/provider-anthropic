@@ -98,8 +98,9 @@ that read these fields must nil-check before dereferencing. In
 never report it as drift.
 
 ### AtProvider (`<Resource>Observation`)
-Include all read-only response fields. Always start with `ID`:
+Include **all** non-sensitive SDK response fields. Use camelCase JSON tags (Kubernetes convention), matching the ForProvider JSON tags for mutable fields so the structured diff in `isUpToDate` works automatically.
 
+Always start with `ID`:
 ```go
 // ID is the Anthropic-assigned identifier. Also stored in the external-name
 // annotation, which the reconciler uses as the primary key.
@@ -109,7 +110,26 @@ ID *string `json:"id,omitempty"`
 
 The reconciler sets `AtProvider.ID` in both `Observe()` (from the Get response) and `Create()` (from the New response), immediately after calling `meta.SetExternalName`. This mirrors the external-name in a field that other resources can reference via `internal/extractors.ComputedFieldExtractor("id")`.
 
-Also include: CreatedAt, UpdatedAt, ArchivedAt (as `*string`), Version (as `*string` if present).
+**Add all mutable ForProvider fields with matching JSON tags.** For example, if ForProvider has `Name *string json:"name,omitempty"`, AtProvider must also have `Name *string json:"name,omitempty"`. This makes `clients.IsSubsetEqual` work: it finds the key `name` in both maps and compares the values.
+
+**Add all remaining read-only response fields**: CreatedAt, UpdatedAt, ArchivedAt (as `*string`), Version (as `*int64` if present), and any other fields the API returns.
+
+**Type-matching rules for nested SDK types:**
+- When ForProvider holds a plain string ID (e.g. `Model *string json:"model"`) but the SDK response returns a typed object (e.g. `{id, type}`), define a matching observation sub-type in AtProvider so `clients.PopulateAtProvider` can unmarshal without errors:
+  ```go
+  type <Resource>ModelObservation struct {
+      ID *string `json:"id,omitempty"`
+  }
+  // In <Resource>Observation:
+  Model *<Resource>ModelObservation `json:"model,omitempty"`
+  ```
+  `clients.IsSubsetEqual` automatically handles the scalar-vs-id-object pattern.
+- When ForProvider and the API both use the same slice/struct type (e.g. `MCPServers []MCPServerConfig`), reuse the ForProvider type in AtProvider — the JSON keys already match.
+
+**Sensitive fields to exclude from AtProvider** (omit entirely, do not declare):
+- Credential tokens, API keys, passwords, client secrets.
+- Large content bodies backed by a SecretRef (e.g. MemoryStoreMemory.Content). These are handled via SHA-256 hash comparison in `isUpToDate`.
+- For nested objects containing mixed safe/sensitive fields (e.g. VaultCredential.Auth), declare a partial observation type that contains only the non-sensitive sub-fields; `json.Unmarshal` silently ignores extra fields.
 
 **DO add `<Other>ID *string` fields** for any cross-resource reference IDs returned by the API response — these are the observed resolved values, with no markers and no `Ref`/`Selector` companions:
 ```go
@@ -208,10 +228,24 @@ Then fill in each method using the SDK surface found in Step 1. Key rules:
 
 ### Observe
 **External-name is the sole source of truth for the external resource ID.**
-1. `resID := meta.GetExternalName(res)` — if equal to `res.GetName()`, return `ResourceExists: false`
+1. `resID := meta.GetExternalName(res)` — if empty **or equal to `res.GetName()`**, return `ResourceExists: false`. Crossplane seeds external-name with the k8s object name before `Create` runs; some Anthropic APIs return 400 (not 404) for names that lack the expected ID prefix, so checking the k8s name is the reliable "not yet created" gate.
 2. Call SDK `Get(ctx, resID, ...)`; on 404 return `ResourceExists: false`
 3. If `ArchivedAt` is non-empty/non-zero, return `ResourceExists: false`
-4. Populate AtProvider — `res.Status.AtProvider.ID = &resp.ID` first, then timestamps and any `<Other>ID` fields returned by the API
+4. Populate AtProvider using `clients.PopulateAtProvider`:
+   ```go
+   if err := clients.PopulateAtProvider(resp, &res.Status.AtProvider, "archived_at"); err != nil {
+       return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
+   }
+   res.Status.AtProvider.ID = &resp.ID
+   ```
+   `clients.PopulateAtProvider` marshals the SDK response (snake_case keys) to JSON, converts all keys to camelCase, removes the listed exclude keys, then unmarshals into AtProvider. Fields absent from AtProvider are silently ignored. Always exclude `"archived_at"` — its zero value `"0001-01-01T00:00:00Z"` is ambiguous for non-archived resources.
+
+   After calling `PopulateAtProvider`, **always explicitly set** `res.Status.AtProvider.ID = &resp.ID` (the `id` field is correctly handled by PopulateAtProvider but the explicit assignment is belt-and-suspenders). Also manually set any field that PopulateAtProvider could not auto-populate:
+   - Cross-resource IDs where the SDK response returns an object (e.g. `resp.Agent.ID` for a Session): `res.Status.AtProvider.AgentID = &resp.Agent.ID`
+   - Any other nested field where the AtProvider type differs from the SDK response type
+
+   If the response has a field that should be excluded (e.g. a nested object like `agent` for Session), add its snake_case key to the `excludeKeys` list: `"archived_at", "agent"`.
+
 5. `res.SetConditions(xpv1.Available())`; call `isUpToDate`
 
 Cross-resource reference resolution is handled automatically before `Observe()` — no manual fetch needed.
@@ -253,7 +287,66 @@ populated in `Connect`.
 Use the deletion stub in the template: uncomment the correct variant (Archive only / Delete only / both with `AnthropicDeletionPolicy`). Always treat 404 as success.
 
 ### isUpToDate
-Compare every mutable ForProvider field against the response. Use length + key-value for maps; length + element comparison for slices.
+Use a structured JSON diff rather than field-by-field comparison:
+
+```go
+func isUpToDate(res *betav1alpha1.<Resource>) bool {
+    fpRaw, err := json.Marshal(res.Spec.ForProvider)
+    if err != nil {
+        return true
+    }
+    apRaw, err := json.Marshal(res.Status.AtProvider)
+    if err != nil {
+        return true
+    }
+    var fp, ap map[string]any
+    if err := json.Unmarshal(fpRaw, &fp); err != nil {
+        return true
+    }
+    if err := json.Unmarshal(apRaw, &ap); err != nil {
+        return true
+    }
+    return clients.IsSubsetEqual(fp, ap)
+}
+```
+
+Key properties of this approach:
+- `clients.IsSubsetEqual(desired, observed)` iterates ForProvider keys and checks them against AtProvider. Keys present in `desired` but absent from `observed` (ForProvider-only fields like `AnthropicDeletionPolicy`, SecretRefs, `Ref`/`Selector` fields) are **skipped automatically** — they have no AtProvider counterpart.
+- `nil` pointer / absent `omitempty` fields serialize to nothing in the ForProvider JSON map, so they are also skipped — "user does not care about this field" semantics.
+- Nested objects: `clients.IsSubsetEqual` recurses into `map[string]any` values.
+- Scalar ForProvider vs object AtProvider (e.g. `model: "claude-opus"` in ForProvider vs `model: {id: "claude-opus", type: "model"}` in AtProvider): `IsSubsetEqual` handles this automatically via the scalar-vs-id-object special case.
+- Map and slice fields are compared with `reflect.DeepEqual` once both sides are present.
+
+**SecretRef drift** must be checked separately after the generic diff, since the resolved secret value has no AtProvider counterpart. Extend the function signature as needed:
+
+- **Readable field with a hash** (e.g. `ContentSha256` stored in AtProvider):
+  ```go
+  func isUpToDate(res *betav1alpha1.<Resource>, resolvedContent string) bool {
+      // ... JSON diff as above ...
+      if resolvedContent != "" {
+          sum := sha256.Sum256([]byte(resolvedContent))
+          if res.Status.AtProvider.ContentSha256 == nil || hex.EncodeToString(sum[:]) != *res.Status.AtProvider.ContentSha256 {
+              return false
+          }
+      }
+      return true
+  }
+  ```
+
+- **Readable field without a hash** (e.g. `System` prompt stored in AtProvider as a string):
+  ```go
+  func isUpToDate(res *betav1alpha1.<Resource>, resolvedSecret string) bool {
+      // ... JSON diff as above ...
+      if resolvedSecret != "" {
+          if res.Status.AtProvider.System == nil || resolvedSecret != *res.Status.AtProvider.System {
+              return false
+          }
+      }
+      return true
+  }
+  ```
+
+- **Write-only field** (API never returns the value, e.g. a bearer token): no extra check needed; changing the spec's SecretRef or the Secret's value are the only ways to rotate it, and the structured diff already covers the SecretRef selector fields themselves.
 
 ## Step 5 — Wire into setup.go
 

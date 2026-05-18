@@ -20,6 +20,7 @@ package <lowercase-resource>
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
@@ -120,8 +121,11 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, xperrors.New(errNot<Resource>)
 	}
 
+	// Crossplane seeds external-name with the k8s object name before Create runs.
+	// Some Anthropic APIs return 400 (not 404) for non-prefixed IDs, so detect
+	// "not yet created" by comparing against the k8s name rather than checking empty.
 	resID := meta.GetExternalName(res)
-	if resID == "" {
+	if resID == "" || resID == res.GetName() {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
@@ -137,15 +141,29 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	// TODO: check ArchivedAt if applicable
 	// if resp.ArchivedAt != "" { return managed.ExternalObservation{ResourceExists: false}, nil }
 
-	// Populate AtProvider.
+	// Populate AtProvider from the SDK response using JSON round-trip.
+	// clients.PopulateAtProvider marshals the response (snake_case keys) to JSON,
+	// converts all keys to camelCase, removes the listed exclude keys, and
+	// unmarshals into AtProvider. Fields absent from AtProvider are silently
+	// ignored; type-mismatched fields (see model in agent) are left nil and must
+	// be set manually below.
+	//
+	// Always exclude "archived_at" — its zero value ("0001-01-01T00:00:00Z") is
+	// ambiguous and the archived branch already returned ResourceExists: false.
+	// Add other sensitive/complex keys as needed (e.g. "agent" for Session).
+	if err := clients.PopulateAtProvider(resp, &res.Status.AtProvider, "archived_at"); err != nil {
+		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
+	}
 	res.Status.AtProvider.ID = &resp.ID
-	// TODO: populate remaining AtProvider fields
+	// TODO: manually override any type-mismatched fields that PopulateAtProvider
+	// could not set automatically (e.g. where ForProvider stores a plain string
+	// ID but the SDK response returns a {id, type} object).
 
 	res.SetConditions(xpv1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: isUpToDate(res, resp),
+		ResourceUpToDate: isUpToDate(res),
 	}, nil
 }
 
@@ -174,7 +192,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	resID := meta.GetExternalName(res)
-	if resID == "" {
+	if resID == "" || resID == res.GetName() {
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
@@ -193,7 +211,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	resID := meta.GetExternalName(res)
-	if resID == "" {
+	if resID == "" || resID == res.GetName() {
 		return managed.ExternalDelete{}, nil
 	}
 
@@ -253,9 +271,31 @@ func buildUpdateParams(p betav1alpha1.<Resource>Parameters) anthropic.Beta<Resou
 	return anthropic.Beta<Resource>UpdateParams{}
 }
 
-func isUpToDate(res *betav1alpha1.<Resource>, resp *anthropic.Beta<Resource>) bool {
-	// TODO: compare every mutable ForProvider field against resp
-	_ = res
-	_ = resp
-	return true
+// isUpToDate performs a structured diff between spec.forProvider and
+// status.atProvider. Only non-nil ForProvider fields (those that serialise to
+// a non-null JSON value due to omitempty) are compared. ForProvider-only
+// fields (SecretRefs, Ref/Selector, AnthropicDeletionPolicy) that have no
+// AtProvider counterpart are absent from the AtProvider JSON and therefore
+// skipped automatically.
+//
+// For SecretRef-backed fields, add an explicit drift check after this function
+// returns true — see the system-prompt pattern in agent/reconciler.go and the
+// SHA-256 pattern in memorystorememory/reconciler.go.
+func isUpToDate(res *betav1alpha1.<Resource>) bool {
+	fpRaw, err := json.Marshal(res.Spec.ForProvider)
+	if err != nil {
+		return true
+	}
+	apRaw, err := json.Marshal(res.Status.AtProvider)
+	if err != nil {
+		return true
+	}
+	var fp, ap map[string]any
+	if err := json.Unmarshal(fpRaw, &fp); err != nil {
+		return true
+	}
+	if err := json.Unmarshal(apRaw, &ap); err != nil {
+		return true
+	}
+	return clients.IsSubsetEqual(fp, ap)
 }
