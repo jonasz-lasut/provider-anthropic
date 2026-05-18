@@ -263,6 +263,9 @@ spec:
                         MemoryVersionID is the ID of the memory_version representing this
                         memory's current content (a memver_... tagged ID).
                       type: string
+                    path:
+                      description: Path is the observed hierarchical path within the store.
+                      type: string
                     updatedAt:
                       description: UpdatedAt is the RFC 3339 timestamp of the last modification.
                       type: string

@@ -54,6 +54,14 @@ type VaultObservation struct {
 	// +optional
 	ID *string `json:"id,omitempty"`
 
+	// DisplayName is the observed human-readable vault name.
+	// +optional
+	DisplayName *string `json:"displayName,omitempty"`
+
+	// Metadata is the observed key-value metadata map.
+	// +optional
+	Metadata map[string]string `json:"metadata,omitempty"`
+
 	// CreatedAt is the RFC 3339 timestamp when the vault was created.
 	// +optional
 	CreatedAt *string `json:"createdAt,omitempty"`

@@ -129,6 +129,22 @@ type EnvironmentObservation struct {
 	// +optional
 	ID *string `json:"id,omitempty"`
 
+	// Name is the observed human-readable environment name.
+	// +optional
+	Name *string `json:"name,omitempty"`
+
+	// Description is the observed user-provided description.
+	// +optional
+	Description *string `json:"description,omitempty"`
+
+	// Config is the observed cloud environment configuration.
+	// +optional
+	Config *EnvironmentCloudConfig `json:"config,omitempty"`
+
+	// Metadata is the observed key-value metadata map.
+	// +optional
+	Metadata map[string]string `json:"metadata,omitempty"`
+
 	// CreatedAt is the RFC 3339 timestamp when the environment was created.
 	// +optional
 	CreatedAt *string `json:"createdAt,omitempty"`

@@ -20,8 +20,8 @@ package vault
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -132,21 +132,16 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	v.Status.AtProvider.ID = &resp.ID
-	createdAt := resp.CreatedAt.Format(time.RFC3339)
-	updatedAt := resp.UpdatedAt.Format(time.RFC3339)
-	v.Status.AtProvider.CreatedAt = &createdAt
-	v.Status.AtProvider.UpdatedAt = &updatedAt
-	if !resp.ArchivedAt.IsZero() {
-		archivedAt := resp.ArchivedAt.Format(time.RFC3339)
-		v.Status.AtProvider.ArchivedAt = &archivedAt
+	if err := clients.PopulateAtProvider(resp, &v.Status.AtProvider, "archived_at"); err != nil {
+		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
 	}
+	v.Status.AtProvider.ID = &resp.ID
 
 	v.SetConditions(xpv1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: isUpToDate(v, resp),
+		ResourceUpToDate: isUpToDate(v),
 	}, nil
 }
 
@@ -247,21 +242,24 @@ func buildUpdateParams(p betav1alpha1.VaultParameters) anthropic.BetaVaultUpdate
 }
 
 // isUpToDate compares the desired state with the observed vault.
-func isUpToDate(v *betav1alpha1.Vault, resp *anthropic.BetaManagedAgentsVault) bool {
-	p := v.Spec.ForProvider
-
-	if p.DisplayName != nil && *p.DisplayName != resp.DisplayName {
-		return false
+// isUpToDate performs a structured diff between spec.forProvider and
+// status.atProvider, skipping nil ForProvider fields and ForProvider-only
+// fields that have no AtProvider counterpart (e.g. AnthropicDeletionPolicy).
+func isUpToDate(v *betav1alpha1.Vault) bool {
+	fpRaw, err := json.Marshal(v.Spec.ForProvider)
+	if err != nil {
+		return true
 	}
-
-	if len(p.Metadata) != len(resp.Metadata) {
-		return false
+	apRaw, err := json.Marshal(v.Status.AtProvider)
+	if err != nil {
+		return true
 	}
-	for k, val := range p.Metadata {
-		if resp.Metadata[k] != val {
-			return false
-		}
+	var fp, ap map[string]any
+	if err := json.Unmarshal(fpRaw, &fp); err != nil {
+		return true
 	}
-
-	return true
+	if err := json.Unmarshal(apRaw, &ap); err != nil {
+		return true
+	}
+	return clients.IsSubsetEqual(fp, ap)
 }

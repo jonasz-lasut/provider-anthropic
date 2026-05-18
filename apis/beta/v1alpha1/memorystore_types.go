@@ -61,6 +61,18 @@ type MemoryStoreObservation struct {
 	// +optional
 	ID *string `json:"id,omitempty"`
 
+	// Name is the observed human-readable name.
+	// +optional
+	Name *string `json:"name,omitempty"`
+
+	// Description is the observed free-text description.
+	// +optional
+	Description *string `json:"description,omitempty"`
+
+	// Metadata is the observed key-value metadata map.
+	// +optional
+	Metadata map[string]string `json:"metadata,omitempty"`
+
 	// CreatedAt is the RFC 3339 timestamp when the memory store was created.
 	// +optional
 	CreatedAt *string `json:"createdAt,omitempty"`

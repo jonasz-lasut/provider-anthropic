@@ -217,11 +217,78 @@ spec:
                     createdAt:
                       description: CreatedAt is the RFC 3339 timestamp when the agent was created.
                       type: string
+                    description:
+                      description: Description is the observed description.
+                      type: string
                     id:
                       description: |-
                         ID is the Anthropic-assigned agent identifier. Also stored in the
                         external-name annotation, which the reconciler uses as the primary key.
                       type: string
+                    mcpServers:
+                      description: MCPServers is the observed list of MCP server configurations.
+                      items:
+                        description: MCPServerConfig configures a single MCP server for an agent.
+                        properties:
+                          name:
+                            description: 'Required: Name is a unique identifier for this MCP server within the agent.'
+                            type: string
+                          url:
+                            description: 'Required: URL is the endpoint of the MCP server.'
+                            type: string
+                        type: object
+                      type: array
+                    metadata:
+                      additionalProperties:
+                        type: string
+                      description: Metadata is the observed key-value metadata map.
+                      type: object
+                    model:
+                      description: Model is the observed model configuration.
+                      properties:
+                        id:
+                          description: ID is the model identifier, e.g. "claude-opus-4-7".
+                          type: string
+                      type: object
+                    name:
+                      description: Name is the observed human-readable name.
+                      type: string
+                    skills:
+                      description: Skills is the observed list of skill configurations.
+                      items:
+                        description: AgentSkillConfig configures a single skill for an agent.
+                        properties:
+                          skillId:
+                            description: 'Required: SkillID is the identifier of the skill to attach.'
+                            type: string
+                          type:
+                            description: 'Required: Type is either "anthropic" or "custom".'
+                            enum:
+                              - anthropic
+                              - custom
+                            type: string
+                        type: object
+                      type: array
+                    system:
+                      description: |-
+                        System is the observed system prompt (populated from resp.System when the
+                        agent has a system prompt configured).
+                      type: string
+                    tools:
+                      description: Tools is the observed list of tool configurations.
+                      items:
+                        description: AgentToolConfig configures a single tool (toolset) for an agent.
+                        properties:
+                          name:
+                            description: Name is the toolset name as recognised by the Anthropic API.
+                            type: string
+                          type:
+                            description: |-
+                              Required: Type identifies the toolset kind; currently only
+                              "agent_toolset_20260401" is supported for the standard Anthropic toolset.
+                            type: string
+                        type: object
+                      type: array
                     updatedAt:
                       description: UpdatedAt is the RFC 3339 timestamp of the last modification.
                       type: string

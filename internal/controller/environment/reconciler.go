@@ -20,8 +20,8 @@ package environment
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"slices"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -134,23 +134,16 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	// Populate observed state.
-	env.Status.AtProvider.ID = &resp.ID
-	createdAt := resp.CreatedAt
-	updatedAt := resp.UpdatedAt
-	env.Status.AtProvider.CreatedAt = &createdAt
-	env.Status.AtProvider.UpdatedAt = &updatedAt
-	if resp.ArchivedAt != "" {
-		archivedAt := resp.ArchivedAt
-		env.Status.AtProvider.ArchivedAt = &archivedAt
+	if err := clients.PopulateAtProvider(resp, &env.Status.AtProvider, "archived_at"); err != nil {
+		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
 	}
+	env.Status.AtProvider.ID = &resp.ID
 
 	env.SetConditions(xpv1.Available())
 
-	upToDate := isUpToDate(env, resp)
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: upToDate,
+		ResourceUpToDate: isUpToDate(env),
 	}, nil
 }
 
@@ -307,68 +300,24 @@ func buildCloudConfigParams(cfg *betav1alpha1.EnvironmentCloudConfig) anthropic.
 	return params
 }
 
-// isUpToDate compares the desired state with the observed environment.
-func isUpToDate(env *betav1alpha1.Environment, resp *anthropic.BetaEnvironment) bool {
-	p := env.Spec.ForProvider
-
-	if p.Name != nil && *p.Name != resp.Name {
-		return false
+// isUpToDate performs a structured diff between spec.forProvider and
+// status.atProvider. Nil ForProvider fields and ForProvider-only fields
+// (AnthropicDeletionPolicy) are skipped automatically.
+func isUpToDate(env *betav1alpha1.Environment) bool {
+	fpRaw, err := json.Marshal(env.Spec.ForProvider)
+	if err != nil {
+		return true
 	}
-	if p.Description != nil && *p.Description != resp.Description {
-		return false
+	apRaw, err := json.Marshal(env.Status.AtProvider)
+	if err != nil {
+		return true
 	}
-
-	// Metadata
-	if len(p.Metadata) != len(resp.Metadata) {
-		return false
+	var fp, ap map[string]any
+	if err := json.Unmarshal(fpRaw, &fp); err != nil {
+		return true
 	}
-	for k, v := range p.Metadata {
-		if resp.Metadata[k] != v {
-			return false
-		}
+	if err := json.Unmarshal(apRaw, &ap); err != nil {
+		return true
 	}
-
-	// Config (only checked when the user specifies it)
-	if p.Config != nil {
-		if p.Config.Networking != nil {
-			n := p.Config.Networking
-			if n.Type != nil && *n.Type != resp.Config.Networking.Type {
-				return false
-			}
-			if n.Type != nil && *n.Type == "limited" {
-				if n.AllowMCPServers != nil && *n.AllowMCPServers != resp.Config.Networking.AllowMCPServers {
-					return false
-				}
-				if n.AllowPackageManagers != nil && *n.AllowPackageManagers != resp.Config.Networking.AllowPackageManagers {
-					return false
-				}
-				if !slices.Equal(n.AllowedHosts, resp.Config.Networking.AllowedHosts) {
-					return false
-				}
-			}
-		}
-		if p.Config.Packages != nil {
-			pkgs := p.Config.Packages
-			if !slices.Equal(pkgs.Apt, resp.Config.Packages.Apt) {
-				return false
-			}
-			if !slices.Equal(pkgs.Cargo, resp.Config.Packages.Cargo) {
-				return false
-			}
-			if !slices.Equal(pkgs.Gem, resp.Config.Packages.Gem) {
-				return false
-			}
-			if !slices.Equal(pkgs.Go, resp.Config.Packages.Go) {
-				return false
-			}
-			if !slices.Equal(pkgs.Npm, resp.Config.Packages.Npm) {
-				return false
-			}
-			if !slices.Equal(pkgs.Pip, resp.Config.Packages.Pip) {
-				return false
-			}
-		}
-	}
-
-	return true
+	return clients.IsSubsetEqual(fp, ap)
 }

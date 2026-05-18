@@ -144,6 +144,19 @@ type VaultCredentialParameters struct {
 	AnthropicDeletionPolicy *string `json:"anthropicDeletionPolicy,omitempty"`
 }
 
+// VaultCredentialAuthObservation holds the non-sensitive observed auth fields
+// returned by the API. Tokens, client secrets, and refresh details are
+// write-only and not included.
+type VaultCredentialAuthObservation struct {
+	// Type is the credential variant: "mcp_oauth" or "static_bearer".
+	// +optional
+	Type *string `json:"type,omitempty"`
+
+	// MCPServerURL is the MCP server endpoint this credential authenticates against.
+	// +optional
+	MCPServerURL *string `json:"mcpServerUrl,omitempty"`
+}
+
 // VaultCredentialObservation holds the observed state of an Anthropic
 // VaultCredential as returned by the API. These fields are read-only.
 type VaultCredentialObservation struct {
@@ -155,6 +168,19 @@ type VaultCredentialObservation struct {
 	// VaultID is the parent vault ID returned by the API.
 	// +optional
 	VaultID *string `json:"vaultId,omitempty"`
+
+	// DisplayName is the observed human-readable credential name.
+	// +optional
+	DisplayName *string `json:"displayName,omitempty"`
+
+	// Metadata is the observed key-value metadata map.
+	// +optional
+	Metadata map[string]string `json:"metadata,omitempty"`
+
+	// Auth holds the observed non-sensitive auth fields (type, mcpServerUrl).
+	// Token values are write-only and excluded.
+	// +optional
+	Auth *VaultCredentialAuthObservation `json:"auth,omitempty"`
 
 	// CreatedAt is the RFC 3339 timestamp when the credential was created.
 	// +optional
