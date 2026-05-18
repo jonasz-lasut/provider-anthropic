@@ -35,4 +35,20 @@ type Predicates struct {
 	// timestamp (inclusive).
 	// +optional
 	CreatedAtLte *metav1.Time `json:"createdAtLte,omitempty"`
+
+	// MetadataMatch retains only resources whose API metadata map contains
+	// every specified key-value pair. Resources with no metadata, or missing
+	// any key, are excluded. An empty map passes all resources.
+	// +optional
+	MetadataMatch map[string]string `json:"metadataMatch,omitempty"`
+
+	// CELFilter is a CEL expression that must evaluate to a boolean. The
+	// expression receives the JSON-decoded API response item as the variable
+	// "atProvider" (map[string]any). Use dot notation for field access:
+	// atProvider.name == "foo" or atProvider.metadata.key == "val".
+	// For keys that contain special characters (e.g. hyphens) bracket notation
+	// is still required: atProvider["my-key"] == "val".
+	// Resources for which the expression evaluates to false are excluded.
+	// +optional
+	CELFilter *string `json:"celFilter,omitempty"`
 }

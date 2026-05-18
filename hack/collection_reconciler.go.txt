@@ -45,16 +45,18 @@ import (
 
 	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1"
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/clients"
+	"github.com/jonasz-lasut/provider-anthropic-platform/internal/predicates"
 )
 
 const (
-	errGetCollection   = "cannot get Observed<Resource>Collection"
-	errNewClient       = "cannot build Anthropic client"
-	errListUpstream    = "cannot list <Resource>s from Anthropic API"
-	errPatchChild      = "cannot apply observed <Resource> child"
-	errListChildren    = "cannot list child <Resource>s"
-	errDeleteChild     = "cannot delete stale observed <Resource> child"
-	errStatusUpdate    = "cannot update Observed<Resource>Collection status"
+	errGetCollection    = "cannot get Observed<Resource>Collection"
+	errNewClient        = "cannot build Anthropic client"
+	errListUpstream     = "cannot list <Resource>s from Anthropic API"
+	errClientSideFilter = "cannot apply client-side predicate"
+	errPatchChild       = "cannot apply observed <Resource> child"
+	errListChildren     = "cannot list child <Resource>s"
+	errDeleteChild      = "cannot delete stale observed <Resource> child"
+	errStatusUpdate     = "cannot update Observed<Resource>Collection status"
 	membershipLabelKey = "anthropic.crossplane.io/owned-by-collection"
 	fieldOwner         = client.FieldOwner("anthropic.crossplane.io/observed-<lowercase-resource>-collection-controller")
 )
@@ -135,7 +137,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	var matches []anthropic.BetaManagedAgents<Resource>
 	for pager.Next() {
 		item := pager.Current()
-		if !clientSideFilter(c.Spec.Predicates, &item) {
+		ok, ferr := predicates.ClientSideFilter(c.Spec.Predicates, &item)
+		if ferr != nil {
+			werr := errors.Wrap(ferr, errClientSideFilter)
+			c.Status.SetConditions(xpv1.ReconcileError(werr))
+			_ = r.client.Status().Update(ctx, c)
+			return ctrl.Result{}, werr
+		}
+		if !ok {
 			continue
 		}
 		matches = append(matches, item)
@@ -228,21 +237,6 @@ func buildListParams(p *betav1alpha1.Predicates) anthropic.Beta<Resource>ListPar
 	return params
 }
 
-// clientSideFilter applies any Predicates the SDK does not support
-// server-side. Return true to keep the item, false to drop it. If every
-// predicate is handled in buildListParams, this can simply `return true`.
-func clientSideFilter(p *betav1alpha1.Predicates, item *anthropic.BetaManagedAgents<Resource>) bool {
-	if p == nil {
-		return true
-	}
-	// TODO: for each predicate the SDK does NOT expose, filter here.
-	// Example (if CreatedAtGte had no server-side equivalent):
-	//   if p.CreatedAtGte != nil && item.CreatedAt.Before(p.CreatedAtGte.Time) {
-	//       return false
-	//   }
-	_ = item
-	return true
-}
 
 // buildChildPatch constructs an Observe-only <Resource> with owner reference
 // back to the collection, the external-name annotation set to the matched ID,

@@ -22,6 +22,63 @@ and management of resources on the [Anthropic platform](https://docs.anthropic.c
 | `MemoryStoreMemory` | `beta.anthropic.crossplane.io/v1alpha1` | Individual text memories in a store |
 | `ObservedAgentCollection` | `beta.anthropic.crossplane.io/v1alpha1` | Observe-only collection of remote agents |
 
+## Filtering collections with predicates
+
+Every `Observed<Resource>Collection` spec accepts an optional `predicates` block that limits which
+remote resources are materialised as child managed resources. Predicates are evaluated after the
+Anthropic `List` call returns; fields that have a server-side equivalent are forwarded as query
+parameters, and the remaining predicates are applied client-side.
+
+| Field | Type | Description |
+|---|---|---|
+| `createdAtGte` | RFC 3339 timestamp | Include only resources created at or after this time (inclusive) |
+| `createdAtLte` | RFC 3339 timestamp | Include only resources created at or before this time (inclusive) |
+| `metadataMatch` | `map[string]string` | Include only resources whose API `metadata` map contains every specified key-value pair |
+| `celFilter` | CEL expression string | Include only resources for which this boolean expression evaluates to `true` |
+
+### Metadata filter
+
+```yaml
+spec:
+  predicates:
+    metadataMatch:
+      environment: production
+      team: platform
+```
+
+Only agents whose Anthropic `metadata` map contains both `environment=production` and
+`team=platform` are materialised. Resources with no `metadata` field, or missing any key, are
+excluded. An empty `metadataMatch` map passes all resources.
+
+### CEL filter
+
+The `celFilter` field accepts any [CEL](https://cel.dev) expression that returns a boolean. The
+expression receives the JSON-decoded API response item as the variable `atProvider` (`map[string]any`).
+Use bracket notation for field access:
+
+```yaml
+spec:
+  predicates:
+    celFilter: 'atProvider.name.startsWith("prod-") && atProvider.metadata.tier == "critical"'
+```
+
+CEL gives you full boolean logic, string functions, and comparisons across any field returned by
+the API — use it when `metadataMatch` alone is not expressive enough. For keys that contain
+special characters such as hyphens, fall back to bracket notation: `atProvider.metadata["my-key"]`.
+
+### Combining predicates
+
+All predicates are ANDed: a resource must satisfy every non-empty predicate to be included.
+
+```yaml
+spec:
+  predicates:
+    createdAtGte: "2025-01-01T00:00:00Z"
+    metadataMatch:
+      environment: production
+    celFilter: 'atProvider.name.startsWith("prod-")'
+```
+
 ## Install
 
 If you would like to install `provider-anthropic-platform` without modifications, you may do

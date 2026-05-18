@@ -46,18 +46,21 @@ import (
 
 	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1"
 	"github.com/jonasz-lasut/provider-anthropic-platform/internal/clients"
+	"github.com/jonasz-lasut/provider-anthropic-platform/internal/predicates"
+	"k8s.io/utils/ptr"
 )
 
 const (
-	errGetCollection   = "cannot get ObservedAgentCollection"
-	errNewClient       = "cannot build Anthropic client"
-	errListUpstream    = "cannot list Agents from Anthropic API"
-	errPatchChild      = "cannot apply observed Agent child"
-	errListChildren    = "cannot list child Agents"
-	errDeleteChild     = "cannot delete stale observed Agent child"
-	errStatusUpdate    = "cannot update ObservedAgentCollection status"
-	membershipLabelKey = "anthropic.crossplane.io/owned-by-collection"
-	fieldOwner         = client.FieldOwner("anthropic.crossplane.io/observed-agent-collection-controller")
+	errGetCollection    = "cannot get ObservedAgentCollection"
+	errNewClient        = "cannot build Anthropic client"
+	errListUpstream     = "cannot list Agents from Anthropic API"
+	errClientSideFilter = "cannot apply client-side predicate"
+	errPatchChild       = "cannot apply observed Agent child"
+	errListChildren     = "cannot list child Agents"
+	errDeleteChild      = "cannot delete stale observed Agent child"
+	errStatusUpdate     = "cannot update ObservedAgentCollection status"
+	membershipLabelKey  = "anthropic.crossplane.io/owned-by-collection"
+	fieldOwner          = client.FieldOwner("anthropic.crossplane.io/observed-agent-collection-controller")
 )
 
 // Reconciler observes Agents from the Anthropic API.
@@ -136,6 +139,21 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		_ = r.client.Status().Update(ctx, c)
 		return ctrl.Result{}, werr
 	}
+
+	var filtered []anthropic.BetaManagedAgentsAgent
+	for i := range matches {
+		ok, ferr := predicates.ClientSideFilter(c.Spec.Predicates, &matches[i])
+		if ferr != nil {
+			werr := errors.Wrap(ferr, errClientSideFilter)
+			c.Status.SetConditions(xpv1.ReconcileError(werr))
+			_ = r.client.Status().Update(ctx, c)
+			return ctrl.Result{}, werr
+		}
+		if ok {
+			filtered = append(filtered, matches[i])
+		}
+	}
+	matches = filtered
 
 	ml := map[string]string{membershipLabelKey: c.Name}
 	keep := sets.New[string]()
@@ -249,8 +267,8 @@ func buildChildPatch(
 					Kind:               betav1alpha1.ObservedAgentCollectionKind,
 					Name:               c.GetName(),
 					UID:                c.GetUID(),
-					Controller:         ptrBool(true),
-					BlockOwnerDeletion: ptrBool(true),
+					Controller:         ptr.To(true),
+					BlockOwnerDeletion: ptr.To(true),
 				},
 			},
 		},
@@ -281,4 +299,3 @@ func populateForProvider(p *betav1alpha1.AgentParameters, item *anthropic.BetaMa
 	}
 }
 
-func ptrBool(b bool) *bool { return &b }
