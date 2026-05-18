@@ -1291,6 +1291,18 @@ func (in *SessionParameters) DeepCopyInto(out *SessionParameters) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.VaultIDsRefs != nil {
+		in, out := &in.VaultIDsRefs, &out.VaultIDsRefs
+		*out = make([]v1.NamespacedReference, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.VaultIDsSelector != nil {
+		in, out := &in.VaultIDsSelector, &out.VaultIDsSelector
+		*out = new(v1.NamespacedSelector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.AnthropicDeletionPolicy != nil {
 		in, out := &in.AnthropicDeletionPolicy, &out.AnthropicDeletionPolicy
 		*out = new(string)
@@ -1345,6 +1357,16 @@ func (in *SessionResource) DeepCopyInto(out *SessionResource) {
 		in, out := &in.MemoryStoreID, &out.MemoryStoreID
 		*out = new(string)
 		**out = **in
+	}
+	if in.MemoryStoreIDRef != nil {
+		in, out := &in.MemoryStoreIDRef, &out.MemoryStoreIDRef
+		*out = new(v1.NamespacedReference)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.MemoryStoreIDSelector != nil {
+		in, out := &in.MemoryStoreIDSelector, &out.MemoryStoreIDSelector
+		*out = new(v1.NamespacedSelector)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Instructions != nil {
 		in, out := &in.Instructions, &out.Instructions
