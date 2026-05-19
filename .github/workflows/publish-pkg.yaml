@@ -35,6 +35,7 @@ jobs:
       go-version: ${{ github.event.inputs.go-version }}
       mirror: false
       cleanup-disk: true
+      registry_org: jonasz-lasut
     secrets:
       GHCR_PAT: ${{ secrets.GITHUB_TOKEN }}
       XPKG_MIRROR_TOKEN: ${{ secrets.XPKG_TOKEN }}
