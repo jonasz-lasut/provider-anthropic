@@ -1,6 +1,6 @@
-# provider-anthropic-platform
+# provider-anthropic
 
-`provider-anthropic-platform` is a [Crossplane](https://crossplane.io/) Provider that enables deployment
+`provider-anthropic` is a [Crossplane](https://crossplane.io/) Provider that enables deployment
 and management of resources on the [Anthropic platform](https://docs.anthropic.com) using the
 [Managed Agents beta API](https://docs.anthropic.com/en/api/managed-agents-overview):
 
@@ -81,22 +81,22 @@ spec:
 
 ## Install
 
-If you would like to install `provider-anthropic-platform` without modifications, you may do
+If you would like to install `provider-anthropic` without modifications, you may do
 so using the Crossplane CLI in a Kubernetes cluster where Crossplane is installed:
 
 ```console
-crossplane xpkg install provider ghcr.io/jonasz-lasut/provider-anthropic-platform:latest
+crossplane xpkg install provider ghcr.io/jonasz-lasut/provider-anthropic:latest
 ```
 
-You may also manually install `provider-anthropic-platform` by creating a `Provider` directly:
+You may also manually install `provider-anthropic` by creating a `Provider` directly:
 
 ```yaml
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
-  name: provider-anthropic-platform
+  name: provider-anthropic
 spec:
-  package: ghcr.io/jonasz-lasut/provider-anthropic-platform:latest
+  package: ghcr.io/jonasz-lasut/provider-anthropic:latest
 ```
 
 ## Developing locally
@@ -180,9 +180,9 @@ See [Required configuration](#required-configuration) for how to set up credenti
    service account to a permissive role so it can reconcile its own resources:
 
     ```console
-    SA=$(kubectl -n crossplane-system get sa -o name | grep provider-anthropic-platform | \
+    SA=$(kubectl -n crossplane-system get sa -o name | grep provider-anthropic | \
          sed -e 's|serviceaccount\/|crossplane-system:|g')
-    kubectl create clusterrolebinding provider-anthropic-platform-admin-binding \
+    kubectl create clusterrolebinding provider-anthropic-admin-binding \
       --clusterrole cluster-admin \
       --serviceaccount="${SA}"
     ```
@@ -200,7 +200,7 @@ See [Required configuration](#required-configuration) for how to set up credenti
     apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRole
     metadata:
-      name: provider-anthropic-platform:observed-collection-manager
+      name: provider-anthropic:observed-collection-manager
     rules:
     - apiGroups: ["beta.anthropic.crossplane.io"]
       resources:
@@ -218,10 +218,10 @@ See [Required configuration](#required-configuration) for how to set up credenti
 
     ```console
     kubectl apply -f <above-manifest.yaml>
-    SA=$(kubectl -n crossplane-system get sa -o name | grep provider-anthropic-platform | \
+    SA=$(kubectl -n crossplane-system get sa -o name | grep provider-anthropic | \
          sed -e 's|serviceaccount\/|crossplane-system:|g')
-    kubectl create clusterrolebinding provider-anthropic-platform-collection-binding \
-      --clusterrole provider-anthropic-platform:observed-collection-manager \
+    kubectl create clusterrolebinding provider-anthropic-collection-binding \
+      --clusterrole provider-anthropic:observed-collection-manager \
       --serviceaccount="${SA}"
     ```
 

@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The provider-anthropic-platform Authors.
+Copyright 2026 The provider-anthropic Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/providerconfig"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
-	pcv1alpha1 "github.com/jonasz-lasut/provider-anthropic-platform/apis/config/v1alpha1"
+	pcv1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/config/v1alpha1"
 )
 
 // Setup adds a controller that reconciles ProviderConfigs and

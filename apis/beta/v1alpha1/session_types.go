@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The provider-anthropic-platform Authors.
+Copyright 2026 The provider-anthropic Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -74,8 +74,8 @@ type SessionResource struct {
 
 	// MemoryStoreID is the ID of a memory store to attach (memory_store type).
 	// Populate directly or via MemoryStoreIDRef / MemoryStoreIDSelector.
-	// +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1.MemoryStore
-	// +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic-platform/internal/extractors.ComputedFieldExtractor("id")
+	// +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1.MemoryStore
+	// +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic/internal/extractors.ComputedFieldExtractor("id")
 	// +optional
 	MemoryStoreID *string `json:"memoryStoreId,omitempty"`
 
@@ -107,8 +107,8 @@ type SessionParameters struct {
 	// Accepts an agent ID string (pins the latest version) or use
 	// AgentVersion to pin a specific version.
 	// Populate directly or via AgentIDRef / AgentIDSelector.
-	// +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1.Agent
-	// +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic-platform/internal/extractors.ComputedFieldExtractor("id")
+	// +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1.Agent
+	// +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic/internal/extractors.ComputedFieldExtractor("id")
 	// +optional
 	AgentID *string `json:"agentId,omitempty"`
 
@@ -128,8 +128,8 @@ type SessionParameters struct {
 	// EnvironmentID is the ID of the Environment that defines the container
 	// configuration for this session.
 	// Populate directly or via EnvironmentIDRef / EnvironmentIDSelector.
-	// +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1.Environment
-	// +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic-platform/internal/extractors.ComputedFieldExtractor("id")
+	// +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1.Environment
+	// +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic/internal/extractors.ComputedFieldExtractor("id")
 	// +optional
 	EnvironmentID *string `json:"environmentId,omitempty"`
 
@@ -157,8 +157,8 @@ type SessionParameters struct {
 	// VaultIDs lists vault IDs for stored credentials the agent can use.
 	// Populate directly or via VaultIDsRefs / VaultIDsSelector.
 	// Immutable after creation.
-	// +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1.Vault
-	// +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic-platform/internal/extractors.ComputedFieldExtractor("id")
+	// +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1.Vault
+	// +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic/internal/extractors.ComputedFieldExtractor("id")
 	// +optional
 	// +listType=set
 	VaultIDs []string `json:"vaultIds,omitempty"`

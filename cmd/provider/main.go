@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The provider-anthropic-platform Authors.
+Copyright 2026 The provider-anthropic Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,8 +36,8 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/customresourcesgate"
 
-	"github.com/jonasz-lasut/provider-anthropic-platform/apis"
-	xpcontroller "github.com/jonasz-lasut/provider-anthropic-platform/internal/controller"
+	"github.com/jonasz-lasut/provider-anthropic/apis"
+	xpcontroller "github.com/jonasz-lasut/provider-anthropic/internal/controller"
 )
 
 func main() {
@@ -65,7 +65,7 @@ func main() {
 			SyncPeriod: &syncPeriod,
 		},
 		LeaderElection:   true,
-		LeaderElectionID: "provider-anthropic-platform.crossplane.io",
+		LeaderElectionID: "provider-anthropic.crossplane.io",
 	})
 	if err != nil {
 		log.Info("Cannot create manager", "error", err)

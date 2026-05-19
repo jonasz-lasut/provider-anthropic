@@ -1,7 +1,7 @@
 # ====================================================================================
 # Setup Project
 
-PROJECT_NAME ?= provider-anthropic-platform
+PROJECT_NAME ?= provider-anthropic
 PROJECT_REPO ?= github.com/jonasz-lasut/$(PROJECT_NAME)
 
 PLATFORMS ?= linux_amd64 linux_arm64
@@ -80,7 +80,7 @@ fallthrough: submodules
 
 # NOTE(hasheddan): we force image building to happen prior to xpkg build so that
 # we ensure image is present in daemon.
-xpkg.build.provider-anthropic-platform: do.build.images
+xpkg.build.provider-anthropic: do.build.images
 
 # ====================================================================================
 # Targets

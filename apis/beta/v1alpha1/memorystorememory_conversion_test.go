@@ -6,7 +6,7 @@ import (
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 
-	. "github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1"
+	. "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
 )
 
 func TestMemoryStoreMemoryToAnthropicNew(t *testing.T) {

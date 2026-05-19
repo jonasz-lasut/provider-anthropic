@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The provider-anthropic-platform Authors.
+Copyright 2026 The provider-anthropic Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,34 +28,34 @@ func TestIsSubsetEqual(t *testing.T) {
 		want     bool
 	}{
 		{
-			name:    "identical flat maps",
-			desired: map[string]any{"name": "foo", "type": "bar"},
+			name:     "identical flat maps",
+			desired:  map[string]any{"name": "foo", "type": "bar"},
 			observed: map[string]any{"name": "foo", "type": "bar"},
-			want:    true,
+			want:     true,
 		},
 		{
-			name:    "observed has extra keys - should still be equal",
-			desired: map[string]any{"name": "foo"},
+			name:     "observed has extra keys - should still be equal",
+			desired:  map[string]any{"name": "foo"},
 			observed: map[string]any{"name": "foo", "id": "123", "createdAt": "..."},
-			want:    true,
+			want:     true,
 		},
 		{
-			name:    "desired key absent in observed - skipped",
-			desired: map[string]any{"secretRef": map[string]any{"name": "s", "key": "k"}},
+			name:     "desired key absent in observed - skipped",
+			desired:  map[string]any{"secretRef": map[string]any{"name": "s", "key": "k"}},
 			observed: map[string]any{"name": "foo"},
-			want:    true,
+			want:     true,
 		},
 		{
-			name:    "string vs id-map model comparison - equal",
-			desired: map[string]any{"model": "claude-opus-4-7"},
+			name:     "string vs id-map model comparison - equal",
+			desired:  map[string]any{"model": "claude-opus-4-7"},
 			observed: map[string]any{"model": map[string]any{"id": "claude-opus-4-7", "type": "model"}},
-			want:    true,
+			want:     true,
 		},
 		{
-			name:    "string vs id-map model comparison - not equal",
-			desired: map[string]any{"model": "claude-haiku-4-5"},
+			name:     "string vs id-map model comparison - not equal",
+			desired:  map[string]any{"model": "claude-haiku-4-5"},
 			observed: map[string]any{"model": map[string]any{"id": "claude-opus-4-7", "type": "model"}},
-			want:    false,
+			want:     false,
 		},
 		{
 			// The actual bug: API returns name:"" on tool objects, ForProvider has no name.

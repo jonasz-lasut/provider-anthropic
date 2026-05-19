@@ -63,8 +63,8 @@ Map each SDK NewParams/UpdateParams field:
 - If deletion policy field is needed, add it here (Step 2)
 - **Cross-resource references**: for each `<Other>ID` field in the params, declare the value field with markers AND the `Ref`/`Selector` fields manually. angryjet generates only the `ResolveReferences` method — it does NOT generate the field declarations:
   ```go
-  // +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1.<Other>
-  // +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic-platform/internal/extractors.ComputedFieldExtractor("id")
+  // +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1.<Other>
+  // +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic/internal/extractors.ComputedFieldExtractor("id")
   // +optional
   <Other>ID *string `json:"<lowerOther>Id,omitempty"`
 
@@ -253,7 +253,7 @@ func (r *<Resource>) ToAnthropicUpdate([ctx *<Resource>ConversionContext]) anthr
 func (r *<Resource>) FromAnthropicObservation(resp anthropic.<ResponseType>)
 ```
 
-Create `apis/beta/v1alpha1/<lowercase-resource>_conversion_test.go` (package `v1alpha1_test`) and write tests **before** implementing the methods (TDD). Use dot import `. "github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1"` since the test package is external.
+Create `apis/beta/v1alpha1/<lowercase-resource>_conversion_test.go` (package `v1alpha1_test`) and write tests **before** implementing the methods (TDD). Use dot import `. "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"` since the test package is external.
 
 ## Step 4 — Create the reconciler
 
