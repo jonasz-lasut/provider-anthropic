@@ -135,10 +135,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	if err := clients.PopulateAtProvider(resp, &ms.Status.AtProvider, "archived_at"); err != nil {
-		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
-	}
-	ms.Status.AtProvider.ID = &resp.ID
+	ms.FromAnthropicObservation(*resp)
 
 	ms.SetConditions(xpv1.Available())
 
@@ -154,7 +151,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, xperrors.New(errNotMemoryStore)
 	}
 
-	params := buildNewParams(ms.Spec.ForProvider)
+	params := ms.ToAnthropicNew()
 	resp, err := e.client.Beta.MemoryStores.New(ctx, params)
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
@@ -177,7 +174,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
-	params := buildUpdateParams(ms.Spec.ForProvider)
+	params := ms.ToAnthropicUpdate()
 	if _, err := e.client.Beta.MemoryStores.Update(ctx, msID, params); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
@@ -219,36 +216,6 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Disconnect(_ context.Context) error { return nil }
-
-// buildNewParams converts ForProvider into the SDK create params.
-func buildNewParams(p betav1alpha1.MemoryStoreParameters) anthropic.BetaMemoryStoreNewParams {
-	params := anthropic.BetaMemoryStoreNewParams{}
-	if p.Name != nil {
-		params.Name = *p.Name
-	}
-	if p.Description != nil {
-		params.Description = anthropic.String(*p.Description)
-	}
-	if p.Metadata != nil {
-		params.Metadata = p.Metadata
-	}
-	return params
-}
-
-// buildUpdateParams converts ForProvider into the SDK update params.
-func buildUpdateParams(p betav1alpha1.MemoryStoreParameters) anthropic.BetaMemoryStoreUpdateParams {
-	params := anthropic.BetaMemoryStoreUpdateParams{}
-	if p.Name != nil {
-		params.Name = anthropic.String(*p.Name)
-	}
-	if p.Description != nil {
-		params.Description = anthropic.String(*p.Description)
-	}
-	if p.Metadata != nil {
-		params.Metadata = p.Metadata
-	}
-	return params
-}
 
 // isUpToDate performs a structured diff between spec.forProvider and
 // status.atProvider, skipping nil ForProvider fields and ForProvider-only

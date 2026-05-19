@@ -135,10 +135,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	if err := clients.PopulateAtProvider(resp, &env.Status.AtProvider, "archived_at"); err != nil {
-		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
-	}
-	env.Status.AtProvider.ID = &resp.ID
+	env.FromAnthropicObservation(*resp)
 
 	env.SetConditions(xpv1.Available())
 
@@ -154,7 +151,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, xperrors.New(errNotEnvironment)
 	}
 
-	params := buildNewParams(env.Spec.ForProvider)
+	params := env.ToAnthropicNew()
 	resp, err := e.client.Beta.Environments.New(ctx, params)
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
@@ -179,7 +176,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
-	params := buildUpdateParams(env.Spec.ForProvider)
+	params := env.ToAnthropicUpdate()
 	if _, err := e.client.Beta.Environments.Update(ctx, envID, params); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
@@ -221,85 +218,6 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Disconnect(_ context.Context) error { return nil }
-
-// buildNewParams converts ForProvider into the SDK create params.
-func buildNewParams(p betav1alpha1.EnvironmentParameters) anthropic.BetaEnvironmentNewParams {
-	params := anthropic.BetaEnvironmentNewParams{}
-	if p.Name != nil {
-		params.Name = *p.Name
-	}
-	if p.Description != nil {
-		params.Description = anthropic.String(*p.Description)
-	}
-	if p.Metadata != nil {
-		params.Metadata = p.Metadata
-	}
-	if p.Config != nil {
-		params.Config = buildCloudConfigParams(p.Config)
-	}
-	return params
-}
-
-// buildUpdateParams converts ForProvider into the SDK update params.
-func buildUpdateParams(p betav1alpha1.EnvironmentParameters) anthropic.BetaEnvironmentUpdateParams {
-	params := anthropic.BetaEnvironmentUpdateParams{}
-	if p.Name != nil {
-		params.Name = anthropic.String(*p.Name)
-	}
-	if p.Description != nil {
-		params.Description = anthropic.String(*p.Description)
-	}
-	if p.Metadata != nil {
-		params.Metadata = p.Metadata
-	}
-	if p.Config != nil {
-		params.Config = buildCloudConfigParams(p.Config)
-	}
-	return params
-}
-
-// buildCloudConfigParams converts the CRD cloud config into the SDK params struct.
-func buildCloudConfigParams(cfg *betav1alpha1.EnvironmentCloudConfig) anthropic.BetaCloudConfigParams {
-	params := anthropic.BetaCloudConfigParams{}
-	if cfg.Networking != nil {
-		netType := ""
-		if cfg.Networking.Type != nil {
-			netType = *cfg.Networking.Type
-		}
-		switch netType {
-		case "unrestricted":
-			unr := anthropic.NewBetaUnrestrictedNetworkParam()
-			params.Networking = anthropic.BetaCloudConfigParamsNetworkingUnion{
-				OfUnrestricted: &unr,
-			}
-		case "limited":
-			limited := anthropic.BetaLimitedNetworkParams{
-				Type:         "limited",
-				AllowedHosts: cfg.Networking.AllowedHosts,
-			}
-			if cfg.Networking.AllowMCPServers != nil {
-				limited.AllowMCPServers = anthropic.Bool(*cfg.Networking.AllowMCPServers)
-			}
-			if cfg.Networking.AllowPackageManagers != nil {
-				limited.AllowPackageManagers = anthropic.Bool(*cfg.Networking.AllowPackageManagers)
-			}
-			params.Networking = anthropic.BetaCloudConfigParamsNetworkingUnion{
-				OfLimited: &limited,
-			}
-		}
-	}
-	if cfg.Packages != nil {
-		params.Packages = anthropic.BetaPackagesParams{
-			Apt:   cfg.Packages.Apt,
-			Cargo: cfg.Packages.Cargo,
-			Gem:   cfg.Packages.Gem,
-			Go:    cfg.Packages.Go,
-			Npm:   cfg.Packages.Npm,
-			Pip:   cfg.Packages.Pip,
-		}
-	}
-	return params
-}
 
 // isUpToDate performs a structured diff between spec.forProvider and
 // status.atProvider. Nil ForProvider fields and ForProvider-only fields

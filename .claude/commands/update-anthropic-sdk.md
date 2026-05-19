@@ -30,11 +30,15 @@ echo "New version: $NEW_VERSION"
 
 ## Step 3 — Identify changed SDK types used by this provider
 
-For each managed resource controller in `internal/controller/` (excluding `providerconfig`), read the reconciler to find which SDK types it uses. Typically:
-- `Beta<Resource>NewParams`
-- `Beta<Resource>UpdateParams`
-- `Beta<Resource>GetParams`, `Beta<Resource>ArchiveParams`, `Beta<Resource>DeleteParams`
-- The response struct (e.g. `BetaManagedAgents<Resource>` or `Beta<Resource>`)
+SDK types are now split across two locations per resource:
+
+- **`apis/beta/v1alpha1/<resource>_conversion.go`** — holds `ToAnthropicNew`, `ToAnthropicUpdate`, `FromAnthropicObservation` and uses `Beta<Resource>NewParams`, `Beta<Resource>UpdateParams`, and the response struct (e.g. `BetaManagedAgents<Resource>` or `Beta<Resource>`)
+- **`internal/controller/<resource>/reconciler.go`** — holds `Observe`, `Create`, `Update`, `Delete` and uses `Beta<Resource>GetParams`, `Beta<Resource>ArchiveParams`, `Beta<Resource>DeleteParams`, and the `*anthropic.Client` service method signatures
+
+Read both files for each resource to get the full picture of which SDK types are referenced. Typically:
+- `Beta<Resource>NewParams` / `Beta<Resource>UpdateParams` → in `_conversion.go`
+- `Beta<Resource>GetParams`, `Beta<Resource>ArchiveParams`, `Beta<Resource>DeleteParams` → in reconciler
+- Response struct (e.g. `BetaManagedAgents<Resource>`) → in `_conversion.go` (`FromAnthropicObservation` signature)
 
 For each type, diff old vs new:
 
@@ -63,11 +67,11 @@ For each managed resource where the SDK types changed, update `apis/beta.anthrop
 - `map[string]string` → `map[string]string` with `+optional`
 - Nested struct → define a new Go struct in the same file
 
-**Removed SDK param field** → remove the field from `<Resource>Parameters` and from `buildNewParams`/`buildUpdateParams` in the reconciler.
+**Removed SDK param field** → remove the field from `<Resource>Parameters` and from `ToAnthropicNew`/`ToAnthropicUpdate` in `apis/beta/v1alpha1/<resource>_conversion.go`.
 
-**Added SDK response field** → add to `<Resource>Observation` (AtProvider).
+**Added SDK response field** → add to `<Resource>Observation` (AtProvider) and add the corresponding assignment in `FromAnthropicObservation` in `_conversion.go`.
 
-**Removed SDK response field** → remove from `<Resource>Observation` and from `Observe()` where it is populated.
+**Removed SDK response field** → remove from `<Resource>Observation` and remove the assignment from `FromAnthropicObservation` in `_conversion.go`.
 
 **New Archive or Delete method added to service** → if the service now has both Archive and Delete and `AnthropicDeletionPolicy` is not yet in `<Resource>Parameters`, add it:
 ```go
@@ -80,23 +84,42 @@ Update the reconciler `Delete()` accordingly.
 
 **Removed Archive or Delete method** → remove the corresponding branch from `Delete()` and remove `AnthropicDeletionPolicy` if the choice no longer exists.
 
-## Step 5 — Update reconciler logic
+## Step 5 — Update conversion and reconciler logic
 
-For each changed reconciler in `internal/controller/<resource>/reconciler.go`:
+### Conversion file (`apis/beta/v1alpha1/<resource>_conversion.go`)
 
-### buildNewParams / buildUpdateParams
+This file owns all SDK param building and observation population. Make changes here first, then update the tests.
+
+**`ToAnthropicNew` / `ToAnthropicUpdate`:**
 - Add assignments for new SDK param fields sourced from ForProvider
 - Remove assignments for removed fields
 - If a field's type changed (e.g. `string` → `param.Opt[string]`), update the assignment to use `anthropic.String(...)` or similar SDK helper
+- If a new SecretRef field was added to `<Resource>ConversionContext`, add the corresponding assignment from `ctx.<Field>`
 
-### Observe / isUpToDate
-- Add comparisons for new ForProvider fields in `isUpToDate()`
-- Remove comparisons for removed fields
-- Update AtProvider population in `Observe()` to reflect added/removed response fields
+**`FromAnthropicObservation`:**
+- Add explicit `r.Status.AtProvider.<Field> = ...` assignments for new response fields
+- Remove assignments for removed response fields
+- Update any field type conversions if the SDK response type changed (e.g. `time.Time` → `string`)
+
+Update `apis/beta/v1alpha1/<resource>_conversion_test.go` to cover the added/changed fields.
+
+### Reconciler (`internal/controller/<resource>/reconciler.go`)
+
+The reconciler is thin and rarely needs changes. Update it only when:
+
+**SDK call signatures changed** (`GetParams`, `ArchiveParams`, `DeleteParams`):
+- Update the struct literal in `Observe()`, `Delete()` etc. to match the new parameter fields
+
+**New SecretRef field added to the resource** (requires new `ConversionContext` field):
+- Add resolution of the new secret in `resolve<Resource>Context` (the helper that builds the context struct before calling `ToAnthropicNew`/`ToAnthropicUpdate`)
+
+**`isUpToDate`:**
+- The structured JSON diff requires no changes for fields that follow the standard ForProvider/AtProvider matching JSON-tag pattern
+- Only update `isUpToDate` if a new field needs special drift detection (e.g. a SecretRef with a hash comparison)
 
 ### Create / Update / Delete
-- Update any SDK call signatures if method parameters changed
-- If a new required param was added to NewParams or UpdateParams, source it from ForProvider
+- Update SDK call signatures if method parameters changed
+- If a new required param was added that comes from a SecretRef, add it to `resolve<Resource>Context` and to `<Resource>ConversionContext`
 
 ## Step 6 — Verify compilation
 
@@ -124,5 +147,6 @@ go tool controller-gen crd paths="./apis/..." output:crd:artifacts:config=packag
 
 Summarize:
 - Old SDK version → new SDK version
-- For each resource: ForProvider fields added/removed, AtProvider fields added/removed, reconcile logic changes
+- For each resource: ForProvider fields added/removed, AtProvider fields added/removed, conversion file changes (`_conversion.go`), reconciler changes
 - Any deletion policy changes (Archive/Delete methods added or removed)
+- Any new `<Resource>ConversionContext` fields required for new SecretRef candidates

@@ -133,13 +133,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
 	}
 
-	// content excluded: it is sensitive and not declared in MemoryStoreMemoryObservation.
-	// PopulateAtProvider silently ignores fields absent from the target struct,
-	// so no explicit exclusion is needed — but we pass it for clarity.
-	if err := clients.PopulateAtProvider(resp, &m.Status.AtProvider, "content"); err != nil {
-		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
-	}
-	m.Status.AtProvider.ID = &resp.ID
+	m.FromAnthropicObservation(*resp)
 
 	m.SetConditions(xpv1.Available())
 
@@ -163,17 +157,11 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, xperrors.New(errMissingStore)
 	}
 
-	params := anthropic.BetaMemoryStoreMemoryNewParams{}
-	if m.Spec.ForProvider.Path != nil {
-		params.Path = *m.Spec.ForProvider.Path
-	}
 	content, err := clients.ResolveLocalSecretKey(ctx, e.kube, m.Spec.ForProvider.ContentSecretRef, m.GetNamespace())
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
 	}
-	if content != "" {
-		params.Content = anthropic.String(content)
-	}
+	params := m.ToAnthropicNew(&betav1alpha1.MemoryStoreMemoryConversionContext{Content: content})
 	resp, err := e.client.Beta.MemoryStores.Memories.New(ctx, *m.Spec.ForProvider.MemoryStoreID, params)
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
@@ -201,19 +189,11 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, xperrors.New(errMissingStore)
 	}
 
-	params := anthropic.BetaMemoryStoreMemoryUpdateParams{
-		MemoryStoreID: *m.Spec.ForProvider.MemoryStoreID,
-	}
-	if m.Spec.ForProvider.Path != nil {
-		params.Path = anthropic.String(*m.Spec.ForProvider.Path)
-	}
 	content, err := clients.ResolveLocalSecretKey(ctx, e.kube, m.Spec.ForProvider.ContentSecretRef, m.GetNamespace())
 	if err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
-	if content != "" {
-		params.Content = anthropic.String(content)
-	}
+	params := m.ToAnthropicUpdate(&betav1alpha1.MemoryStoreMemoryConversionContext{Content: content})
 	if _, err := e.client.Beta.MemoryStores.Memories.Update(ctx, memID, params); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}

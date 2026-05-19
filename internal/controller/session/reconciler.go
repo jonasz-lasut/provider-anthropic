@@ -135,13 +135,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	// archived_at excluded (zero-time ambiguity); agent excluded because
-	// the API returns a snapshot object while AtProvider stores a flat agentId.
-	if err := clients.PopulateAtProvider(resp, &sess.Status.AtProvider, "archived_at", "agent"); err != nil {
-		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
-	}
-	sess.Status.AtProvider.ID = &resp.ID
-	sess.Status.AtProvider.AgentID = &resp.Agent.ID
+	sess.FromAnthropicObservation(*resp)
 
 	sess.SetConditions(xpv1.Available())
 
@@ -157,7 +151,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, xperrors.New(errNotSession)
 	}
 
-	params := buildNewParams(sess.Spec.ForProvider)
+	params := sess.ToAnthropicNew()
 	resp, err := e.client.Beta.Sessions.New(ctx, params)
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
@@ -182,7 +176,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
-	params := buildUpdateParams(sess.Spec.ForProvider)
+	params := sess.ToAnthropicUpdate()
 	if _, err := e.client.Beta.Sessions.Update(ctx, sessID, params); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
@@ -224,138 +218,6 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Disconnect(_ context.Context) error { return nil }
-
-// buildNewParams converts ForProvider into the SDK create params.
-func buildNewParams(p betav1alpha1.SessionParameters) anthropic.BetaSessionNewParams {
-	params := anthropic.BetaSessionNewParams{}
-
-	// Agent: use versioned form when a version is pinned, string form otherwise.
-	if p.AgentVersion != nil && p.AgentID != nil {
-		params.Agent = anthropic.BetaSessionNewParamsAgentUnion{
-			OfBetaManagedAgentsAgents: &anthropic.BetaManagedAgentsAgentParams{
-				ID:      *p.AgentID,
-				Type:    anthropic.BetaManagedAgentsAgentParamsTypeAgent,
-				Version: anthropic.Int(*p.AgentVersion),
-			},
-		}
-	} else if p.AgentID != nil {
-		params.Agent = anthropic.BetaSessionNewParamsAgentUnion{
-			OfString: anthropic.String(*p.AgentID),
-		}
-	}
-
-	if p.EnvironmentID != nil {
-		params.EnvironmentID = *p.EnvironmentID
-	}
-	if p.Title != nil {
-		params.Title = anthropic.String(*p.Title)
-	}
-	if p.Metadata != nil {
-		params.Metadata = p.Metadata
-	}
-	if p.VaultIDs != nil {
-		params.VaultIDs = p.VaultIDs
-	}
-
-	for _, res := range p.Resources {
-		union := buildResourceParam(res)
-		params.Resources = append(params.Resources, union)
-	}
-
-	return params
-}
-
-// buildUpdateParams converts the mutable subset of ForProvider into SDK update params.
-// Only Title and Metadata are updatable; all other fields are immutable after creation.
-func buildUpdateParams(p betav1alpha1.SessionParameters) anthropic.BetaSessionUpdateParams {
-	params := anthropic.BetaSessionUpdateParams{}
-	if p.Title != nil {
-		params.Title = anthropic.String(*p.Title)
-	}
-	if p.Metadata != nil {
-		params.Metadata = p.Metadata
-	}
-	return params
-}
-
-// buildResourceParam converts a SessionResource into the SDK union type.
-func buildResourceParam(res betav1alpha1.SessionResource) anthropic.BetaSessionNewParamsResourceUnion {
-	resType := ""
-	if res.Type != nil {
-		resType = *res.Type
-	}
-	switch resType {
-	case "github_repository":
-		ghParams := anthropic.BetaManagedAgentsGitHubRepositoryResourceParams{
-			Type: anthropic.BetaManagedAgentsGitHubRepositoryResourceParamsTypeGitHubRepository,
-		}
-		if res.URL != nil {
-			ghParams.URL = *res.URL
-		}
-		if res.AuthorizationToken != nil {
-			ghParams.AuthorizationToken = *res.AuthorizationToken
-		}
-		if res.MountPath != nil {
-			ghParams.MountPath = anthropic.String(*res.MountPath)
-		}
-		if res.Checkout != nil {
-			checkoutType := ""
-			if res.Checkout.Type != nil {
-				checkoutType = *res.Checkout.Type
-			}
-			switch checkoutType {
-			case "branch":
-				if res.Checkout.Name != nil {
-					ghParams.Checkout = anthropic.BetaManagedAgentsGitHubRepositoryResourceParamsCheckoutUnion{
-						OfBranch: &anthropic.BetaManagedAgentsBranchCheckoutParam{
-							Name: *res.Checkout.Name,
-							Type: anthropic.BetaManagedAgentsBranchCheckoutTypeBranch,
-						},
-					}
-				}
-			case "commit":
-				if res.Checkout.Sha != nil {
-					ghParams.Checkout = anthropic.BetaManagedAgentsGitHubRepositoryResourceParamsCheckoutUnion{
-						OfCommit: &anthropic.BetaManagedAgentsCommitCheckoutParam{
-							Sha:  *res.Checkout.Sha,
-							Type: anthropic.BetaManagedAgentsCommitCheckoutTypeCommit,
-						},
-					}
-				}
-			}
-		}
-		return anthropic.BetaSessionNewParamsResourceUnion{OfGitHubRepository: &ghParams}
-
-	case "file":
-		fileParams := anthropic.BetaManagedAgentsFileResourceParams{
-			Type: anthropic.BetaManagedAgentsFileResourceParamsTypeFile,
-		}
-		if res.FileID != nil {
-			fileParams.FileID = *res.FileID
-		}
-		if res.MountPath != nil {
-			fileParams.MountPath = anthropic.String(*res.MountPath)
-		}
-		return anthropic.BetaSessionNewParamsResourceUnion{OfFile: &fileParams}
-
-	case "memory_store":
-		msParams := anthropic.BetaManagedAgentsMemoryStoreResourceParam{
-			Type: anthropic.BetaManagedAgentsMemoryStoreResourceParamTypeMemoryStore,
-		}
-		if res.MemoryStoreID != nil {
-			msParams.MemoryStoreID = *res.MemoryStoreID
-		}
-		if res.Instructions != nil {
-			msParams.Instructions = anthropic.String(*res.Instructions)
-		}
-		if res.Access != nil {
-			msParams.Access = anthropic.BetaManagedAgentsMemoryStoreResourceParamAccess(*res.Access)
-		}
-		return anthropic.BetaSessionNewParamsResourceUnion{OfMemoryStore: &msParams}
-	}
-
-	return anthropic.BetaSessionNewParamsResourceUnion{}
-}
 
 // isUpToDate performs a structured diff between spec.forProvider and
 // status.atProvider. Immutable fields (AgentID, EnvironmentID, Resources,

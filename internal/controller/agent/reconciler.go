@@ -135,12 +135,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	// Populate AtProvider from SDK response; archived_at excluded (zero time
-	// for active agents is ambiguous — already handled by the early return above).
-	if err := clients.PopulateAtProvider(resp, &ag.Status.AtProvider, "archived_at"); err != nil {
-		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
-	}
-	ag.Status.AtProvider.ID = &resp.ID
+	ag.FromAnthropicObservation(*resp)
 
 	ag.SetConditions(xpv1.Available())
 
@@ -165,7 +160,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
 	}
-	params := buildNewParams(ag.Spec.ForProvider, system)
+	params := ag.ToAnthropicNew(&betav1alpha1.AgentConversionContext{System: system})
 	resp, err := e.client.Beta.Agents.New(ctx, params)
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
@@ -199,7 +194,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
-	params := buildUpdateParams(ag.Spec.ForProvider, *ag.Status.AtProvider.Version, system)
+	params := ag.ToAnthropicUpdate(&betav1alpha1.AgentConversionContext{System: system})
 	if _, err := e.client.Beta.Agents.Update(ctx, agentID, params); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
@@ -231,146 +226,6 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Disconnect(_ context.Context) error { return nil }
-
-// buildNewParams converts ForProvider into the SDK create params.
-func buildNewParams(p betav1alpha1.AgentParameters, system string) anthropic.BetaAgentNewParams {
-	params := anthropic.BetaAgentNewParams{}
-
-	if p.Name != nil {
-		params.Name = *p.Name
-	}
-	if p.Model != nil {
-		params.Model = anthropic.BetaManagedAgentsModelConfigParams{ID: *p.Model}
-	}
-
-	if p.Description != nil {
-		params.Description = anthropic.String(*p.Description)
-	}
-	if system != "" {
-		params.System = anthropic.String(system)
-	}
-	if p.Metadata != nil {
-		params.Metadata = p.Metadata
-	}
-
-	for _, s := range p.MCPServers {
-		srv := anthropic.BetaManagedAgentsURLMCPServerParams{
-			Type: anthropic.BetaManagedAgentsURLMCPServerParamsTypeURL,
-		}
-		if s.Name != nil {
-			srv.Name = *s.Name
-		}
-		if s.URL != nil {
-			srv.URL = *s.URL
-		}
-		params.MCPServers = append(params.MCPServers, srv)
-	}
-
-	for _, sk := range p.Skills {
-		union := skillToParam(sk)
-		params.Skills = append(params.Skills, union)
-	}
-
-	for _, t := range p.Tools {
-		union := toolToNewParam(t)
-		params.Tools = append(params.Tools, union)
-	}
-
-	return params
-}
-
-// buildUpdateParams converts ForProvider into the SDK update params.
-// version is the optimistic-concurrency token required by the API.
-func buildUpdateParams(p betav1alpha1.AgentParameters, version int64, system string) anthropic.BetaAgentUpdateParams {
-	params := anthropic.BetaAgentUpdateParams{
-		Version: version,
-	}
-
-	if p.Name != nil {
-		params.Name = anthropic.String(*p.Name)
-	}
-	if p.Model != nil {
-		params.Model = anthropic.BetaManagedAgentsModelConfigParams{ID: *p.Model}
-	}
-
-	if p.Description != nil {
-		params.Description = anthropic.String(*p.Description)
-	}
-	if system != "" {
-		params.System = anthropic.String(system)
-	}
-	if p.Metadata != nil {
-		params.Metadata = p.Metadata
-	}
-
-	for _, s := range p.MCPServers {
-		srv := anthropic.BetaManagedAgentsURLMCPServerParams{
-			Type: anthropic.BetaManagedAgentsURLMCPServerParamsTypeURL,
-		}
-		if s.Name != nil {
-			srv.Name = *s.Name
-		}
-		if s.URL != nil {
-			srv.URL = *s.URL
-		}
-		params.MCPServers = append(params.MCPServers, srv)
-	}
-
-	for _, sk := range p.Skills {
-		union := skillToParam(sk)
-		params.Skills = append(params.Skills, union)
-	}
-
-	for _, t := range p.Tools {
-		union := toolToUpdateParam(t)
-		params.Tools = append(params.Tools, union)
-	}
-
-	return params
-}
-
-func skillToParam(s betav1alpha1.AgentSkillConfig) anthropic.BetaManagedAgentsSkillParamsUnion {
-	skillID := ""
-	if s.SkillID != nil {
-		skillID = *s.SkillID
-	}
-	skillType := ""
-	if s.Type != nil {
-		skillType = *s.Type
-	}
-	switch skillType {
-	case "anthropic":
-		return anthropic.BetaManagedAgentsSkillParamsUnion{
-			OfAnthropic: &anthropic.BetaManagedAgentsAnthropicSkillParams{
-				SkillID: skillID,
-				Type:    anthropic.BetaManagedAgentsAnthropicSkillParamsTypeAnthropic,
-			},
-		}
-	default: // "custom"
-		return anthropic.BetaManagedAgentsSkillParamsUnion{
-			OfCustom: &anthropic.BetaManagedAgentsCustomSkillParams{
-				SkillID: skillID,
-				Type:    anthropic.BetaManagedAgentsCustomSkillParamsTypeCustom,
-			},
-		}
-	}
-}
-
-func toolToNewParam(_ betav1alpha1.AgentToolConfig) anthropic.BetaAgentNewParamsToolUnion {
-	return anthropic.BetaAgentNewParamsToolUnion{
-		OfAgentToolset20260401: &anthropic.BetaManagedAgentsAgentToolset20260401Params{
-			Type: anthropic.BetaManagedAgentsAgentToolset20260401ParamsTypeAgentToolset20260401,
-		},
-	}
-}
-
-func toolToUpdateParam(_ betav1alpha1.AgentToolConfig) anthropic.BetaAgentUpdateParamsToolUnion {
-	return anthropic.BetaAgentUpdateParamsToolUnion{
-		OfAgentToolset20260401: &anthropic.BetaManagedAgentsAgentToolset20260401Params{
-			Type: anthropic.BetaManagedAgentsAgentToolset20260401ParamsTypeAgentToolset20260401,
-		},
-	}
-}
 
 // isUpToDate performs a structured diff between spec.forProvider and
 // status.atProvider. Nil ForProvider fields (omitempty → absent from JSON)
