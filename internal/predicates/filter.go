@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The provider-anthropic-platform Authors.
+Copyright 2026 The provider-anthropic Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/fieldpath"
 	"github.com/pkg/errors"
 
-	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1"
+	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
 )
 
 const (

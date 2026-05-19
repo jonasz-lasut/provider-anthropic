@@ -1,4 +1,4 @@
-module github.com/jonasz-lasut/provider-anthropic-platform
+module github.com/jonasz-lasut/provider-anthropic
 
 go 1.25.9
 

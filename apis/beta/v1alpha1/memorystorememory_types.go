@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The provider-anthropic-platform Authors.
+Copyright 2026 The provider-anthropic Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,8 +30,8 @@ type MemoryStoreMemoryParameters struct {
 	// MemoryStoreID is the ID of the parent MemoryStore that holds this
 	// memory. Populate directly or via MemoryStoreIDRef / MemoryStoreIDSelector.
 	// Immutable after creation.
-	// +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1.MemoryStore
-	// +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic-platform/internal/extractors.ComputedFieldExtractor("id")
+	// +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1.MemoryStore
+	// +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic/internal/extractors.ComputedFieldExtractor("id")
 	// +optional
 	MemoryStoreID *string `json:"memoryStoreId,omitempty"`
 

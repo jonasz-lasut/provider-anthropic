@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The provider-anthropic-platform Authors.
+Copyright 2026 The provider-anthropic Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,15 +22,15 @@ import (
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 
-	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/agent"
-	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/environment"
-	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/memorystore"
-	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/memorystorememory"
-	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/observedagentcollection"
-	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/providerconfig"
-	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/session"
-	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/vault"
-	"github.com/jonasz-lasut/provider-anthropic-platform/internal/controller/vaultcredential"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/agent"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/environment"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/memorystore"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/memorystorememory"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/observedagentcollection"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/providerconfig"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/session"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/vault"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/vaultcredential"
 )
 
 // SetupProviders registers all controllers with the supplied manager. Each
