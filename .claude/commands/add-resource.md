@@ -115,7 +115,7 @@ The reconciler sets `AtProvider.ID` in both `Observe()` (from the Get response) 
 **Add all remaining read-only response fields**: CreatedAt, UpdatedAt, ArchivedAt (as `*string`), Version (as `*int64` if present), and any other fields the API returns.
 
 **Type-matching rules for nested SDK types:**
-- When ForProvider holds a plain string ID (e.g. `Model *string json:"model"`) but the SDK response returns a typed object (e.g. `{id, type}`), define a matching observation sub-type in AtProvider so `clients.PopulateAtProvider` can unmarshal without errors:
+- When ForProvider holds a plain string ID (e.g. `Model *string json:"model"`) but the SDK response returns a typed object (e.g. `{id, type}`), define a matching observation sub-type in AtProvider:
   ```go
   type <Resource>ModelObservation struct {
       ID *string `json:"id,omitempty"`
@@ -123,6 +123,7 @@ The reconciler sets `AtProvider.ID` in both `Observe()` (from the Get response) 
   // In <Resource>Observation:
   Model *<Resource>ModelObservation `json:"model,omitempty"`
   ```
+  In `FromAnthropicObservation`, populate it explicitly: `r.Status.AtProvider.Model = &<Resource>ModelObservation{ID: &resp.Model.ID}`.
   `clients.IsSubsetEqual` automatically handles the scalar-vs-id-object pattern.
 - When ForProvider and the API both use the same slice/struct type (e.g. `MCPServers []MCPServerConfig`), reuse the ForProvider type in AtProvider — the JSON keys already match.
 
@@ -216,11 +217,51 @@ Content *string `json:"content,omitempty"`
 ContentSecretRef xpv1.LocalSecretKeySelector `json:"contentSecretRef"`
 ```
 
+## Step 3b — Create the conversion file
+
+Create `apis/beta/v1alpha1/<lowercase-resource>_conversion.go` (same package as the types file).
+
+This file contains the stable conversion interface between the Crossplane types and the Anthropic SDK. It is tested separately from the reconciler.
+
+### Secrets context struct
+
+If the resource has SecretRef fields, declare a `<Resource>ConversionContext` struct in this file to carry pre-resolved secret values:
+
+```go
+type <Resource>ConversionContext struct {
+    // <Field> is the resolved value from <Field>SecretRef.
+    <Field> string
+}
+```
+
+Resources with no SecretRef fields need no context struct.
+
+### Methods to implement
+
+```go
+// ToAnthropicNew converts ForProvider to SDK create params.
+// If the resource has secrets, accept ctx *<Resource>ConversionContext.
+func (r *<Resource>) ToAnthropicNew([ctx *<Resource>ConversionContext]) anthropic.Beta<Resource>NewParams
+
+// ToAnthropicUpdate converts ForProvider to SDK update params.
+// If the resource has secrets, accept ctx *<Resource>ConversionContext.
+func (r *<Resource>) ToAnthropicUpdate([ctx *<Resource>ConversionContext]) anthropic.Beta<Resource>UpdateParams
+
+// FromAnthropicObservation populates AtProvider from the SDK Get response.
+// ArchivedAt is always omitted — its zero value is ambiguous and the resource
+// does not exist in k8s after Delete() anyway.
+func (r *<Resource>) FromAnthropicObservation(resp anthropic.<ResponseType>)
+```
+
+Create `apis/beta/v1alpha1/<lowercase-resource>_conversion_test.go` (package `v1alpha1_test`) and write tests **before** implementing the methods (TDD). Use dot import `. "github.com/jonasz-lasut/provider-anthropic-platform/apis/beta/v1alpha1"` since the test package is external.
+
 ## Step 4 — Create the reconciler
 
 Create `internal/controller/<lowercase-resource>/reconciler.go`.
 
-**Start from the template**: Read `hack/reconciler.go.txt` and substitute every `<Resource>` / `<lowercase-resource>` occurrence with the actual resource name. This gives you the license header, package declaration, imports, error constants, `Setup`/`SetupGated`, `connector`, `Connect`, `external`, and stubs for `Observe`, `Create`, `Update`, `Delete`, `Disconnect`, `buildNewParams`, `buildUpdateParams`, and `isUpToDate`.
+**Start from the template**: Read `hack/reconciler.go.txt` and substitute every `<Resource>` / `<lowercase-resource>` occurrence with the actual resource name. This gives you the license header, package declaration, imports, error constants, `Setup`/`SetupGated`, `connector`, `Connect`, `external`, and stubs for `Observe`, `Create`, `Update`, `Delete`, `Disconnect`, and `isUpToDate`.
+
+The reconciler does NOT contain `buildNewParams` or `buildUpdateParams` — those live in the conversion file as methods on the resource type.
 
 **Default-metadata wiring.** The template includes a `skipDefaultMetadata bool` parameter on `Setup`/`SetupGated` and conditionally registers `initializer.New(mgr.GetClient(), "metadata")` so the controller writes canonical Crossplane identifiers (`crossplane-kind`, `crossplane-name`, `crossplane-namespace`, `crossplane-providerconfig`, `crossplane-providerconfig-kind`) into `spec.forProvider.metadata`. **Keep this wiring only if `<Resource>Parameters` has a `Metadata map[string]string` field.** If your resource has no such field (e.g. observed-only collections), delete the `skipDefaultMetadata` parameter from both `Setup` and `SetupGated`, drop the conditional `if !skipDefaultMetadata { … }` block, and remove the `internal/initializer` import.
 
@@ -231,35 +272,23 @@ Then fill in each method using the SDK surface found in Step 1. Key rules:
 1. `resID := meta.GetExternalName(res)` — if empty **or equal to `res.GetName()`**, return `ResourceExists: false`. Crossplane seeds external-name with the k8s object name before `Create` runs; some Anthropic APIs return 400 (not 404) for names that lack the expected ID prefix, so checking the k8s name is the reliable "not yet created" gate.
 2. Call SDK `Get(ctx, resID, ...)`; on 404 return `ResourceExists: false`
 3. If `ArchivedAt` is non-empty/non-zero, return `ResourceExists: false`
-4. Populate AtProvider using `clients.PopulateAtProvider`:
+4. Populate AtProvider by calling the conversion method:
    ```go
-   if err := clients.PopulateAtProvider(resp, &res.Status.AtProvider, "archived_at"); err != nil {
-       return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
-   }
-   res.Status.AtProvider.ID = &resp.ID
+   res.FromAnthropicObservation(*resp)
    ```
-   `clients.PopulateAtProvider` marshals the SDK response (snake_case keys) to JSON, converts all keys to camelCase, removes the listed exclude keys, then unmarshals into AtProvider. Fields absent from AtProvider are silently ignored. Always exclude `"archived_at"` — its zero value `"0001-01-01T00:00:00Z"` is ambiguous for non-archived resources.
-
-   After calling `PopulateAtProvider`, **always explicitly set** `res.Status.AtProvider.ID = &resp.ID` (the `id` field is correctly handled by PopulateAtProvider but the explicit assignment is belt-and-suspenders). Also manually set any field that PopulateAtProvider could not auto-populate:
-   - Cross-resource IDs where the SDK response returns an object (e.g. `resp.Agent.ID` for a Session): `res.Status.AtProvider.AgentID = &resp.Agent.ID`
-   - Any other nested field where the AtProvider type differs from the SDK response type
-
-   If the response has a field that should be excluded (e.g. a nested object like `agent` for Session), add its snake_case key to the `excludeKeys` list: `"archived_at", "agent"`.
+   `FromAnthropicObservation` (defined in the conversion file) performs explicit field-by-field assignment. `ArchivedAt` is always omitted there.
 
 5. `res.SetConditions(xpv1.Available())`; call `isUpToDate`
 
 Cross-resource reference resolution is handled automatically before `Observe()` — no manual fetch needed.
 
 ### Create
-1. Build NewParams from ForProvider (use `res.Spec.ForProvider.<Other>ID` for resolved reference IDs)
-2. Call SDK `New(ctx, params)`
-3. `meta.SetExternalName(res, resp.ID)` then `res.Status.AtProvider.ID = &resp.ID`
+1. If the resource has SecretRef fields, call `resolve<Resource>Context(ctx, e.kube, res.Spec.ForProvider.<AuthOrEquiv>, res.GetNamespace())` to obtain a `*<Resource>ConversionContext`. This helper (defined in the reconciler, not the conversion file) calls `clients.ResolveLocalSecretKey` for each SecretRef and returns the context struct. The reconciler's `external` struct grows a `kube client.Client` field populated in `Connect`.
+2. Build params by calling the conversion method: `params, err := res.ToAnthropicNew([convCtx])`
+3. Call SDK `New(ctx, params)`
+4. `meta.SetExternalName(res, resp.ID)` then `res.Status.AtProvider.ID = &resp.ID`
 
-For each SecretRef field on the resource, resolve the value with
-`clients.ResolveLocalSecretKey(ctx, e.kube, ref, res.GetNamespace())`
-BEFORE building SDK params, propagate the error if any, and only set
-the corresponding SDK field when the resolved string is non-empty.
-The same call also runs in `Observe` for drift detection:
+For SecretRef fields and drift detection:
 
 - **Write-only fields** (API never returns the value, e.g. tokens):
   skip the diff in `isUpToDate`; touching the spec is the only way to
@@ -271,15 +300,10 @@ The same call also runs in `Observe` for drift detection:
   `Observe` and string-compare to the response field — one Secret read
   per poll, but correct.
 
-Pass the resolved string into both `buildNewParams`/`buildUpdateParams`
-and `isUpToDate` as an explicit parameter so the builders stay pure.
-The reconciler's `external` struct grows a `kube client.Client` field
-populated in `Connect`.
-
 ### Update
 1. `resID := meta.GetExternalName(res)` — if equal to `res.GetName()`, return error
 2. If Version is required for optimistic concurrency and is nil, return error
-3. Build UpdateParams; call SDK `Update(ctx, resID, params)`
+3. Resolve context (same as Create for resources with secrets), call `res.ToAnthropicUpdate([convCtx])`; call SDK `Update(ctx, resID, params)`
 
 ### Delete
 `resID := meta.GetExternalName(res)` — if equal to `res.GetName()`, return nil (nothing to delete).

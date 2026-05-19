@@ -22,7 +22,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -144,13 +143,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	// archived_at excluded (zero-time issue); auth populated by PopulateAtProvider
-	// but only safe fields survive because VaultCredentialAuthObservation only
-	// declares type and mcpServerUrl — tokens and refresh details are silently ignored.
-	if err := clients.PopulateAtProvider(resp, &vc.Status.AtProvider, "archived_at"); err != nil {
-		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
-	}
-	vc.Status.AtProvider.ID = &resp.ID
+	vc.FromAnthropicObservation(*resp)
 
 	vc.SetConditions(xpv1.Available())
 
@@ -170,7 +163,11 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, xperrors.New(errMissingVault)
 	}
 
-	params, err := buildNewParams(ctx, e.kube, vc.Spec.ForProvider, vc.GetNamespace())
+	convCtx, err := resolveVCContext(ctx, e.kube, vc.Spec.ForProvider.Auth, vc.GetNamespace())
+	if err != nil {
+		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
+	}
+	params, err := vc.ToAnthropicNew(convCtx)
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
 	}
@@ -201,7 +198,11 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, xperrors.New(errMissingVault)
 	}
 
-	params, err := buildUpdateParams(ctx, e.kube, vc.Spec.ForProvider, vc.GetNamespace())
+	convCtx, err := resolveVCContext(ctx, e.kube, vc.Spec.ForProvider.Auth, vc.GetNamespace())
+	if err != nil {
+		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
+	}
+	params, err := vc.ToAnthropicUpdate(convCtx)
 	if err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
@@ -256,276 +257,33 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (e *external) Disconnect(_ context.Context) error { return nil }
 
-// buildNewParams converts ForProvider into the SDK create params.
-func buildNewParams(ctx context.Context, kube client.Client, p betav1alpha1.VaultCredentialParameters, namespace string) (anthropic.BetaVaultCredentialNewParams, error) {
-	auth, err := buildNewAuthUnion(ctx, kube, p.Auth, namespace)
+// resolveVCContext pre-resolves all Kubernetes secrets referenced by a
+// VaultCredential auth spec into a flat context struct ready for conversion.
+func resolveVCContext(ctx context.Context, kube client.Client, a betav1alpha1.VaultCredentialAuth, namespace string) (*betav1alpha1.VaultCredentialConversionContext, error) {
+	convCtx := &betav1alpha1.VaultCredentialConversionContext{}
+	bearerToken, err := clients.ResolveLocalSecretKey(ctx, kube, a.TokenSecretRef, namespace)
 	if err != nil {
-		return anthropic.BetaVaultCredentialNewParams{}, err
+		return nil, err
 	}
-	params := anthropic.BetaVaultCredentialNewParams{
-		Auth: auth,
-	}
-	if p.DisplayName != nil {
-		params.DisplayName = anthropic.String(*p.DisplayName)
-	}
-	if p.Metadata != nil {
-		params.Metadata = p.Metadata
-	}
-	return params, nil
-}
-
-// buildUpdateParams converts ForProvider into the SDK update params.
-func buildUpdateParams(ctx context.Context, kube client.Client, p betav1alpha1.VaultCredentialParameters, namespace string) (anthropic.BetaVaultCredentialUpdateParams, error) {
-	auth, err := buildUpdateAuthUnion(ctx, kube, p.Auth, namespace)
+	convCtx.BearerToken = bearerToken
+	accessToken, err := clients.ResolveLocalSecretKey(ctx, kube, a.AccessTokenSecretRef, namespace)
 	if err != nil {
-		return anthropic.BetaVaultCredentialUpdateParams{}, err
+		return nil, err
 	}
-	params := anthropic.BetaVaultCredentialUpdateParams{
-		Auth: auth,
-	}
-	if p.VaultID != nil {
-		params.VaultID = *p.VaultID
-	}
-	if p.DisplayName != nil {
-		params.DisplayName = anthropic.String(*p.DisplayName)
-	}
-	if p.Metadata != nil {
-		params.Metadata = p.Metadata
-	}
-	return params, nil
-}
-
-// buildNewAuthUnion converts the auth spec into the SDK create union variant.
-func buildNewAuthUnion(ctx context.Context, kube client.Client, a betav1alpha1.VaultCredentialAuth, namespace string) (anthropic.BetaVaultCredentialNewParamsAuthUnion, error) {
-	authType := ""
-	if a.Type != nil {
-		authType = *a.Type
-	}
-	mcpServerURL := ""
-	if a.MCPServerURL != nil {
-		mcpServerURL = *a.MCPServerURL
-	}
-	switch authType {
-	case "static_bearer":
-		sb := &anthropic.BetaManagedAgentsStaticBearerCreateParams{
-			MCPServerURL: mcpServerURL,
-			Type:         anthropic.BetaManagedAgentsStaticBearerCreateParamsTypeStaticBearer,
-		}
-		token, err := clients.ResolveLocalSecretKey(ctx, kube, a.TokenSecretRef, namespace)
+	convCtx.AccessToken = accessToken
+	if a.Refresh != nil {
+		refreshToken, err := clients.ResolveLocalSecretKey(ctx, kube, a.Refresh.RefreshTokenSecretRef, namespace)
 		if err != nil {
-			return anthropic.BetaVaultCredentialNewParamsAuthUnion{}, err
+			return nil, err
 		}
-		if token != "" {
-			sb.Token = token
-		}
-		return anthropic.BetaVaultCredentialNewParamsAuthUnion{OfStaticBearer: sb}, nil
-
-	case "mcp_oauth":
-		oauth := &anthropic.BetaManagedAgentsMCPOAuthCreateParams{
-			MCPServerURL: mcpServerURL,
-			Type:         anthropic.BetaManagedAgentsMCPOAuthCreateParamsTypeMCPOAuth,
-		}
-		accessToken, err := clients.ResolveLocalSecretKey(ctx, kube, a.AccessTokenSecretRef, namespace)
+		convCtx.RefreshToken = refreshToken
+		clientSecret, err := clients.ResolveLocalSecretKey(ctx, kube, a.Refresh.TokenEndpointAuth.ClientSecretSecretRef, namespace)
 		if err != nil {
-			return anthropic.BetaVaultCredentialNewParamsAuthUnion{}, err
+			return nil, err
 		}
-		if accessToken != "" {
-			oauth.AccessToken = accessToken
-		}
-		if a.ExpiresAt != nil {
-			if t, err := time.Parse(time.RFC3339, *a.ExpiresAt); err == nil {
-				oauth.ExpiresAt = anthropic.Time(t)
-			}
-		}
-		if a.Refresh != nil {
-			refresh, err := buildRefreshCreateParams(ctx, kube, *a.Refresh, namespace)
-			if err != nil {
-				return anthropic.BetaVaultCredentialNewParamsAuthUnion{}, err
-			}
-			oauth.Refresh = refresh
-		}
-		return anthropic.BetaVaultCredentialNewParamsAuthUnion{OfMCPOAuth: oauth}, nil
+		convCtx.ClientSecret = clientSecret
 	}
-
-	return anthropic.BetaVaultCredentialNewParamsAuthUnion{}, nil
-}
-
-// buildUpdateAuthUnion converts the auth spec into the SDK update union variant.
-func buildUpdateAuthUnion(ctx context.Context, kube client.Client, a betav1alpha1.VaultCredentialAuth, namespace string) (anthropic.BetaVaultCredentialUpdateParamsAuthUnion, error) {
-	authType := ""
-	if a.Type != nil {
-		authType = *a.Type
-	}
-	switch authType {
-	case "static_bearer":
-		sb := &anthropic.BetaManagedAgentsStaticBearerUpdateParams{
-			Type: anthropic.BetaManagedAgentsStaticBearerUpdateParamsTypeStaticBearer,
-		}
-		token, err := clients.ResolveLocalSecretKey(ctx, kube, a.TokenSecretRef, namespace)
-		if err != nil {
-			return anthropic.BetaVaultCredentialUpdateParamsAuthUnion{}, err
-		}
-		if token != "" {
-			sb.Token = anthropic.String(token)
-		}
-		return anthropic.BetaVaultCredentialUpdateParamsAuthUnion{OfStaticBearer: sb}, nil
-
-	case "mcp_oauth":
-		oauth := &anthropic.BetaManagedAgentsMCPOAuthUpdateParams{
-			Type: anthropic.BetaManagedAgentsMCPOAuthUpdateParamsTypeMCPOAuth,
-		}
-		accessToken, err := clients.ResolveLocalSecretKey(ctx, kube, a.AccessTokenSecretRef, namespace)
-		if err != nil {
-			return anthropic.BetaVaultCredentialUpdateParamsAuthUnion{}, err
-		}
-		if accessToken != "" {
-			oauth.AccessToken = anthropic.String(accessToken)
-		}
-		if a.ExpiresAt != nil {
-			if t, err := time.Parse(time.RFC3339, *a.ExpiresAt); err == nil {
-				oauth.ExpiresAt = anthropic.Time(t)
-			}
-		}
-		if a.Refresh != nil {
-			refresh, err := buildRefreshUpdateParams(ctx, kube, *a.Refresh, namespace)
-			if err != nil {
-				return anthropic.BetaVaultCredentialUpdateParamsAuthUnion{}, err
-			}
-			oauth.Refresh = refresh
-		}
-		return anthropic.BetaVaultCredentialUpdateParamsAuthUnion{OfMCPOAuth: oauth}, nil
-	}
-
-	return anthropic.BetaVaultCredentialUpdateParamsAuthUnion{}, nil
-}
-
-// buildRefreshCreateParams converts the spec refresh block into SDK create params.
-func buildRefreshCreateParams(ctx context.Context, kube client.Client, r betav1alpha1.VaultCredentialRefresh, namespace string) (anthropic.BetaManagedAgentsMCPOAuthRefreshParams, error) {
-	auth, err := buildTokenEndpointAuthCreate(ctx, kube, r.TokenEndpointAuth, namespace)
-	if err != nil {
-		return anthropic.BetaManagedAgentsMCPOAuthRefreshParams{}, err
-	}
-	out := anthropic.BetaManagedAgentsMCPOAuthRefreshParams{
-		TokenEndpointAuth: auth,
-	}
-	if r.ClientID != nil {
-		out.ClientID = *r.ClientID
-	}
-	refresh, err := clients.ResolveLocalSecretKey(ctx, kube, r.RefreshTokenSecretRef, namespace)
-	if err != nil {
-		return anthropic.BetaManagedAgentsMCPOAuthRefreshParams{}, err
-	}
-	if refresh != "" {
-		out.RefreshToken = refresh
-	}
-	if r.TokenEndpoint != nil {
-		out.TokenEndpoint = *r.TokenEndpoint
-	}
-	if r.Resource != nil {
-		out.Resource = anthropic.String(*r.Resource)
-	}
-	if r.Scope != nil {
-		out.Scope = anthropic.String(*r.Scope)
-	}
-	return out, nil
-}
-
-// buildRefreshUpdateParams converts the spec refresh block into SDK update params.
-// The update API only supports rotating refresh_token / scope / token_endpoint_auth;
-// client_id and token_endpoint are immutable.
-func buildRefreshUpdateParams(ctx context.Context, kube client.Client, r betav1alpha1.VaultCredentialRefresh, namespace string) (anthropic.BetaManagedAgentsMCPOAuthRefreshUpdateParams, error) {
-	auth, err := buildTokenEndpointAuthUpdate(ctx, kube, r.TokenEndpointAuth, namespace)
-	if err != nil {
-		return anthropic.BetaManagedAgentsMCPOAuthRefreshUpdateParams{}, err
-	}
-	out := anthropic.BetaManagedAgentsMCPOAuthRefreshUpdateParams{
-		TokenEndpointAuth: auth,
-	}
-	refresh, err := clients.ResolveLocalSecretKey(ctx, kube, r.RefreshTokenSecretRef, namespace)
-	if err != nil {
-		return anthropic.BetaManagedAgentsMCPOAuthRefreshUpdateParams{}, err
-	}
-	if refresh != "" {
-		out.RefreshToken = anthropic.String(refresh)
-	}
-	if r.Scope != nil {
-		out.Scope = anthropic.String(*r.Scope)
-	}
-	return out, nil
-}
-
-// buildTokenEndpointAuthCreate selects the token-endpoint-auth union variant
-// for create requests.
-func buildTokenEndpointAuthCreate(ctx context.Context, kube client.Client, t betav1alpha1.VaultCredentialTokenEndpointAuth, namespace string) (anthropic.BetaManagedAgentsMCPOAuthRefreshParamsTokenEndpointAuthUnion, error) {
-	tType := ""
-	if t.Type != nil {
-		tType = *t.Type
-	}
-	if tType == "none" {
-		return anthropic.BetaManagedAgentsMCPOAuthRefreshParamsTokenEndpointAuthUnion{
-			OfNone: &anthropic.BetaManagedAgentsTokenEndpointAuthNoneParam{
-				Type: anthropic.BetaManagedAgentsTokenEndpointAuthNoneParamTypeNone,
-			},
-		}, nil
-	}
-	clientSecret, err := clients.ResolveLocalSecretKey(ctx, kube, t.ClientSecretSecretRef, namespace)
-	if err != nil {
-		return anthropic.BetaManagedAgentsMCPOAuthRefreshParamsTokenEndpointAuthUnion{}, err
-	}
-	switch tType {
-	case "client_secret_basic":
-		p := &anthropic.BetaManagedAgentsTokenEndpointAuthBasicParam{
-			Type: anthropic.BetaManagedAgentsTokenEndpointAuthBasicParamTypeClientSecretBasic,
-		}
-		if clientSecret != "" {
-			p.ClientSecret = clientSecret
-		}
-		return anthropic.BetaManagedAgentsMCPOAuthRefreshParamsTokenEndpointAuthUnion{OfClientSecretBasic: p}, nil
-	case "client_secret_post":
-		p := &anthropic.BetaManagedAgentsTokenEndpointAuthPostParam{
-			Type: anthropic.BetaManagedAgentsTokenEndpointAuthPostParamTypeClientSecretPost,
-		}
-		if clientSecret != "" {
-			p.ClientSecret = clientSecret
-		}
-		return anthropic.BetaManagedAgentsMCPOAuthRefreshParamsTokenEndpointAuthUnion{OfClientSecretPost: p}, nil
-	}
-	return anthropic.BetaManagedAgentsMCPOAuthRefreshParamsTokenEndpointAuthUnion{}, nil
-}
-
-// buildTokenEndpointAuthUpdate selects the token-endpoint-auth union variant
-// for update requests. The update API does not support the "none" variant.
-func buildTokenEndpointAuthUpdate(ctx context.Context, kube client.Client, t betav1alpha1.VaultCredentialTokenEndpointAuth, namespace string) (anthropic.BetaManagedAgentsMCPOAuthRefreshUpdateParamsTokenEndpointAuthUnion, error) {
-	tType := ""
-	if t.Type != nil {
-		tType = *t.Type
-	}
-	if tType != "client_secret_basic" && tType != "client_secret_post" {
-		return anthropic.BetaManagedAgentsMCPOAuthRefreshUpdateParamsTokenEndpointAuthUnion{}, nil
-	}
-	clientSecret, err := clients.ResolveLocalSecretKey(ctx, kube, t.ClientSecretSecretRef, namespace)
-	if err != nil {
-		return anthropic.BetaManagedAgentsMCPOAuthRefreshUpdateParamsTokenEndpointAuthUnion{}, err
-	}
-	switch tType {
-	case "client_secret_basic":
-		p := &anthropic.BetaManagedAgentsTokenEndpointAuthBasicUpdateParam{
-			Type: anthropic.BetaManagedAgentsTokenEndpointAuthBasicUpdateParamTypeClientSecretBasic,
-		}
-		if clientSecret != "" {
-			p.ClientSecret = anthropic.String(clientSecret)
-		}
-		return anthropic.BetaManagedAgentsMCPOAuthRefreshUpdateParamsTokenEndpointAuthUnion{OfClientSecretBasic: p}, nil
-	case "client_secret_post":
-		p := &anthropic.BetaManagedAgentsTokenEndpointAuthPostUpdateParam{
-			Type: anthropic.BetaManagedAgentsTokenEndpointAuthPostUpdateParamTypeClientSecretPost,
-		}
-		if clientSecret != "" {
-			p.ClientSecret = anthropic.String(clientSecret)
-		}
-		return anthropic.BetaManagedAgentsMCPOAuthRefreshUpdateParamsTokenEndpointAuthUnion{OfClientSecretPost: p}, nil
-	}
-	return anthropic.BetaManagedAgentsMCPOAuthRefreshUpdateParamsTokenEndpointAuthUnion{}, nil
+	return convCtx, nil
 }
 
 // isUpToDate compares the desired state with the observed credential. The

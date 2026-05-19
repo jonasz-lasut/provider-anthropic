@@ -135,10 +135,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	if err := clients.PopulateAtProvider(resp, &v.Status.AtProvider, "archived_at"); err != nil {
-		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
-	}
-	v.Status.AtProvider.ID = &resp.ID
+	v.FromAnthropicObservation(*resp)
 
 	v.SetConditions(xpv1.Available())
 
@@ -154,7 +151,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, xperrors.New(errNotVault)
 	}
 
-	params := buildNewParams(v.Spec.ForProvider)
+	params := v.ToAnthropicNew()
 	resp, err := e.client.Beta.Vaults.New(ctx, params)
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
@@ -177,7 +174,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
-	params := buildUpdateParams(v.Spec.ForProvider)
+	params := v.ToAnthropicUpdate()
 	if _, err := e.client.Beta.Vaults.Update(ctx, vID, params); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
@@ -219,30 +216,6 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Disconnect(_ context.Context) error { return nil }
-
-// buildNewParams converts ForProvider into the SDK create params.
-func buildNewParams(p betav1alpha1.VaultParameters) anthropic.BetaVaultNewParams {
-	params := anthropic.BetaVaultNewParams{}
-	if p.DisplayName != nil {
-		params.DisplayName = *p.DisplayName
-	}
-	if p.Metadata != nil {
-		params.Metadata = p.Metadata
-	}
-	return params
-}
-
-// buildUpdateParams converts ForProvider into the SDK update params.
-func buildUpdateParams(p betav1alpha1.VaultParameters) anthropic.BetaVaultUpdateParams {
-	params := anthropic.BetaVaultUpdateParams{}
-	if p.DisplayName != nil {
-		params.DisplayName = anthropic.String(*p.DisplayName)
-	}
-	if p.Metadata != nil {
-		params.Metadata = p.Metadata
-	}
-	return params
-}
 
 // isUpToDate compares the desired state with the observed vault.
 // isUpToDate performs a structured diff between spec.forProvider and
