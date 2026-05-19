@@ -130,10 +130,11 @@ type AgentObservation struct {
 	// +optional
 	Model *AgentModelObservation `json:"model,omitempty"`
 
-	// System is the observed system prompt (populated from resp.System when the
-	// agent has a system prompt configured).
+	// SystemSha256 is the lowercase hex SHA-256 digest of the system prompt
+	// stored on the API. Used for drift detection; the raw value is never
+	// stored in status. Access the system prompt via spec.writeConnectionSecretToRef.
 	// +optional
-	System *string `json:"system,omitempty"`
+	SystemSha256 *string `json:"systemSha256,omitempty"`
 
 	// MCPServers is the observed list of MCP server configurations.
 	// +optional

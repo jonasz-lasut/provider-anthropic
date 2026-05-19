@@ -17,15 +17,29 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 )
 
 // AgentConversionContext carries reconcile-time values needed for Agent SDK
 // param construction. Pass nil when no secret resolution is needed.
 type AgentConversionContext struct {
 	System string // resolved from SystemSecretRef; empty if not set
+}
+
+// ToConnectionDetails publishes all non-empty resolved secret values as
+// Crossplane connection details so consumers can access them via
+// spec.writeConnectionSecretToRef.
+func (cctx *AgentConversionContext) ToConnectionDetails() managed.ConnectionDetails {
+	cd := managed.ConnectionDetails{}
+	if cctx.System != "" {
+		cd["system"] = []byte(cctx.System)
+	}
+	return cd
 }
 
 func (r *Agent) ToAnthropicNew(ctx *AgentConversionContext) anthropic.BetaAgentNewParams {
@@ -113,8 +127,15 @@ func (r *Agent) FromAnthropicObservation(resp anthropic.BetaManagedAgentsAgent) 
 	r.Status.AtProvider.ID = &resp.ID
 	r.Status.AtProvider.Name = &resp.Name
 	r.Status.AtProvider.Description = &resp.Description
-	r.Status.AtProvider.System = &resp.System
 	r.Status.AtProvider.Version = &resp.Version
+	// System intentionally omitted — stored only as SHA-256 for drift detection.
+	if resp.System != "" {
+		sum := sha256.Sum256([]byte(resp.System))
+		s := hex.EncodeToString(sum[:])
+		r.Status.AtProvider.SystemSha256 = &s
+	} else {
+		r.Status.AtProvider.SystemSha256 = nil
+	}
 	r.Status.AtProvider.Metadata = resp.Metadata
 
 	modelID := string(resp.Model.ID)

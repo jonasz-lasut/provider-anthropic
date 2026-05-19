@@ -20,12 +20,24 @@ import (
 	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 )
 
 // MemoryStoreMemoryConversionContext carries reconcile-time values for
 // MemoryStoreMemory SDK param construction.
 type MemoryStoreMemoryConversionContext struct {
 	Content string // resolved from ContentSecretRef; empty if not set
+}
+
+// ToConnectionDetails publishes all non-empty resolved secret values as
+// Crossplane connection details so consumers can access them via
+// spec.writeConnectionSecretToRef.
+func (cctx *MemoryStoreMemoryConversionContext) ToConnectionDetails() managed.ConnectionDetails {
+	cd := managed.ConnectionDetails{}
+	if cctx.Content != "" {
+		cd["content"] = []byte(cctx.Content)
+	}
+	return cd
 }
 
 func (r *MemoryStoreMemory) ToAnthropicNew(ctx *MemoryStoreMemoryConversionContext) anthropic.BetaMemoryStoreMemoryNewParams {

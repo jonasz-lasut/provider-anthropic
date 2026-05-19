@@ -225,16 +225,31 @@ This file contains the stable conversion interface between the Crossplane types 
 
 ### Secrets context struct
 
-If the resource has SecretRef fields, declare a `<Resource>ConversionContext` struct in this file to carry pre-resolved secret values:
+If the resource has SecretRef fields, declare a `<Resource>ConversionContext` struct in this file to carry pre-resolved secret values, plus a `ToConnectionDetails()` method that publishes them:
 
 ```go
+import "github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
+
 type <Resource>ConversionContext struct {
     // <Field> is the resolved value from <Field>SecretRef.
     <Field> string
 }
+
+// ToConnectionDetails publishes all non-empty resolved secret values as
+// Crossplane connection details so consumers can access them via
+// spec.writeConnectionSecretToRef.
+func (cctx *<Resource>ConversionContext) ToConnectionDetails() managed.ConnectionDetails {
+    cd := managed.ConnectionDetails{}
+    if cctx.<Field> != "" {
+        cd["<camelCaseKey>"] = []byte(cctx.<Field>)
+    }
+    return cd
+}
 ```
 
-Resources with no SecretRef fields need no context struct.
+The camelCase key names must be stable — they become the keys in the Kubernetes Secret written by Crossplane. Use the same name as the resolved field, lowercased (e.g. `system`, `content`, `bearerToken`, `accessToken`).
+
+Resources with no SecretRef fields need no context struct and no `ToConnectionDetails` method.
 
 ### Methods to implement
 
@@ -278,32 +293,47 @@ Then fill in each method using the SDK surface found in Step 1. Key rules:
    ```
    `FromAnthropicObservation` (defined in the conversion file) performs explicit field-by-field assignment. `ArchivedAt` is always omitted there.
 
-5. `res.SetConditions(xpv1.Available())`; call `isUpToDate`
+5. `res.SetConditions(xpv1.Available())`
+6. If the resource has SecretRef fields, resolve them into a `convCtx` and return connection details:
+   ```go
+   convCtx := &betav1alpha1.<Resource>ConversionContext{<Field>: resolved}
+   return managed.ExternalObservation{
+       ResourceExists:    true,
+       ResourceUpToDate:  isUpToDate(res, resolved),
+       ConnectionDetails: convCtx.ToConnectionDetails(),
+   }, nil
+   ```
+   Resolving in `Observe` keeps the connection secret current on every reconcile loop, even when nothing has changed.
 
 Cross-resource reference resolution is handled automatically before `Observe()` — no manual fetch needed.
 
 ### Create
-1. If the resource has SecretRef fields, call `resolve<Resource>Context(ctx, e.kube, res.Spec.ForProvider.<AuthOrEquiv>, res.GetNamespace())` to obtain a `*<Resource>ConversionContext`. This helper (defined in the reconciler, not the conversion file) calls `clients.ResolveLocalSecretKey` for each SecretRef and returns the context struct. The reconciler's `external` struct grows a `kube client.Client` field populated in `Connect`.
-2. Build params by calling the conversion method: `params, err := res.ToAnthropicNew([convCtx])`
+1. If the resource has SecretRef fields, resolve them into a `*<Resource>ConversionContext` (via a `resolve<Resource>Context` helper in the reconciler that calls `clients.ResolveLocalSecretKey` for each SecretRef). The reconciler's `external` struct grows a `kube client.Client` field populated in `Connect`.
+2. Build params: `convCtx := &betav1alpha1.<Resource>ConversionContext{...}; params := res.ToAnthropicNew(convCtx)`
 3. Call SDK `New(ctx, params)`
 4. `meta.SetExternalName(res, resp.ID)` then `res.Status.AtProvider.ID = &resp.ID`
+5. Return connection details: `return managed.ExternalCreation{ConnectionDetails: convCtx.ToConnectionDetails()}, nil`
 
 For SecretRef fields and drift detection:
 
 - **Write-only fields** (API never returns the value, e.g. tokens):
   skip the diff in `isUpToDate`; touching the spec is the only way to
-  rotate. No `Observe` resolution needed.
+  rotate. Resolve in `Observe` anyway so `ToConnectionDetails` keeps the
+  connection secret up-to-date on every reconcile loop.
 - **Readable fields with a hash on the response** (e.g.
   `ContentSha256` on `MemoryStoreMemory`): resolve in `Observe`,
   compute `sha256.Sum256` of the bytes, compare to the observed hash.
+  Store the hash in `AtProvider.<Field>Sha256`; never store the raw value.
 - **Readable fields without a hash** (e.g. Agent `system`): resolve in
-  `Observe` and string-compare to the response field — one Secret read
-  per poll, but correct.
+  `Observe`, compute SHA-256, store in `AtProvider.<Field>Sha256`, compare
+  hashes. Never store the raw value in AtProvider — it would be visible to
+  anyone who can `kubectl get` the resource.
 
 ### Update
 1. `resID := meta.GetExternalName(res)` — if equal to `res.GetName()`, return error
 2. If Version is required for optimistic concurrency and is nil, return error
-3. Resolve context (same as Create for resources with secrets), call `res.ToAnthropicUpdate([convCtx])`; call SDK `Update(ctx, resID, params)`
+3. Resolve context (same as Create for resources with secrets): `convCtx := ...; params := res.ToAnthropicUpdate(convCtx)`; call SDK `Update(ctx, resID, params)`
+4. Return connection details: `return managed.ExternalUpdate{ConnectionDetails: convCtx.ToConnectionDetails()}, nil`
 
 ### Delete
 `resID := meta.GetExternalName(res)` — if equal to `res.GetName()`, return nil (nothing to delete).
@@ -341,36 +371,36 @@ Key properties of this approach:
 - Scalar ForProvider vs object AtProvider (e.g. `model: "claude-opus"` in ForProvider vs `model: {id: "claude-opus", type: "model"}` in AtProvider): `IsSubsetEqual` handles this automatically via the scalar-vs-id-object special case.
 - Map and slice fields are compared with `reflect.DeepEqual` once both sides are present.
 
-**SecretRef drift** must be checked separately after the generic diff, since the resolved secret value has no AtProvider counterpart. Extend the function signature as needed:
+**SecretRef drift** must be checked separately after the generic diff, since the resolved secret value is never stored in AtProvider. Always use SHA-256 — never store the raw secret value in AtProvider where it would be visible to anyone who can `kubectl get` the resource.
 
-- **Readable field with a hash** (e.g. `ContentSha256` stored in AtProvider):
-  ```go
-  func isUpToDate(res *betav1alpha1.<Resource>, resolvedContent string) bool {
-      // ... JSON diff as above ...
-      if resolvedContent != "" {
-          sum := sha256.Sum256([]byte(resolvedContent))
-          if res.Status.AtProvider.ContentSha256 == nil || hex.EncodeToString(sum[:]) != *res.Status.AtProvider.ContentSha256 {
-              return false
-          }
-      }
-      return true
-  }
-  ```
+For any SecretRef field (whether the API returns the value or not), store a `<Field>Sha256 *string` in AtProvider and compare hashes:
 
-- **Readable field without a hash** (e.g. `System` prompt stored in AtProvider as a string):
-  ```go
-  func isUpToDate(res *betav1alpha1.<Resource>, resolvedSecret string) bool {
-      // ... JSON diff as above ...
-      if resolvedSecret != "" {
-          if res.Status.AtProvider.System == nil || resolvedSecret != *res.Status.AtProvider.System {
-              return false
-          }
-      }
-      return true
-  }
-  ```
+```go
+func isUpToDate(res *betav1alpha1.<Resource>, resolvedSecret string) bool {
+    // ... JSON diff as above ...
+    if resolvedSecret != "" {
+        sum := sha256.Sum256([]byte(resolvedSecret))
+        if res.Status.AtProvider.<Field>Sha256 == nil || hex.EncodeToString(sum[:]) != *res.Status.AtProvider.<Field>Sha256 {
+            return false
+        }
+    }
+    return true
+}
+```
 
-- **Write-only field** (API never returns the value, e.g. a bearer token): no extra check needed; changing the spec's SecretRef or the Secret's value are the only ways to rotate it, and the structured diff already covers the SecretRef selector fields themselves.
+In `FromAnthropicObservation`, populate the hash from the API response value (when the API returns the field):
+```go
+if resp.<Field> != "" {
+    sum := sha256.Sum256([]byte(resp.<Field>))
+    s := hex.EncodeToString(sum[:])
+    r.Status.AtProvider.<Field>Sha256 = &s
+} else {
+    r.Status.AtProvider.<Field>Sha256 = nil
+}
+// <Field> intentionally omitted — stored only as SHA-256 for drift detection.
+```
+
+For **write-only fields** (API never returns the value), `FromAnthropicObservation` cannot populate the hash — the hash must be computed from the resolved K8s secret in `isUpToDate` and compared against whatever was last stored. If the AtProvider hash is nil (first reconcile after creation), trigger an update to ensure the stored hash reflects the current secret.
 
 ## Step 5 — Wire into setup.go
 
