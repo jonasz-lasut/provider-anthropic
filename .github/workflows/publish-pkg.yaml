@@ -1,0 +1,41 @@
+# Copyright 2026 The provider-anthropic Authors.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Publish Provider Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version string to use while publishing the package (e.g. v1.0.0-alpha.1)"
+        default: ''
+        required: false
+      go-version:
+        description: 'Go version to use if building needs to be done'
+        default: '1.25.9'
+        required: false
+
+jobs:
+  publish-provider-package:
+    uses: crossplane-contrib/provider-workflows/.github/workflows/publish-provider-non-family.yml@451c4dc6ad3691b0a702a997a0ac24e8bbc8bbaa # main
+    with:
+      repository: provider-azuread
+      version: ${{ github.event.inputs.version }}
+      go-version: ${{ github.event.inputs.go-version }}
+      upbound-regorg: 'xpkg.upbound.io/jonaszl'
+      cleanup-disk: true
+    secrets:
+      GHCR_PAT: ${{ secrets.GITHUB_TOKEN }}
+      XPKG_MIRROR_TOKEN: ${{ secrets.XPKG_TOKEN }}
+      XPKG_MIRROR_ACCESS_ID: ${{ secrets.XPKG_ACCESS_ID }}
