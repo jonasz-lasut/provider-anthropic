@@ -33,7 +33,7 @@ jobs:
       repository: provider-azuread
       version: ${{ github.event.inputs.version }}
       go-version: ${{ github.event.inputs.go-version }}
-      upbound-regorg: 'xpkg.upbound.io/jonaszl'
+      mirror: false
       cleanup-disk: true
     secrets:
       GHCR_PAT: ${{ secrets.GITHUB_TOKEN }}
