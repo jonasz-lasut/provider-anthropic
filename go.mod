@@ -4,7 +4,7 @@ go 1.25.9
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
-	github.com/anthropics/anthropic-sdk-go v1.43.0
+	github.com/anthropics/anthropic-sdk-go v1.44.1
 	github.com/crossplane/crossplane-runtime/v2 v2.2.1
 	github.com/crossplane/crossplane-tools v0.0.0-20251017183449-dd4517244339
 	github.com/google/cel-go v0.26.1

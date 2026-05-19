@@ -113,6 +113,13 @@ type EnvironmentParameters struct {
 	// +optional
 	Metadata map[string]string `json:"metadata,omitempty"`
 
+	// Scope controls the visibility of the environment. "organization" makes it
+	// visible to all accounts; "account" restricts it to the owning account.
+	// Only applicable for self-hosted environments.
+	// +optional
+	// +kubebuilder:validation:Enum=organization;account
+	Scope *string `json:"scope,omitempty"`
+
 	// AnthropicDeletionPolicy controls whether Crossplane calls Archive or
 	// Delete on the Anthropic API when the resource is deleted in Kubernetes.
 	// +optional
@@ -156,6 +163,10 @@ type EnvironmentObservation struct {
 	// ArchivedAt is set when the environment has been archived.
 	// +optional
 	ArchivedAt *string `json:"archivedAt,omitempty"`
+
+	// Scope is the observed visibility scope of the environment.
+	// +optional
+	Scope *string `json:"scope,omitempty"`
 }
 
 // EnvironmentSpec defines the desired state of Environment.
