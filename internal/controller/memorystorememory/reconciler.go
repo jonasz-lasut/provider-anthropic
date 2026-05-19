@@ -141,9 +141,11 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	if err != nil {
 		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
 	}
+	convCtx := &betav1alpha1.MemoryStoreMemoryConversionContext{Content: desired}
 	return managed.ExternalObservation{
-		ResourceExists:   true,
-		ResourceUpToDate: isUpToDate(m, desired),
+		ResourceExists:    true,
+		ResourceUpToDate:  isUpToDate(m, desired),
+		ConnectionDetails: convCtx.ToConnectionDetails(),
 	}, nil
 }
 
@@ -161,7 +163,8 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
 	}
-	params := m.ToAnthropicNew(&betav1alpha1.MemoryStoreMemoryConversionContext{Content: content})
+	convCtx := &betav1alpha1.MemoryStoreMemoryConversionContext{Content: content}
+	params := m.ToAnthropicNew(convCtx)
 	resp, err := e.client.Beta.MemoryStores.Memories.New(ctx, *m.Spec.ForProvider.MemoryStoreID, params)
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
@@ -171,7 +174,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	m.Status.AtProvider.ID = &resp.ID
 	m.Status.AtProvider.MemoryStoreID = &resp.MemoryStoreID
 
-	return managed.ExternalCreation{}, nil
+	return managed.ExternalCreation{ConnectionDetails: convCtx.ToConnectionDetails()}, nil
 }
 
 func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
@@ -193,12 +196,13 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
-	params := m.ToAnthropicUpdate(&betav1alpha1.MemoryStoreMemoryConversionContext{Content: content})
+	convCtx := &betav1alpha1.MemoryStoreMemoryConversionContext{Content: content}
+	params := m.ToAnthropicUpdate(convCtx)
 	if _, err := e.client.Beta.MemoryStores.Memories.Update(ctx, memID, params); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
 
-	return managed.ExternalUpdate{}, nil
+	return managed.ExternalUpdate{ConnectionDetails: convCtx.ToConnectionDetails()}, nil
 }
 
 func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {

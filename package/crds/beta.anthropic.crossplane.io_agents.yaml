@@ -269,10 +269,11 @@ spec:
                             type: string
                         type: object
                       type: array
-                    system:
+                    systemSha256:
                       description: |-
-                        System is the observed system prompt (populated from resp.System when the
-                        agent has a system prompt configured).
+                        SystemSha256 is the lowercase hex SHA-256 digest of the system prompt
+                        stored on the API. Used for drift detection; the raw value is never
+                        stored in status. Access the system prompt via spec.writeConnectionSecretToRef.
                       type: string
                     tools:
                       description: Tools is the observed list of tool configurations.

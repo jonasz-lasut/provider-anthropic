@@ -20,6 +20,7 @@ import (
 	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 )
 
 // VaultCredentialConversionContext carries pre-resolved secret values for
@@ -29,6 +30,26 @@ type VaultCredentialConversionContext struct {
 	AccessToken  string // mcp_oauth: resolved from AccessTokenSecretRef
 	RefreshToken string // mcp_oauth refresh: resolved from RefreshTokenSecretRef
 	ClientSecret string // mcp_oauth refresh: resolved from ClientSecretSecretRef
+}
+
+// ToConnectionDetails publishes all non-empty resolved secret values as
+// Crossplane connection details so consumers can access them via
+// spec.writeConnectionSecretToRef.
+func (cctx *VaultCredentialConversionContext) ToConnectionDetails() managed.ConnectionDetails {
+	cd := managed.ConnectionDetails{}
+	if cctx.BearerToken != "" {
+		cd["bearerToken"] = []byte(cctx.BearerToken)
+	}
+	if cctx.AccessToken != "" {
+		cd["accessToken"] = []byte(cctx.AccessToken)
+	}
+	if cctx.RefreshToken != "" {
+		cd["refreshToken"] = []byte(cctx.RefreshToken)
+	}
+	if cctx.ClientSecret != "" {
+		cd["clientSecret"] = []byte(cctx.ClientSecret)
+	}
+	return cd
 }
 
 func (r *VaultCredential) ToAnthropicNew(ctx *VaultCredentialConversionContext) (anthropic.BetaVaultCredentialNewParams, error) {

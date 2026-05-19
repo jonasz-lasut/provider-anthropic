@@ -142,8 +142,8 @@ func (in *AgentObservation) DeepCopyInto(out *AgentObservation) {
 		*out = new(AgentModelObservation)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.System != nil {
-		in, out := &in.System, &out.System
+	if in.SystemSha256 != nil {
+		in, out := &in.SystemSha256, &out.SystemSha256
 		*out = new(string)
 		**out = **in
 	}

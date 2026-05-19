@@ -147,9 +147,14 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	vc.SetConditions(xpv1.Available())
 
+	convCtx, err := resolveVCContext(ctx, e.kube, vc.Spec.ForProvider.Auth, vc.GetNamespace())
+	if err != nil {
+		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
+	}
 	return managed.ExternalObservation{
-		ResourceExists:   true,
-		ResourceUpToDate: isUpToDate(vc),
+		ResourceExists:    true,
+		ResourceUpToDate:  isUpToDate(vc),
+		ConnectionDetails: convCtx.ToConnectionDetails(),
 	}, nil
 }
 
@@ -180,7 +185,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	vc.Status.AtProvider.ID = &resp.ID
 	vc.Status.AtProvider.VaultID = &resp.VaultID
 
-	return managed.ExternalCreation{}, nil
+	return managed.ExternalCreation{ConnectionDetails: convCtx.ToConnectionDetails()}, nil
 }
 
 func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
@@ -210,7 +215,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
 
-	return managed.ExternalUpdate{}, nil
+	return managed.ExternalUpdate{ConnectionDetails: convCtx.ToConnectionDetails()}, nil
 }
 
 func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {

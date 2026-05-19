@@ -20,6 +20,8 @@ package agent
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 
@@ -143,10 +145,11 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	if err != nil {
 		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
 	}
-	upToDate := isUpToDate(ag, system)
+	convCtx := &betav1alpha1.AgentConversionContext{System: system}
 	return managed.ExternalObservation{
-		ResourceExists:   true,
-		ResourceUpToDate: upToDate,
+		ResourceExists:    true,
+		ResourceUpToDate:  isUpToDate(ag, system),
+		ConnectionDetails: convCtx.ToConnectionDetails(),
 	}, nil
 }
 
@@ -160,7 +163,8 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
 	}
-	params := ag.ToAnthropicNew(&betav1alpha1.AgentConversionContext{System: system})
+	convCtx := &betav1alpha1.AgentConversionContext{System: system}
+	params := ag.ToAnthropicNew(convCtx)
 	resp, err := e.client.Beta.Agents.New(ctx, params)
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
@@ -172,7 +176,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	meta.SetExternalName(ag, resp.ID)
 	ag.Status.AtProvider.ID = &resp.ID
 
-	return managed.ExternalCreation{}, nil
+	return managed.ExternalCreation{ConnectionDetails: convCtx.ToConnectionDetails()}, nil
 }
 
 func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
@@ -194,12 +198,13 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
-	params := ag.ToAnthropicUpdate(&betav1alpha1.AgentConversionContext{System: system})
+	convCtx := &betav1alpha1.AgentConversionContext{System: system}
+	params := ag.ToAnthropicUpdate(convCtx)
 	if _, err := e.client.Beta.Agents.Update(ctx, agentID, params); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
 
-	return managed.ExternalUpdate{}, nil
+	return managed.ExternalUpdate{ConnectionDetails: convCtx.ToConnectionDetails()}, nil
 }
 
 func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
@@ -253,9 +258,11 @@ func isUpToDate(ag *betav1alpha1.Agent, system string) bool {
 		return false
 	}
 
-	// SecretRef drift: compare resolved system prompt against observed value.
+	// SecretRef drift: compare SHA-256 of resolved system prompt against observed hash.
 	if system != "" {
-		if ag.Status.AtProvider.System == nil || system != *ag.Status.AtProvider.System {
+		sum := sha256.Sum256([]byte(system))
+		want := hex.EncodeToString(sum[:])
+		if ag.Status.AtProvider.SystemSha256 == nil || want != *ag.Status.AtProvider.SystemSha256 {
 			return false
 		}
 	}

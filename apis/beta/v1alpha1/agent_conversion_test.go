@@ -110,6 +110,11 @@ func TestAgentFromAnthropicObservation(t *testing.T) {
 	if r.Status.AtProvider.ArchivedAt != nil {
 		t.Errorf("ArchivedAt should be nil, got %v", r.Status.AtProvider.ArchivedAt)
 	}
+	// System must not be stored in status — only its SHA-256 digest.
+	wantHash := "518b67e652531c5fe7e25d6b2c3b4ef6224e7d90da2091967dd47eb082b26a19"
+	if r.Status.AtProvider.SystemSha256 == nil || *r.Status.AtProvider.SystemSha256 != wantHash {
+		t.Errorf("SystemSha256 = %v, want %q", r.Status.AtProvider.SystemSha256, wantHash)
+	}
 	if len(r.Status.AtProvider.MCPServers) != 1 || *r.Status.AtProvider.MCPServers[0].Name != "srv" {
 		t.Errorf("MCPServers = %v", r.Status.AtProvider.MCPServers)
 	}
