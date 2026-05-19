@@ -4,7 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.0
-    anthropic.crossplane.io/sdk-version: v1.43.0
+    anthropic.crossplane.io/sdk-version: v1.44.1
   name: environments.beta.anthropic.crossplane.io
 spec:
   group: beta.anthropic.crossplane.io
@@ -161,6 +161,15 @@ spec:
                       type: object
                     name:
                       description: 'Required: Name is the human-readable name for the environment.'
+                      type: string
+                    scope:
+                      description: |-
+                        Scope controls the visibility of the environment. "organization" makes it
+                        visible to all accounts; "account" restricts it to the owning account.
+                        Only applicable for self-hosted environments.
+                      enum:
+                        - organization
+                        - account
                       type: string
                   type: object
                 managementPolicies:
@@ -324,6 +333,9 @@ spec:
                       type: object
                     name:
                       description: Name is the observed human-readable environment name.
+                      type: string
+                    scope:
+                      description: Scope is the observed visibility scope of the environment.
                       type: string
                     updatedAt:
                       description: UpdatedAt is the RFC 3339 timestamp of the last modification.

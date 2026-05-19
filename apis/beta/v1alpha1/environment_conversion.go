@@ -33,7 +33,11 @@ func (r *Environment) ToAnthropicNew() anthropic.BetaEnvironmentNewParams {
 		params.Metadata = p.Metadata
 	}
 	if p.Config != nil {
-		params.Config = envCloudConfigToParam(p.Config)
+		cfg := envCloudConfigToParam(p.Config)
+		params.Config = anthropic.BetaEnvironmentNewParamsConfigUnion{OfCloud: &cfg}
+	}
+	if p.Scope != nil {
+		params.Scope = anthropic.BetaEnvironmentNewParamsScope(*p.Scope)
 	}
 	return params
 }
@@ -51,7 +55,11 @@ func (r *Environment) ToAnthropicUpdate() anthropic.BetaEnvironmentUpdateParams 
 		params.Metadata = p.Metadata
 	}
 	if p.Config != nil {
-		params.Config = envCloudConfigToParam(p.Config)
+		cfg := envCloudConfigToParam(p.Config)
+		params.Config = anthropic.BetaEnvironmentUpdateParamsConfigUnion{OfCloud: &cfg}
+	}
+	if p.Scope != nil {
+		params.Scope = anthropic.BetaEnvironmentUpdateParamsScope(*p.Scope)
 	}
 	return params
 }
@@ -64,6 +72,9 @@ func (r *Environment) FromAnthropicObservation(resp anthropic.BetaEnvironment) {
 	r.Status.AtProvider.CreatedAt = &resp.CreatedAt
 	r.Status.AtProvider.UpdatedAt = &resp.UpdatedAt
 	// ArchivedAt intentionally omitted
+	if scope := string(resp.Scope); scope != "" {
+		r.Status.AtProvider.Scope = &scope
+	}
 	netType := resp.Config.Networking.Type
 	net := &EnvironmentNetworkingConfig{Type: &netType}
 	if netType == "limited" {

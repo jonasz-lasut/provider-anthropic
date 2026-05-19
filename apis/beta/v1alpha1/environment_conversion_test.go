@@ -29,7 +29,7 @@ func TestEnvironmentToAnthropicNew(t *testing.T) {
 	if p.Description.Value != "test environment" {
 		t.Errorf("Description = %q", p.Description.Value)
 	}
-	if p.Config.Networking.OfUnrestricted == nil {
+	if p.Config.OfCloud == nil || p.Config.OfCloud.Networking.OfUnrestricted == nil {
 		t.Errorf("expected unrestricted networking")
 	}
 	if p.Metadata["k"] != "v" {
@@ -61,11 +61,11 @@ func TestEnvironmentToAnthropicUpdate(t *testing.T) {
 	if p.Metadata["x"] != "y" {
 		t.Errorf("Metadata = %v", p.Metadata)
 	}
-	if p.Config.Networking.OfLimited == nil {
+	if p.Config.OfCloud == nil || p.Config.OfCloud.Networking.OfLimited == nil {
 		t.Fatalf("expected limited networking")
 	}
-	if len(p.Config.Networking.OfLimited.AllowedHosts) != 1 {
-		t.Errorf("AllowedHosts = %v", p.Config.Networking.OfLimited.AllowedHosts)
+	if len(p.Config.OfCloud.Networking.OfLimited.AllowedHosts) != 1 {
+		t.Errorf("AllowedHosts = %v", p.Config.OfCloud.Networking.OfLimited.AllowedHosts)
 	}
 }
 
@@ -77,7 +77,7 @@ func TestEnvironmentFromAnthropicObservation(t *testing.T) {
 		Metadata:    map[string]string{"k": "v"},
 		CreatedAt:   "2025-01-01T00:00:00Z",
 		UpdatedAt:   "2025-01-02T00:00:00Z",
-		Config: anthropic.BetaCloudConfig{
+		Config: anthropic.BetaEnvironmentConfigUnion{
 			Networking: anthropic.BetaCloudConfigNetworkingUnion{
 				Type:            "limited",
 				AllowMCPServers: true,
