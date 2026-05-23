@@ -19,10 +19,12 @@ package v1alpha1
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // AgentConversionContext carries reconcile-time values needed for Agent SDK
@@ -162,9 +164,27 @@ func (r *Agent) FromAnthropicObservation(resp anthropic.BetaManagedAgentsAgent) 
 	r.Status.AtProvider.Tools = nil
 	for _, t := range resp.Tools {
 		toolType := t.Type
-		r.Status.AtProvider.Tools = append(r.Status.AtProvider.Tools, AgentToolConfig{
-			Type: &toolType,
-		})
+		cfg := AgentToolConfig{Type: &toolType}
+		switch toolType {
+		case "mcp_toolset":
+			mcpName := t.MCPServerName
+			cfg.MCPServerName = &mcpName
+		case "custom":
+			name, desc := t.Name, t.Description
+			cfg.Name = &name
+			cfg.Description = &desc
+			if t.InputSchema.RawJSON() != "" {
+				schema := &AgentCustomToolInputSchema{
+					Required: t.InputSchema.Required,
+				}
+				if t.InputSchema.Properties != nil {
+					raw, _ := json.Marshal(t.InputSchema.Properties)
+					schema.Properties = runtime.RawExtension{Raw: raw}
+				}
+				cfg.InputSchema = schema
+			}
+		}
+		r.Status.AtProvider.Tools = append(r.Status.AtProvider.Tools, cfg)
 	}
 
 	createdAt := resp.CreatedAt.Format(time.RFC3339)
@@ -203,18 +223,108 @@ func agentSkillToParam(s AgentSkillConfig) anthropic.BetaManagedAgentsSkillParam
 	}
 }
 
-func agentToolToNewParam(_ AgentToolConfig) anthropic.BetaAgentNewParamsToolUnion {
-	return anthropic.BetaAgentNewParamsToolUnion{
-		OfAgentToolset20260401: &anthropic.BetaManagedAgentsAgentToolset20260401Params{
-			Type: anthropic.BetaManagedAgentsAgentToolset20260401ParamsTypeAgentToolset20260401,
-		},
+func agentToolToNewParam(t AgentToolConfig) anthropic.BetaAgentNewParamsToolUnion {
+	toolType := ""
+	if t.Type != nil {
+		toolType = *t.Type
+	}
+	switch toolType {
+	case "mcp_toolset":
+		mcpName := ""
+		if t.MCPServerName != nil {
+			mcpName = *t.MCPServerName
+		}
+		return anthropic.BetaAgentNewParamsToolUnion{
+			OfMCPToolset: &anthropic.BetaManagedAgentsMCPToolsetParams{
+				MCPServerName: mcpName,
+				Type:          anthropic.BetaManagedAgentsMCPToolsetParamsTypeMCPToolset,
+			},
+		}
+	case "custom":
+		name, desc := "", ""
+		if t.Name != nil {
+			name = *t.Name
+		}
+		if t.Description != nil {
+			desc = *t.Description
+		}
+		inputSchema := anthropic.BetaManagedAgentsCustomToolInputSchemaParam{
+			Type: anthropic.BetaManagedAgentsCustomToolInputSchemaTypeObject,
+		}
+		if t.InputSchema != nil {
+			if len(t.InputSchema.Properties.Raw) > 0 {
+				var props map[string]any
+				_ = json.Unmarshal(t.InputSchema.Properties.Raw, &props)
+				inputSchema.Properties = props
+			}
+			inputSchema.Required = t.InputSchema.Required
+		}
+		return anthropic.BetaAgentNewParamsToolUnion{
+			OfCustom: &anthropic.BetaManagedAgentsCustomToolParams{
+				Name:        name,
+				Description: desc,
+				InputSchema: inputSchema,
+				Type:        anthropic.BetaManagedAgentsCustomToolParamsTypeCustom,
+			},
+		}
+	default:
+		return anthropic.BetaAgentNewParamsToolUnion{
+			OfAgentToolset20260401: &anthropic.BetaManagedAgentsAgentToolset20260401Params{
+				Type: anthropic.BetaManagedAgentsAgentToolset20260401ParamsTypeAgentToolset20260401,
+			},
+		}
 	}
 }
 
-func agentToolToUpdateParam(_ AgentToolConfig) anthropic.BetaAgentUpdateParamsToolUnion {
-	return anthropic.BetaAgentUpdateParamsToolUnion{
-		OfAgentToolset20260401: &anthropic.BetaManagedAgentsAgentToolset20260401Params{
-			Type: anthropic.BetaManagedAgentsAgentToolset20260401ParamsTypeAgentToolset20260401,
-		},
+func agentToolToUpdateParam(t AgentToolConfig) anthropic.BetaAgentUpdateParamsToolUnion {
+	toolType := ""
+	if t.Type != nil {
+		toolType = *t.Type
+	}
+	switch toolType {
+	case "mcp_toolset":
+		mcpName := ""
+		if t.MCPServerName != nil {
+			mcpName = *t.MCPServerName
+		}
+		return anthropic.BetaAgentUpdateParamsToolUnion{
+			OfMCPToolset: &anthropic.BetaManagedAgentsMCPToolsetParams{
+				MCPServerName: mcpName,
+				Type:          anthropic.BetaManagedAgentsMCPToolsetParamsTypeMCPToolset,
+			},
+		}
+	case "custom":
+		name, desc := "", ""
+		if t.Name != nil {
+			name = *t.Name
+		}
+		if t.Description != nil {
+			desc = *t.Description
+		}
+		inputSchema := anthropic.BetaManagedAgentsCustomToolInputSchemaParam{
+			Type: anthropic.BetaManagedAgentsCustomToolInputSchemaTypeObject,
+		}
+		if t.InputSchema != nil {
+			if len(t.InputSchema.Properties.Raw) > 0 {
+				var props map[string]any
+				_ = json.Unmarshal(t.InputSchema.Properties.Raw, &props)
+				inputSchema.Properties = props
+			}
+			inputSchema.Required = t.InputSchema.Required
+		}
+		return anthropic.BetaAgentUpdateParamsToolUnion{
+			OfCustom: &anthropic.BetaManagedAgentsCustomToolParams{
+				Name:        name,
+				Description: desc,
+				InputSchema: inputSchema,
+				Type:        anthropic.BetaManagedAgentsCustomToolParamsTypeCustom,
+			},
+		}
+	default:
+		return anthropic.BetaAgentUpdateParamsToolUnion{
+			OfAgentToolset20260401: &anthropic.BetaManagedAgentsAgentToolset20260401Params{
+				Type: anthropic.BetaManagedAgentsAgentToolset20260401ParamsTypeAgentToolset20260401,
+			},
+		}
 	}
 }
