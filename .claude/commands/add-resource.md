@@ -4,6 +4,28 @@ Argument: $ARGUMENTS (one or more SDK resource names, e.g. "Environment" or "Env
 
 When multiple resources are passed (comma- or space-separated), run **steps 1–6 for each resource in turn**, then run **step 7 exactly once at the end** for the whole batch. Regeneration and `local-deploy` are repository-wide and there's no benefit to running them per-resource — running them once at the end also surfaces inter-resource issues (e.g. cross-references between newly added types) in a single pass.
 
+## Step 0 — Check for a resource-specific overlay
+
+Before doing anything else, derive the overlay path for this resource:
+
+```
+OVERLAY_PATH="docs/overlays/<lowercase-resource>.md"
+```
+
+Check whether the file exists:
+
+```bash
+ls docs/overlays/<lowercase-resource>.md 2>/dev/null && echo "OVERLAY FOUND" || echo "no overlay"
+```
+
+**If the file exists:** read it in full now. The overlay documents every
+deviation this resource requires from the standard procedure below. Overlay
+instructions take precedence over the matching standard steps. Keep the
+overlay content in mind while executing Steps 1–6 — wherever the overlay
+contradicts a step, follow the overlay.
+
+**If no file exists:** proceed with the standard steps unchanged.
+
 ## Step 1 — Understand the SDK surface
 
 Find the current SDK version and module cache location:

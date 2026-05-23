@@ -116,3 +116,31 @@ func TestResolveLocalSecretKey_KeyMissing(t *testing.T) {
 		t.Fatalf("error should name the key, got %v", err)
 	}
 }
+
+func TestGetSecretData(t *testing.T) {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "my-secret", Namespace: "default"},
+		Data: map[string][]byte{
+			"myskill/SKILL.md":  []byte("# My Skill"),
+			"myskill/helper.py": []byte("print('hi')"),
+		},
+	}
+	kube := fake.NewClientBuilder().WithScheme(newScheme(t)).WithObjects(secret).Build()
+
+	got, err := GetSecretData(context.Background(), kube, "my-secret", "default")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 keys, got %d", len(got))
+	}
+	if string(got["myskill/SKILL.md"]) != "# My Skill" {
+		t.Errorf("unexpected value for SKILL.md: %q", got["myskill/SKILL.md"])
+	}
+
+	// Missing secret returns error
+	_, err = GetSecretData(context.Background(), kube, "no-such-secret", "default")
+	if err == nil {
+		t.Error("expected error for missing secret")
+	}
+}

@@ -54,3 +54,17 @@ func ResolveLocalSecretKey(
 	}
 	return string(v), nil
 }
+
+// GetSecretData fetches the Secret with the given name in the given namespace
+// and returns its full Data map. Returns an error if the Secret does not exist.
+func GetSecretData(
+	ctx context.Context,
+	kube client.Client,
+	name, namespace string,
+) (map[string][]byte, error) {
+	var s corev1.Secret
+	if err := kube.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &s); err != nil {
+		return nil, xperrors.Wrapf(err, "secret %q in namespace %q", name, namespace)
+	}
+	return s.Data, nil
+}
