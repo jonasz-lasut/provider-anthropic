@@ -5,6 +5,7 @@ import (
 	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	. "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
 )
@@ -65,6 +66,139 @@ func TestAgentToAnthropicUpdate(t *testing.T) {
 	}
 	if p.Name.Value != "updated" {
 		t.Errorf("Name = %q, want %q", p.Name.Value, "updated")
+	}
+}
+
+func TestAgentToAnthropicNew_MCPTool(t *testing.T) {
+	r := &Agent{
+		Spec: AgentSpec{ForProvider: AgentParameters{
+			Name: ptr("a"),
+			Tools: []AgentToolConfig{
+				{Type: ptr("mcp_toolset"), MCPServerName: ptr("my-mcp-server")},
+			},
+		}},
+	}
+	p := r.ToAnthropicNew(nil)
+	if len(p.Tools) != 1 {
+		t.Fatalf("Tools len = %d, want 1", len(p.Tools))
+	}
+	tool := p.Tools[0]
+	if tool.OfMCPToolset == nil {
+		t.Fatalf("OfMCPToolset is nil, got %+v", tool)
+	}
+	if tool.OfMCPToolset.MCPServerName != "my-mcp-server" {
+		t.Errorf("MCPServerName = %q, want %q", tool.OfMCPToolset.MCPServerName, "my-mcp-server")
+	}
+}
+
+func TestAgentToAnthropicNew_CustomTool(t *testing.T) {
+	r := &Agent{
+		Spec: AgentSpec{ForProvider: AgentParameters{
+			Name: ptr("a"),
+			Tools: []AgentToolConfig{
+				{
+					Type:        ptr("custom"),
+					Name:        ptr("my-tool"),
+					Description: ptr("does stuff"),
+					InputSchema: &AgentCustomToolInputSchema{
+						Properties: runtime.RawExtension{Raw: []byte(`{"arg":{"type":"string"}}`)},
+						Required:   []string{"arg"},
+					},
+				},
+			},
+		}},
+	}
+	p := r.ToAnthropicNew(nil)
+	if len(p.Tools) != 1 {
+		t.Fatalf("Tools len = %d, want 1", len(p.Tools))
+	}
+	tool := p.Tools[0]
+	if tool.OfCustom == nil {
+		t.Fatalf("OfCustom is nil, got %+v", tool)
+	}
+	if tool.OfCustom.Name != "my-tool" {
+		t.Errorf("Name = %q, want %q", tool.OfCustom.Name, "my-tool")
+	}
+	if tool.OfCustom.Description != "does stuff" {
+		t.Errorf("Description = %q, want %q", tool.OfCustom.Description, "does stuff")
+	}
+}
+
+func TestAgentToAnthropicUpdate_MCPTool(t *testing.T) {
+	ver := int64(1)
+	r := &Agent{
+		Spec:   AgentSpec{ForProvider: AgentParameters{Name: ptr("a"), Tools: []AgentToolConfig{{Type: ptr("mcp_toolset"), MCPServerName: ptr("srv")}}}},
+		Status: AgentStatus{AtProvider: AgentObservation{Version: &ver}},
+	}
+	p := r.ToAnthropicUpdate(nil)
+	if len(p.Tools) != 1 || p.Tools[0].OfMCPToolset == nil {
+		t.Fatalf("expected OfMCPToolset, got %+v", p.Tools)
+	}
+	if p.Tools[0].OfMCPToolset.MCPServerName != "srv" {
+		t.Errorf("MCPServerName = %q, want %q", p.Tools[0].OfMCPToolset.MCPServerName, "srv")
+	}
+}
+
+func TestAgentToAnthropicUpdate_CustomTool(t *testing.T) {
+	ver := int64(1)
+	r := &Agent{
+		Spec: AgentSpec{ForProvider: AgentParameters{
+			Name: ptr("a"),
+			Tools: []AgentToolConfig{{
+				Type: ptr("custom"), Name: ptr("t"), Description: ptr("d"),
+				InputSchema: &AgentCustomToolInputSchema{},
+			}},
+		}},
+		Status: AgentStatus{AtProvider: AgentObservation{Version: &ver}},
+	}
+	p := r.ToAnthropicUpdate(nil)
+	if len(p.Tools) != 1 || p.Tools[0].OfCustom == nil {
+		t.Fatalf("expected OfCustom, got %+v", p.Tools)
+	}
+}
+
+func TestAgentFromAnthropicObservation_MCPTool(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	resp := anthropic.BetaManagedAgentsAgent{
+		ID: "x", Name: "n", Version: 1,
+		CreatedAt: now, UpdatedAt: now,
+		Model: anthropic.BetaManagedAgentsModelConfig{ID: "claude-opus-4-7"},
+		Tools: []anthropic.BetaManagedAgentsAgentToolUnion{
+			{Type: "mcp_toolset", MCPServerName: "my-srv"},
+		},
+	}
+	r := &Agent{}
+	r.FromAnthropicObservation(resp)
+	if len(r.Status.AtProvider.Tools) != 1 {
+		t.Fatalf("Tools len = %d, want 1", len(r.Status.AtProvider.Tools))
+	}
+	tool := r.Status.AtProvider.Tools[0]
+	if tool.MCPServerName == nil || *tool.MCPServerName != "my-srv" {
+		t.Errorf("MCPServerName = %v, want %q", tool.MCPServerName, "my-srv")
+	}
+}
+
+func TestAgentFromAnthropicObservation_CustomTool(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	resp := anthropic.BetaManagedAgentsAgent{
+		ID: "x", Name: "n", Version: 1,
+		CreatedAt: now, UpdatedAt: now,
+		Model: anthropic.BetaManagedAgentsModelConfig{ID: "claude-opus-4-7"},
+		Tools: []anthropic.BetaManagedAgentsAgentToolUnion{
+			{Type: "custom", Name: "my-tool", Description: "desc"},
+		},
+	}
+	r := &Agent{}
+	r.FromAnthropicObservation(resp)
+	if len(r.Status.AtProvider.Tools) != 1 {
+		t.Fatalf("Tools len = %d, want 1", len(r.Status.AtProvider.Tools))
+	}
+	tool := r.Status.AtProvider.Tools[0]
+	if tool.Name == nil || *tool.Name != "my-tool" {
+		t.Errorf("Name = %v, want %q", tool.Name, "my-tool")
+	}
+	if tool.Description == nil || *tool.Description != "desc" {
+		t.Errorf("Description = %v, want %q", tool.Description, "desc")
 	}
 }
 

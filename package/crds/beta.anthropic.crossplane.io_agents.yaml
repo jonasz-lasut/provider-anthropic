@@ -135,13 +135,41 @@ spec:
                       items:
                         description: AgentToolConfig configures a single tool (toolset) for an agent.
                         properties:
+                          description:
+                            description: Description of the custom tool for type "custom". 1-1024 characters.
+                            maxLength: 1024
+                            type: string
+                          inputSchema:
+                            description: |-
+                              InputSchema is the JSON Schema for the custom tool's input parameters.
+                              Required for type "custom".
+                            properties:
+                              properties:
+                                description: Properties defines the input parameter schemas as raw JSON values.
+                                type: object
+                                x-kubernetes-preserve-unknown-fields: true
+                              required:
+                                description: Required lists required property names.
+                                items:
+                                  type: string
+                                type: array
+                            type: object
+                          mcpServerName:
+                            description: |-
+                              MCPServerName is the MCP server name for type "mcp_toolset".
+                              Must match a server name from the mcpServers array. 1-255 characters.
+                            maxLength: 255
+                            type: string
                           name:
-                            description: Name is the toolset name as recognised by the Anthropic API.
+                            description: Name is the unique tool name for type "custom". 1-128 characters.
+                            maxLength: 128
                             type: string
                           type:
-                            description: |-
-                              Required: Type identifies the toolset kind; currently only
-                              "agent_toolset_20260401" is supported for the standard Anthropic toolset.
+                            description: 'Type identifies the toolset kind: "agent_toolset_20260401", "mcp_toolset", or "custom".'
+                            enum:
+                              - agent_toolset_20260401
+                              - mcp_toolset
+                              - custom
                             type: string
                         type: object
                       maxItems: 128
@@ -280,13 +308,41 @@ spec:
                       items:
                         description: AgentToolConfig configures a single tool (toolset) for an agent.
                         properties:
+                          description:
+                            description: Description of the custom tool for type "custom". 1-1024 characters.
+                            maxLength: 1024
+                            type: string
+                          inputSchema:
+                            description: |-
+                              InputSchema is the JSON Schema for the custom tool's input parameters.
+                              Required for type "custom".
+                            properties:
+                              properties:
+                                description: Properties defines the input parameter schemas as raw JSON values.
+                                type: object
+                                x-kubernetes-preserve-unknown-fields: true
+                              required:
+                                description: Required lists required property names.
+                                items:
+                                  type: string
+                                type: array
+                            type: object
+                          mcpServerName:
+                            description: |-
+                              MCPServerName is the MCP server name for type "mcp_toolset".
+                              Must match a server name from the mcpServers array. 1-255 characters.
+                            maxLength: 255
+                            type: string
                           name:
-                            description: Name is the toolset name as recognised by the Anthropic API.
+                            description: Name is the unique tool name for type "custom". 1-128 characters.
+                            maxLength: 128
                             type: string
                           type:
-                            description: |-
-                              Required: Type identifies the toolset kind; currently only
-                              "agent_toolset_20260401" is supported for the standard Anthropic toolset.
+                            description: 'Type identifies the toolset kind: "agent_toolset_20260401", "mcp_toolset", or "custom".'
+                            enum:
+                              - agent_toolset_20260401
+                              - mcp_toolset
+                              - custom
                             type: string
                         type: object
                       type: array

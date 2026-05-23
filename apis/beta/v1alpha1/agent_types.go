@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	v2 "github.com/crossplane/crossplane-runtime/v2/apis/common/v2"
@@ -93,14 +94,42 @@ type AgentSkillConfig struct {
 
 // AgentToolConfig configures a single tool (toolset) for an agent.
 type AgentToolConfig struct {
-	// Required: Type identifies the toolset kind; currently only
-	// "agent_toolset_20260401" is supported for the standard Anthropic toolset.
+	// Type identifies the toolset kind: "agent_toolset_20260401", "mcp_toolset", or "custom".
 	// +optional
+	// +kubebuilder:validation:Enum=agent_toolset_20260401;mcp_toolset;custom
 	Type *string `json:"type,omitempty"`
 
-	// Name is the toolset name as recognised by the Anthropic API.
+	// MCPServerName is the MCP server name for type "mcp_toolset".
+	// Must match a server name from the mcpServers array. 1-255 characters.
 	// +optional
+	// +kubebuilder:validation:MaxLength=255
+	MCPServerName *string `json:"mcpServerName,omitempty"`
+
+	// Name is the unique tool name for type "custom". 1-128 characters.
+	// +optional
+	// +kubebuilder:validation:MaxLength=128
 	Name *string `json:"name,omitempty"`
+
+	// Description of the custom tool for type "custom". 1-1024 characters.
+	// +optional
+	// +kubebuilder:validation:MaxLength=1024
+	Description *string `json:"description,omitempty"`
+
+	// InputSchema is the JSON Schema for the custom tool's input parameters.
+	// Required for type "custom".
+	// +optional
+	InputSchema *AgentCustomToolInputSchema `json:"inputSchema,omitempty"`
+}
+
+// AgentCustomToolInputSchema defines the JSON Schema for a custom tool's input.
+type AgentCustomToolInputSchema struct {
+	// Properties defines the input parameter schemas as raw JSON values.
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +optional
+	Properties runtime.RawExtension `json:"properties,omitempty"`
+	// Required lists required property names.
+	// +optional
+	Required []string `json:"required,omitempty"`
 }
 
 // AgentModelObservation is the observed model configuration returned by the API.
