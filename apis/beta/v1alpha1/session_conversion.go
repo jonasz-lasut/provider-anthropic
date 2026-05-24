@@ -22,7 +22,18 @@ import (
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 )
 
-func (r *Session) ToAnthropicNew() anthropic.BetaSessionNewParams {
+// SessionConversionContext carries reconcile-time values needed for Session
+// SDK param construction. Pass nil when no secret resolution is needed.
+//
+// ResourceTokens is indexed positionally against SessionParameters.Resources:
+// ResourceTokens[i] is the resolved authorization token for Resources[i].
+// For non-github_repository resources or resources without a SecretRef the
+// entry is "".
+type SessionConversionContext struct {
+	ResourceTokens []string
+}
+
+func (r *Session) ToAnthropicNew(ctx *SessionConversionContext) anthropic.BetaSessionNewParams {
 	p := r.Spec.ForProvider
 	params := anthropic.BetaSessionNewParams{}
 
@@ -50,8 +61,12 @@ func (r *Session) ToAnthropicNew() anthropic.BetaSessionNewParams {
 		params.Metadata = p.Metadata
 	}
 	params.VaultIDs = p.VaultIDs
-	for _, res := range p.Resources {
-		params.Resources = append(params.Resources, sessionResourceToParam(res))
+	for i, res := range p.Resources {
+		token := ""
+		if ctx != nil && i < len(ctx.ResourceTokens) {
+			token = ctx.ResourceTokens[i]
+		}
+		params.Resources = append(params.Resources, sessionResourceToParam(res, token))
 	}
 	return params
 }
@@ -85,7 +100,7 @@ func (r *Session) FromAnthropicObservation(resp anthropic.BetaManagedAgentsSessi
 	// ArchivedAt intentionally omitted
 }
 
-func sessionResourceToParam(res SessionResource) anthropic.BetaSessionNewParamsResourceUnion {
+func sessionResourceToParam(res SessionResource, authToken string) anthropic.BetaSessionNewParamsResourceUnion {
 	resType := ""
 	if res.Type != nil {
 		resType = *res.Type
@@ -98,8 +113,8 @@ func sessionResourceToParam(res SessionResource) anthropic.BetaSessionNewParamsR
 		if res.URL != nil {
 			ghParams.URL = *res.URL
 		}
-		if res.AuthorizationToken != nil {
-			ghParams.AuthorizationToken = *res.AuthorizationToken
+		if authToken != "" {
+			ghParams.AuthorizationToken = authToken
 		}
 		if res.MountPath != nil {
 			ghParams.MountPath = anthropic.String(*res.MountPath)

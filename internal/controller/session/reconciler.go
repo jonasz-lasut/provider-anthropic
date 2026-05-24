@@ -99,12 +99,13 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, xperrors.Wrap(err, errNewClient)
 	}
 
-	return &external{client: cl}, nil
+	return &external{client: cl, kube: c.kube}, nil
 }
 
 // external implements managed.ExternalClient for Anthropic Sessions.
 type external struct {
 	client *anthropic.Client
+	kube   client.Client
 }
 
 func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
@@ -151,7 +152,12 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, xperrors.New(errNotSession)
 	}
 
-	params := sess.ToAnthropicNew()
+	cctx, err := resolveSessionContext(ctx, e.kube, sess)
+	if err != nil {
+		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
+	}
+
+	params := sess.ToAnthropicNew(cctx)
 	resp, err := e.client.Beta.Sessions.New(ctx, params)
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
@@ -241,4 +247,22 @@ func isUpToDate(sess *betav1alpha1.Session) bool {
 		return true
 	}
 	return clients.IsSubsetEqual(fp, ap)
+}
+
+// resolveSessionContext pre-resolves the per-resource Kubernetes secrets
+// referenced by ForProvider.Resources[*].AuthorizationTokenSecretRef into a
+// SessionConversionContext. Called from Create only; Resources are immutable
+// post-creation so Update never re-resolves.
+func resolveSessionContext(ctx context.Context, kube client.Client, sess *betav1alpha1.Session) (*betav1alpha1.SessionConversionContext, error) {
+	cctx := &betav1alpha1.SessionConversionContext{
+		ResourceTokens: make([]string, len(sess.Spec.ForProvider.Resources)),
+	}
+	for i, res := range sess.Spec.ForProvider.Resources {
+		token, err := clients.ResolveLocalSecretKey(ctx, kube, res.AuthorizationTokenSecretRef, sess.GetNamespace())
+		if err != nil {
+			return nil, err
+		}
+		cctx.ResourceTokens[i] = token
+	}
+	return cctx, nil
 }

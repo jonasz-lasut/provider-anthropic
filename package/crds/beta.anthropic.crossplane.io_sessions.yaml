@@ -275,9 +275,22 @@ spec:
                               - read_write
                               - read_only
                             type: string
-                          authorizationToken:
-                            description: AuthorizationToken is the GitHub auth token (github_repository type).
-                            type: string
+                          authorizationTokenSecretRef:
+                            description: |-
+                              AuthorizationTokenSecretRef references a Secret in the MR's namespace
+                              holding the GitHub authorization token used to clone the repository
+                              (github_repository type). The token is resolved at reconcile time and
+                              never stored in status.atProvider.
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                description: Name of the secret.
+                                type: string
+                            required:
+                              - key
+                              - name
+                            type: object
                           checkout:
                             description: |-
                               Checkout specifies the branch or commit to check out (github_repository type).
