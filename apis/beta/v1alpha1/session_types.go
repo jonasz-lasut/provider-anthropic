@@ -53,9 +53,12 @@ type SessionResource struct {
 	// +optional
 	URL *string `json:"url,omitempty"`
 
-	// AuthorizationToken is the GitHub auth token (github_repository type).
+	// AuthorizationTokenSecretRef references a Secret in the MR's namespace
+	// holding the GitHub authorization token used to clone the repository
+	// (github_repository type). The token is resolved at reconcile time and
+	// never stored in status.atProvider.
 	// +optional
-	AuthorizationToken *string `json:"authorizationToken,omitempty"`
+	AuthorizationTokenSecretRef *xpv1.LocalSecretKeySelector `json:"authorizationTokenSecretRef,omitempty"`
 
 	// MountPath is where to mount the resource in the container.
 	// Defaults to /workspace/<repo-name> for github_repository and

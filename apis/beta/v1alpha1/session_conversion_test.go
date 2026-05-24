@@ -5,11 +5,12 @@ import (
 	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
+	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 
 	. "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
 )
 
-func TestSessionToAnthropicNew(t *testing.T) {
+func TestSessionToAnthropicNew_BasicFields(t *testing.T) {
 	agentID := "agt_123"
 	r := &Session{
 		Spec: SessionSpec{ForProvider: SessionParameters{
@@ -19,12 +20,61 @@ func TestSessionToAnthropicNew(t *testing.T) {
 			VaultIDs: []string{"vlt_1"},
 		}},
 	}
-	p := r.ToAnthropicNew()
+	p := r.ToAnthropicNew(&SessionConversionContext{})
 	if p.Title.Value != "my-session" {
 		t.Errorf("Title = %q, want %q", p.Title.Value, "my-session")
 	}
 	if len(p.VaultIDs) != 1 || p.VaultIDs[0] != "vlt_1" {
 		t.Errorf("VaultIDs = %v", p.VaultIDs)
+	}
+}
+
+func TestSessionToAnthropicNew_GitHubRepositoryUsesResolvedToken(t *testing.T) {
+	r := &Session{
+		Spec: SessionSpec{ForProvider: SessionParameters{
+			Resources: []SessionResource{{
+				Type: ptr("github_repository"),
+				URL:  ptr("https://github.com/org/repo"),
+				AuthorizationTokenSecretRef: &xpv1.LocalSecretKeySelector{
+					LocalSecretReference: xpv1.LocalSecretReference{Name: "tok"},
+					Key:                  "token",
+				},
+			}},
+		}},
+	}
+	cctx := &SessionConversionContext{ResourceTokens: []string{"ghp_resolved"}}
+	p := r.ToAnthropicNew(cctx)
+	if len(p.Resources) != 1 {
+		t.Fatalf("Resources len = %d, want 1", len(p.Resources))
+	}
+	gh := p.Resources[0].OfGitHubRepository
+	if gh == nil {
+		t.Fatalf("Resources[0].OfGitHubRepository is nil")
+	}
+	if gh.AuthorizationToken != "ghp_resolved" {
+		t.Errorf("AuthorizationToken = %q, want ghp_resolved", gh.AuthorizationToken)
+	}
+	if gh.URL != "https://github.com/org/repo" {
+		t.Errorf("URL = %q", gh.URL)
+	}
+}
+
+func TestSessionToAnthropicNew_NoTokenWhenContextEmpty(t *testing.T) {
+	r := &Session{
+		Spec: SessionSpec{ForProvider: SessionParameters{
+			Resources: []SessionResource{{
+				Type: ptr("github_repository"),
+				URL:  ptr("https://github.com/org/repo"),
+			}},
+		}},
+	}
+	p := r.ToAnthropicNew(&SessionConversionContext{})
+	gh := p.Resources[0].OfGitHubRepository
+	if gh == nil {
+		t.Fatalf("Resources[0].OfGitHubRepository is nil")
+	}
+	if gh.AuthorizationToken != "" {
+		t.Errorf("AuthorizationToken = %q, want empty", gh.AuthorizationToken)
 	}
 }
 
@@ -76,3 +126,4 @@ func TestSessionFromAnthropicObservation(t *testing.T) {
 		t.Errorf("VaultIDs = %v", r.Status.AtProvider.VaultIDs)
 	}
 }
+
