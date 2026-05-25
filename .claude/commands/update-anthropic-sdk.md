@@ -139,11 +139,16 @@ Fix all errors. Common patterns:
 ## Step 7 — Regenerate manifests
 
 ```bash
-go tool controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./apis/..."
-go tool controller-gen crd paths="./apis/..." output:crd:artifacts:config=package/crds
+make generate
 ```
 
-## Step 8 — Report changes
+## Step 8 - Validate code quality
+
+```bash
+make reviewable
+```
+
+## Step 9 — Report changes
 
 Summarize:
 - Old SDK version → new SDK version
