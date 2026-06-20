@@ -55,7 +55,10 @@ spec:
                 Anthropic API.
               properties:
                 credentials:
-                  description: Credentials required to authenticate to the Anthropic API.
+                  description: |-
+                    Credentials required to authenticate to the Anthropic API. The resolved
+                    credential payload must be a JSON object whose fields depend on the
+                    configured identity type, e.g. {"api_key": "sk-ant-..."} for APIKey.
                   properties:
                     env:
                       description: |-
@@ -110,8 +113,23 @@ spec:
                   required:
                     - source
                   type: object
+                identity:
+                  description: Identity specifies how the provider authenticates to the Anthropic API.
+                  properties:
+                    type:
+                      description: |-
+                        Type of identity used to authenticate to the Anthropic API.
+                        APIKey: authenticate using a static API key read from the "api_key"
+                        field of the JSON credentials payload.
+                      enum:
+                        - APIKey
+                      type: string
+                  required:
+                    - type
+                  type: object
               required:
                 - credentials
+                - identity
               type: object
             status:
               description: ProviderConfigStatus represents the observed state of a ProviderConfig.

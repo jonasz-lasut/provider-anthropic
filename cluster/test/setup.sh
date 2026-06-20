@@ -20,5 +20,7 @@ spec:
       name: provider-secret
       namespace: crossplane-system
       key: credentials
+  identity:
+    type: APIKey
 EOF
 fi

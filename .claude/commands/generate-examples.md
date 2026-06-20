@@ -115,7 +115,11 @@ spec:
       name: anthropic-credentials
       namespace: crossplane-system
       key: credentials
+  identity:
+    type: APIKey
 ```
+
+`spec.identity` is required. `APIKey` is currently the only supported identity type.
 
 They differ only in metadata:
 
@@ -152,10 +156,11 @@ metadata:
   namespace: crossplane-system
 type: Opaque
 stringData:
-  credentials: "REPLACE_WITH_ANTHROPIC_API_KEY"
+  credentials: '{"api_key":"REPLACE_WITH_ANTHROPIC_API_KEY"}'
 ```
 
-The placeholder API key is the only field the operator must edit before applying.
+The credential value is a JSON object; for the `APIKey` identity it must contain an `api_key`
+field. The placeholder API key is the only field the operator must edit before applying.
 
 ## Step 5 — Verify
 

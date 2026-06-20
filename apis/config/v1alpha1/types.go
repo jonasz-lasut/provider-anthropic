@@ -26,17 +26,43 @@ import (
 // ProviderConfigSpec defines the credentials for authenticating to the
 // Anthropic API.
 type ProviderConfigSpec struct {
-	// Credentials required to authenticate to the Anthropic API.
+	// Credentials required to authenticate to the Anthropic API. The resolved
+	// credential payload must be a JSON object whose fields depend on the
+	// configured identity type, e.g. {"api_key": "sk-ant-..."} for APIKey.
 	Credentials ProviderCredentials `json:"credentials"`
+
+	// Identity specifies how the provider authenticates to the Anthropic API.
+	// +kubebuilder:validation:Required
+	Identity *Identity `json:"identity"`
 }
 
-// ProviderCredentials specifies how to obtain the Anthropic API key.
+// ProviderCredentials specifies how to obtain the Anthropic credentials.
 type ProviderCredentials struct {
 	// Source of the credentials.
 	// +kubebuilder:validation:Enum=None;Secret;InjectedIdentity;Environment;Filesystem
 	Source xpv1.CredentialsSource `json:"source"`
 
 	xpv1.CommonCredentialSelectors `json:",inline"`
+}
+
+// IdentityType describes which authentication method the provider uses to call
+// the Anthropic API.
+type IdentityType string
+
+const (
+	// IdentityTypeAPIKey authenticates using a static API key read from the
+	// "api_key" field of the JSON credentials payload.
+	IdentityTypeAPIKey IdentityType = "APIKey"
+)
+
+// Identity specifies the authentication identity configuration.
+type Identity struct {
+	// Type of identity used to authenticate to the Anthropic API.
+	// APIKey: authenticate using a static API key read from the "api_key"
+	// field of the JSON credentials payload.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=APIKey
+	Type IdentityType `json:"type"`
 }
 
 // ProviderConfigStatus represents the observed state of a ProviderConfig.
