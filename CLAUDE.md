@@ -62,7 +62,10 @@ Each resource follows the crossplane-runtime `managed.ExternalClient` contract w
    starts once its CRD is established. `cmd/provider/main.go` runs `customresourcesgate` to flip
    these gates. All wiring goes through `SetupProviders` in `setup.go`.
 2. **`connector.Connect`** — builds an authenticated `*anthropic.Client` via `clients.NewClient`
-   (which resolves the `ProviderConfig`, tracks usage, and extracts the API key from a `Secret`).
+   (which resolves the `ProviderConfig`, tracks usage, and extracts the API key from the
+   credentials). Credentials are a JSON payload (e.g. `{"api_key":"sk-ant-…"}`); `spec.identity.type`
+   on the `ProviderConfig` selects how it's parsed — `APIKey` is currently the only identity type
+   (`internal/clients/anthropic.go` → `apiKeyFromCredentials`).
 3. **`external` (Observe/Create/Update/Delete)** — translates between the CRD and the SDK using the
    conversion methods on the API type (`ToAnthropicNew`, `ToAnthropicUpdate`, `FromAnthropicObservation`).
 4. **`isUpToDate`** — drift detection (see below).

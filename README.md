@@ -143,14 +143,16 @@ See [Required configuration](#required-configuration) for how to set up credenti
 
 ### Required configuration
 
-1. Create a `Secret` with your [Anthropic API key](https://docs.anthropic.com/en/api/getting-started):
+1. Create a `Secret` holding your [Anthropic API key](https://docs.anthropic.com/en/api/getting-started).
+   The credential payload is a **JSON object** whose fields depend on the identity type; for the
+   `APIKey` identity it must contain an `api_key` field:
 
     ```console
     kubectl -n crossplane-system create secret generic anthropic-credentials \
-      --from-literal=credentials="YOUR_ANTHROPIC_API_KEY"
+      --from-literal=credentials='{"api_key":"YOUR_ANTHROPIC_API_KEY"}'
     ```
 
-1. Apply a `ProviderConfig` that references the secret:
+1. Apply a `ProviderConfig` that references the secret and selects the `APIKey` identity:
 
     ```console
     kubectl apply -f examples-generated/anthropic/v1alpha1/providerconfig.yaml
@@ -170,6 +172,8 @@ See [Required configuration](#required-configuration) for how to set up credenti
           name: anthropic-credentials
           namespace: crossplane-system
           key: credentials
+      identity:
+        type: APIKey
     ```
 
 1. **RBAC — managed resources**: If the provider is running inside the cluster (e.g. installed
@@ -236,10 +240,11 @@ See [Required configuration](#required-configuration) for how to set up credenti
 
 `make e2e` builds and deploys the provider locally, then runs the full
 [Uptest](https://github.com/crossplane/uptest) end-to-end suite against the examples listed in
-`UPTEST_EXAMPLE_LIST`. Set `UPTEST_CLOUD_CREDENTIALS` to your Anthropic API key before running:
+`UPTEST_EXAMPLE_LIST`. Set `UPTEST_CLOUD_CREDENTIALS` to the JSON credential payload
+(`{"api_key":"..."}`) before running:
 
 ```console
-UPTEST_CLOUD_CREDENTIALS="YOUR_ANTHROPIC_API_KEY" \
+UPTEST_CLOUD_CREDENTIALS='{"api_key":"YOUR_ANTHROPIC_API_KEY"}' \
 UPTEST_EXAMPLE_LIST="examples-generated/beta/v1alpha1/agent.yaml" \
 make e2e
 ```

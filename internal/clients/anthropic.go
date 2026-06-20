@@ -19,6 +19,7 @@ package clients
 
 import (
 	"context"
+	"encoding/json"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -32,10 +33,14 @@ import (
 )
 
 const (
-	errNoProviderConfig  = "no providerConfigRef provided"
-	errGetProviderConfig = "cannot get ProviderConfig"
-	errTrackUsage        = "cannot track ProviderConfig usage"
-	errGetCredentials    = "cannot get credentials"
+	errNoProviderConfig     = "no providerConfigRef provided"
+	errGetProviderConfig    = "cannot get ProviderConfig"
+	errTrackUsage           = "cannot track ProviderConfig usage"
+	errGetCredentials       = "cannot get credentials"
+	errNoIdentity           = "spec.identity is required but not set"
+	errUnmarshalCredentials = "cannot unmarshal Anthropic credentials as JSON"
+	errMissingAPIKey        = "identity type is APIKey but credentials JSON has no \"api_key\" field"
+	errUnknownIdentityType  = "unknown identity type %q"
 )
 
 // NewClient returns an Anthropic SDK client authenticated with the credentials
@@ -76,6 +81,10 @@ func NewClientFromProviderConfig(
 // buildClientFromSpec extracts credentials from the resolved ProviderConfig
 // spec and constructs an authenticated Anthropic SDK client.
 func buildClientFromSpec(ctx context.Context, crClient client.Client, pcSpec *pcv1alpha1.ProviderConfigSpec) (*anthropic.Client, error) {
+	if pcSpec.Identity == nil {
+		return nil, xperrors.New(errNoIdentity)
+	}
+
 	creds, err := xpresource.CommonCredentialExtractor(
 		ctx,
 		pcSpec.Credentials.Source,
@@ -86,9 +95,34 @@ func buildClientFromSpec(ctx context.Context, crClient client.Client, pcSpec *pc
 		return nil, xperrors.Wrap(err, errGetCredentials)
 	}
 
-	// Only API-key authentication is supported today.
-	c := anthropic.NewClient(option.WithAPIKey(string(creds)))
+	apiKey, err := apiKeyFromCredentials(creds, pcSpec.Identity.Type)
+	if err != nil {
+		return nil, err
+	}
+
+	c := anthropic.NewClient(option.WithAPIKey(apiKey))
 	return &c, nil
+}
+
+// apiKeyFromCredentials parses the JSON credentials payload and extracts the
+// Anthropic API key according to the configured identity type. The payload is
+// a JSON object, e.g. {"api_key": "sk-ant-..."}.
+func apiKeyFromCredentials(data []byte, identityType pcv1alpha1.IdentityType) (string, error) {
+	creds := map[string]string{}
+	if err := json.Unmarshal(data, &creds); err != nil {
+		return "", xperrors.Wrap(err, errUnmarshalCredentials)
+	}
+
+	switch identityType {
+	case pcv1alpha1.IdentityTypeAPIKey:
+		apiKey := creds["api_key"]
+		if apiKey == "" {
+			return "", xperrors.New(errMissingAPIKey)
+		}
+		return apiKey, nil
+	default:
+		return "", xperrors.Errorf(errUnknownIdentityType, identityType)
+	}
 }
 
 func resolveProviderConfig(

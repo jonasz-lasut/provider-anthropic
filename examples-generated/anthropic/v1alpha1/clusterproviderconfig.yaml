@@ -14,6 +14,8 @@ spec:
       name: anthropic-credentials
       namespace: crossplane-system
       key: credentials
+  identity:
+    type: APIKey
 ---
 apiVersion: v1
 kind: Secret
@@ -22,4 +24,7 @@ metadata:
   namespace: crossplane-system
 type: Opaque
 stringData:
-  credentials: "REPLACE_WITH_ANTHROPIC_API_KEY"
+  credentials: |
+    {
+      "api_key": "REPLACE_WITH_ANTHROPIC_API_KEY"
+    }
