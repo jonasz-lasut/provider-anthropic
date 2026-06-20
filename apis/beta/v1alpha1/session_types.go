@@ -206,6 +206,11 @@ type SessionObservation struct {
 	// +optional
 	AgentID *string `json:"agentId,omitempty"`
 
+	// DeploymentID is the deployment ID when the session was created from a
+	// deployment reference. Empty otherwise.
+	// +optional
+	DeploymentID *string `json:"deploymentId,omitempty"`
+
 	// VaultIDs is the observed list of vault IDs attached at creation.
 	// +optional
 	VaultIDs []string `json:"vaultIds,omitempty"`

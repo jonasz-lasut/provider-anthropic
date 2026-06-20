@@ -10,7 +10,7 @@ metadata:
     meta.upbound.io/example-id: beta/v1alpha1/agent
 spec:
   forProvider:
-    model: claude-opus-4-7
+    model: claude-opus-4-8
     name: example-agent
     description: Example agent for E2E testing.
     systemSecretRef:

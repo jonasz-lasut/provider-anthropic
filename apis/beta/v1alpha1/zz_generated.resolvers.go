@@ -26,6 +26,87 @@ import (
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// ResolveReferences of this Deployment.
+func (mg *Deployment) ResolveReferences(ctx context.Context, c client.Reader) error {
+	r := reference.NewAPINamespacedResolver(c, mg)
+
+	var rsp reference.NamespacedResolutionResponse
+	var mrsp reference.MultiNamespacedResolutionResponse
+	var err error
+
+	rsp, err = r.Resolve(ctx, reference.NamespacedResolutionRequest{
+		CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.AgentID),
+		Extract:      extractors.ComputedFieldExtractor("id"),
+		Namespace:    mg.GetNamespace(),
+		Reference:    mg.Spec.ForProvider.AgentIDRef,
+		Selector:     mg.Spec.ForProvider.AgentIDSelector,
+		To: reference.To{
+			List:    &AgentList{},
+			Managed: &Agent{},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "mg.Spec.ForProvider.AgentID")
+	}
+	mg.Spec.ForProvider.AgentID = reference.ToPtrValue(rsp.ResolvedValue)
+	mg.Spec.ForProvider.AgentIDRef = rsp.ResolvedReference
+
+	rsp, err = r.Resolve(ctx, reference.NamespacedResolutionRequest{
+		CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.EnvironmentID),
+		Extract:      extractors.ComputedFieldExtractor("id"),
+		Namespace:    mg.GetNamespace(),
+		Reference:    mg.Spec.ForProvider.EnvironmentIDRef,
+		Selector:     mg.Spec.ForProvider.EnvironmentIDSelector,
+		To: reference.To{
+			List:    &EnvironmentList{},
+			Managed: &Environment{},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "mg.Spec.ForProvider.EnvironmentID")
+	}
+	mg.Spec.ForProvider.EnvironmentID = reference.ToPtrValue(rsp.ResolvedValue)
+	mg.Spec.ForProvider.EnvironmentIDRef = rsp.ResolvedReference
+
+	for i3 := 0; i3 < len(mg.Spec.ForProvider.Resources); i3++ {
+		rsp, err = r.Resolve(ctx, reference.NamespacedResolutionRequest{
+			CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.Resources[i3].MemoryStoreID),
+			Extract:      extractors.ComputedFieldExtractor("id"),
+			Namespace:    mg.GetNamespace(),
+			Reference:    mg.Spec.ForProvider.Resources[i3].MemoryStoreIDRef,
+			Selector:     mg.Spec.ForProvider.Resources[i3].MemoryStoreIDSelector,
+			To: reference.To{
+				List:    &MemoryStoreList{},
+				Managed: &MemoryStore{},
+			},
+		})
+		if err != nil {
+			return errors.Wrap(err, "mg.Spec.ForProvider.Resources[i3].MemoryStoreID")
+		}
+		mg.Spec.ForProvider.Resources[i3].MemoryStoreID = reference.ToPtrValue(rsp.ResolvedValue)
+		mg.Spec.ForProvider.Resources[i3].MemoryStoreIDRef = rsp.ResolvedReference
+
+	}
+	mrsp, err = r.ResolveMultiple(ctx, reference.MultiNamespacedResolutionRequest{
+		CurrentValues: mg.Spec.ForProvider.VaultIDs,
+		Extract:       extractors.ComputedFieldExtractor("id"),
+		Namespace:     mg.GetNamespace(),
+		References:    mg.Spec.ForProvider.VaultIDsRefs,
+		Selector:      mg.Spec.ForProvider.VaultIDsSelector,
+		To: reference.To{
+			List:    &VaultList{},
+			Managed: &Vault{},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "mg.Spec.ForProvider.VaultIDs")
+	}
+	mg.Spec.ForProvider.VaultIDs = mrsp.ResolvedValues
+	mg.Spec.ForProvider.VaultIDsRefs = mrsp.ResolvedReferences
+
+	return nil
+}
+
 // ResolveReferences of this MemoryStoreMemory.
 func (mg *MemoryStoreMemory) ResolveReferences(ctx context.Context, c client.Reader) error {
 	r := reference.NewAPINamespacedResolver(c, mg)

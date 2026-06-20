@@ -30,6 +30,7 @@ type VaultCredentialConversionContext struct {
 	AccessToken  string // mcp_oauth: resolved from AccessTokenSecretRef
 	RefreshToken string // mcp_oauth refresh: resolved from RefreshTokenSecretRef
 	ClientSecret string // mcp_oauth refresh: resolved from ClientSecretSecretRef
+	SecretValue  string // environment_variable: resolved from SecretValueSecretRef
 }
 
 // ToConnectionDetails publishes all non-empty resolved secret values as
@@ -48,6 +49,9 @@ func (cctx *VaultCredentialConversionContext) ToConnectionDetails() managed.Conn
 	}
 	if cctx.ClientSecret != "" {
 		cd["clientSecret"] = []byte(cctx.ClientSecret)
+	}
+	if cctx.SecretValue != "" {
+		cd["secretValue"] = []byte(cctx.SecretValue)
 	}
 	return cd
 }
@@ -93,11 +97,21 @@ func (r *VaultCredential) FromAnthropicObservation(resp anthropic.BetaManagedAge
 	r.Status.AtProvider.DisplayName = &resp.DisplayName
 	r.Status.AtProvider.Metadata = resp.Metadata
 	authType := resp.Auth.Type
-	authURL := resp.Auth.MCPServerURL
-	r.Status.AtProvider.Auth = &VaultCredentialAuthObservation{
-		Type:         &authType,
-		MCPServerURL: &authURL,
+	auth := &VaultCredentialAuthObservation{Type: &authType}
+	switch authType {
+	case "environment_variable":
+		secretName := resp.Auth.SecretName
+		auth.SecretName = &secretName
+		netType := resp.Auth.Networking.Type
+		auth.Networking = &VaultCredentialNetworkingObservation{
+			Type:         &netType,
+			AllowedHosts: resp.Auth.Networking.AllowedHosts,
+		}
+	default:
+		authURL := resp.Auth.MCPServerURL
+		auth.MCPServerURL = &authURL
 	}
+	r.Status.AtProvider.Auth = auth
 	createdAt := resp.CreatedAt.Format(time.RFC3339)
 	r.Status.AtProvider.CreatedAt = &createdAt
 	updatedAt := resp.UpdatedAt.Format(time.RFC3339)
@@ -148,8 +162,48 @@ func vcNewAuthUnion(a VaultCredentialAuth, ctx *VaultCredentialConversionContext
 			oauth.Refresh = vcNewRefreshParams(*a.Refresh, ctx)
 		}
 		return anthropic.BetaVaultCredentialNewParamsAuthUnion{OfMCPOAuth: oauth}, nil
+
+	case "environment_variable":
+		ev := &anthropic.BetaManagedAgentsEnvironmentVariableCreateParams{
+			Type: anthropic.BetaManagedAgentsEnvironmentVariableCreateParamsTypeEnvironmentVariable,
+		}
+		if a.SecretName != nil {
+			ev.SecretName = *a.SecretName
+		}
+		if ctx != nil {
+			ev.SecretValue = ctx.SecretValue
+		}
+		if a.Networking != nil {
+			ev.Networking = vcNetworkingUnion(*a.Networking)
+		}
+		return anthropic.BetaVaultCredentialNewParamsAuthUnion{OfEnvironmentVariable: ev}, nil
 	}
 	return anthropic.BetaVaultCredentialNewParamsAuthUnion{}, nil
+}
+
+// vcNetworkingUnion maps the CRD networking scope to the SDK credential
+// networking union shared by create and update params.
+func vcNetworkingUnion(n VaultCredentialNetworking) anthropic.BetaManagedAgentsCredentialNetworkingParamsUnion {
+	netType := ""
+	if n.Type != nil {
+		netType = *n.Type
+	}
+	switch netType {
+	case "limited":
+		return anthropic.BetaManagedAgentsCredentialNetworkingParamsUnion{
+			OfLimited: &anthropic.BetaManagedAgentsLimitedCredentialNetworkingParams{
+				AllowedHosts: n.AllowedHosts,
+				Type:         anthropic.BetaManagedAgentsLimitedCredentialNetworkingParamsTypeLimited,
+			},
+		}
+	case "unrestricted":
+		return anthropic.BetaManagedAgentsCredentialNetworkingParamsUnion{
+			OfUnrestricted: &anthropic.BetaManagedAgentsUnrestrictedCredentialNetworkingParams{
+				Type: anthropic.BetaManagedAgentsUnrestrictedCredentialNetworkingParamsTypeUnrestricted,
+			},
+		}
+	}
+	return anthropic.BetaManagedAgentsCredentialNetworkingParamsUnion{}
 }
 
 func vcNewRefreshParams(r VaultCredentialRefresh, ctx *VaultCredentialConversionContext) anthropic.BetaManagedAgentsMCPOAuthRefreshParams {
@@ -243,6 +297,18 @@ func vcUpdateAuthUnion(a VaultCredentialAuth, ctx *VaultCredentialConversionCont
 			oauth.Refresh = vcUpdateRefreshParams(*a.Refresh, ctx)
 		}
 		return anthropic.BetaVaultCredentialUpdateParamsAuthUnion{OfMCPOAuth: oauth}, nil
+
+	case "environment_variable":
+		ev := &anthropic.BetaManagedAgentsEnvironmentVariableUpdateParams{
+			Type: anthropic.BetaManagedAgentsEnvironmentVariableUpdateParamsTypeEnvironmentVariable,
+		}
+		if ctx != nil && ctx.SecretValue != "" {
+			ev.SecretValue = anthropic.String(ctx.SecretValue)
+		}
+		if a.Networking != nil {
+			ev.Networking = vcNetworkingUnion(*a.Networking)
+		}
+		return anthropic.BetaVaultCredentialUpdateParamsAuthUnion{OfEnvironmentVariable: ev}, nil
 	}
 	return anthropic.BetaVaultCredentialUpdateParamsAuthUnion{}, nil
 }

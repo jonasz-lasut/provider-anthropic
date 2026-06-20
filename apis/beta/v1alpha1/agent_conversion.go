@@ -248,9 +248,7 @@ func agentToolToNewParam(t AgentToolConfig) anthropic.BetaAgentNewParamsToolUnio
 		if t.Description != nil {
 			desc = *t.Description
 		}
-		inputSchema := anthropic.BetaManagedAgentsCustomToolInputSchemaParam{
-			Type: anthropic.BetaManagedAgentsCustomToolInputSchemaTypeObject,
-		}
+		inputSchema := anthropic.BetaManagedAgentsCustomToolInputSchemaParam{}
 		if t.InputSchema != nil {
 			if len(t.InputSchema.Properties.Raw) > 0 {
 				var props map[string]any
@@ -301,9 +299,7 @@ func agentToolToUpdateParam(t AgentToolConfig) anthropic.BetaAgentUpdateParamsTo
 		if t.Description != nil {
 			desc = *t.Description
 		}
-		inputSchema := anthropic.BetaManagedAgentsCustomToolInputSchemaParam{
-			Type: anthropic.BetaManagedAgentsCustomToolInputSchemaTypeObject,
-		}
+		inputSchema := anthropic.BetaManagedAgentsCustomToolInputSchemaParam{}
 		if t.InputSchema != nil {
 			if len(t.InputSchema.Properties.Raw) > 0 {
 				var props map[string]any

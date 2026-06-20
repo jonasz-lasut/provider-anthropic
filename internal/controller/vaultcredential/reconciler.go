@@ -276,6 +276,11 @@ func resolveVCContext(ctx context.Context, kube client.Client, a betav1alpha1.Va
 		return nil, err
 	}
 	convCtx.AccessToken = accessToken
+	secretValue, err := clients.ResolveLocalSecretKey(ctx, kube, a.SecretValueSecretRef, namespace)
+	if err != nil {
+		return nil, err
+	}
+	convCtx.SecretValue = secretValue
 	if a.Refresh != nil {
 		refreshToken, err := clients.ResolveLocalSecretKey(ctx, kube, a.Refresh.RefreshTokenSecretRef, namespace)
 		if err != nil {
