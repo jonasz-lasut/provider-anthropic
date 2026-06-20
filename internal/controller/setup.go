@@ -23,6 +23,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/agent"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/deployment"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/environment"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/memorystore"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/memorystorememory"
@@ -38,8 +39,8 @@ import (
 // controller is gated: it will only start once its CRD is established.
 //
 // When skipDefaultMetadata is true, the metadata-bearing controllers (Agent,
-// Environment, MemoryStore, Session, Vault, VaultCredential) are configured
-// without the default-metadata initializer.
+// Environment, Deployment, MemoryStore, Session, Vault, VaultCredential) are
+// configured without the default-metadata initializer.
 func SetupProviders(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) error {
 	if err := providerconfig.SetupGated(mgr, o); err != nil {
 		return err
@@ -48,6 +49,9 @@ func SetupProviders(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata 
 		return err
 	}
 	if err := environment.SetupGated(mgr, o, skipDefaultMetadata); err != nil {
+		return err
+	}
+	if err := deployment.SetupGated(mgr, o, skipDefaultMetadata); err != nil {
 		return err
 	}
 	if err := memorystore.SetupGated(mgr, o, skipDefaultMetadata); err != nil {

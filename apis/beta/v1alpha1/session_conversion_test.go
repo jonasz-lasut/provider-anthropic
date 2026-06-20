@@ -100,6 +100,7 @@ func TestSessionFromAnthropicObservation(t *testing.T) {
 		ID:            "sess_abc",
 		Title:         "my-session",
 		EnvironmentID: "env_1",
+		DeploymentID:  "dpl_1",
 		Metadata:      map[string]string{"k": "v"},
 		VaultIDs:      []string{"vlt_1"},
 		Status:        anthropic.BetaManagedAgentsSessionStatusRunning,
@@ -118,6 +119,9 @@ func TestSessionFromAnthropicObservation(t *testing.T) {
 	}
 	if r.Status.AtProvider.EnvironmentID == nil || *r.Status.AtProvider.EnvironmentID != "env_1" {
 		t.Errorf("EnvironmentID = %v", r.Status.AtProvider.EnvironmentID)
+	}
+	if r.Status.AtProvider.DeploymentID == nil || *r.Status.AtProvider.DeploymentID != "dpl_1" {
+		t.Errorf("DeploymentID = %v", r.Status.AtProvider.DeploymentID)
 	}
 	if r.Status.AtProvider.Status == nil || *r.Status.AtProvider.Status != "running" {
 		t.Errorf("Status = %v", r.Status.AtProvider.Status)

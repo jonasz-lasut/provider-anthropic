@@ -5,7 +5,7 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.0
     anthropic.crossplane.io/sdk-version: v1.51.0
-  name: sessions.beta.anthropic.crossplane.io
+  name: deployments.beta.anthropic.crossplane.io
 spec:
   group: beta.anthropic.crossplane.io
   names:
@@ -13,12 +13,12 @@ spec:
       - crossplane
       - managed
       - anthropic
-    kind: Session
-    listKind: SessionList
-    plural: sessions
+    kind: Deployment
+    listKind: DeploymentList
+    plural: deployments
     shortNames:
-      - asession
-    singular: session
+      - dpl
+    singular: deployment
   scope: Namespaced
   versions:
     - additionalPrinterColumns:
@@ -38,8 +38,8 @@ spec:
       schema:
         openAPIV3Schema:
           description: |-
-            Session is a managed resource representing an Anthropic agent session
-            (beta API).
+            Deployment is a managed resource representing an Anthropic Deployment (beta
+            API): a scheduled agent run that materializes sessions on a cron schedule.
           properties:
             apiVersion:
               description: |-
@@ -59,7 +59,7 @@ spec:
             metadata:
               type: object
             spec:
-              description: SessionSpec defines the desired state of Session.
+              description: DeploymentSpec defines the desired state of Deployment.
               properties:
                 forProvider:
                   description: |-
@@ -68,9 +68,8 @@ spec:
                   properties:
                     agentId:
                       description: |-
-                        AgentID is the ID of the Agent that runs in this session.
-                        Accepts an agent ID string (pins the latest version) or use
-                        AgentVersion to pin a specific version.
+                        AgentID is the ID of the Agent to deploy. Accepts an agent ID string
+                        (re-pins the latest version) or use AgentVersion to pin a specific version.
                         Populate directly or via AgentIDRef / AgentIDSelector.
                       type: string
                     agentIdRef:
@@ -158,19 +157,13 @@ spec:
                         of the referenced agent is used.
                       format: int64
                       type: integer
-                    anthropicDeletionPolicy:
-                      default: Archive
-                      description: |-
-                        AnthropicDeletionPolicy controls whether Crossplane calls Archive or
-                        Delete on the Anthropic API when the resource is deleted in Kubernetes.
-                      enum:
-                        - Archive
-                        - Delete
+                    description:
+                      description: Description of what the deployment does.
                       type: string
                     environmentId:
                       description: |-
-                        EnvironmentID is the ID of the Environment that defines the container
-                        configuration for this session.
+                        EnvironmentID is the ID of the Environment defining the container
+                        configuration for sessions created from this deployment.
                         Populate directly or via EnvironmentIDRef / EnvironmentIDSelector.
                       type: string
                     environmentIdRef:
@@ -252,15 +245,136 @@ spec:
                               type: string
                           type: object
                       type: object
+                    initialEvents:
+                      description: |-
+                        Required: InitialEvents are sent to each session immediately after
+                        creation. At least 1, maximum 50.
+                      items:
+                        description: |-
+                          DeploymentInitialEvent is one event sent to each session immediately after
+                          creation. The Type field selects the variant; only set the fields relevant
+                          to that variant.
+                        properties:
+                          content:
+                            description: |-
+                              Content holds the message content blocks for "user.message" (text, image,
+                              document) and "system.message" (text only) events.
+                            items:
+                              description: |-
+                                DeploymentContentBlock is a single content block in a user.message (text,
+                                image, or document) or system.message (text only) initial event.
+                              properties:
+                                context:
+                                  description: |-
+                                    Context is additional context about the document for the model
+                                    (document block).
+                                  type: string
+                                source:
+                                  description: Source is the image or document source (image and document blocks).
+                                  properties:
+                                    data:
+                                      description: |-
+                                        Data is the inline content (base64-encoded for base64 sources, plain text
+                                        for text sources).
+                                      type: string
+                                    fileId:
+                                      description: FileID is the ID of a previously uploaded file (file source).
+                                      type: string
+                                    mediaType:
+                                      description: |-
+                                        MediaType is the MIME type of the inline data (base64 and text sources),
+                                        e.g. "image/png", "application/pdf", "text/plain".
+                                      type: string
+                                    type:
+                                      description: |-
+                                        Required: Type identifies the source variant: "base64", "url", "file",
+                                        or "text" (text is document-only, media type text/plain).
+                                      enum:
+                                        - base64
+                                        - url
+                                        - file
+                                        - text
+                                      type: string
+                                    url:
+                                      description: URL is the location to fetch the content from (url source).
+                                      type: string
+                                  type: object
+                                text:
+                                  description: Text is the block content (text block).
+                                  type: string
+                                title:
+                                  description: Title is the title of the document (document block).
+                                  type: string
+                                type:
+                                  description: |-
+                                    Required: Type identifies the block variant: "text", "image", or
+                                    "document". system.message events accept only "text".
+                                  enum:
+                                    - text
+                                    - image
+                                    - document
+                                  type: string
+                              type: object
+                            type: array
+                          description:
+                            description: Description is the task specification for a "user.define_outcome" event.
+                            type: string
+                          maxIterations:
+                            description: |-
+                              MaxIterations is the number of eval/revision cycles before giving up for a
+                              "user.define_outcome" event. Default 3, maximum 20.
+                            format: int64
+                            type: integer
+                          rubric:
+                            description: Rubric grades the quality of the outcome for a "user.define_outcome" event.
+                            properties:
+                              content:
+                                description: |-
+                                  Content is the rubric content as plain text or markdown (text variant).
+                                  Maximum 262144 characters.
+                                type: string
+                              fileId:
+                                description: FileID is the ID of the rubric file (file variant).
+                                type: string
+                              type:
+                                description: 'Required: Type identifies the rubric variant: "text" or "file".'
+                                enum:
+                                  - text
+                                  - file
+                                type: string
+                            type: object
+                          type:
+                            description: |-
+                              Required: Type identifies the event variant: "user.message",
+                              "user.define_outcome", or "system.message".
+                            enum:
+                              - user.message
+                              - user.define_outcome
+                              - system.message
+                            type: string
+                        type: object
+                      maxItems: 50
+                      type: array
                     metadata:
                       additionalProperties:
                         type: string
                       description: |-
-                        Metadata is arbitrary key-value data attached to the session.
+                        Metadata is arbitrary key-value data attached to the deployment.
                         Maximum 16 pairs; keys up to 64 chars, values up to 512 chars.
                       type: object
+                    name:
+                      description: 'Required: Name is the human-readable name for the deployment.'
+                      type: string
+                    paused:
+                      description: |-
+                        Paused controls the deployment lifecycle. Set to true to pause the
+                        schedule (the reconciler calls Pause); set to false (or omit) to keep it
+                        active (the reconciler calls Unpause when needed).
+                      type: boolean
                     resources:
-                      description: Resources to mount into the session's container. Immutable after creation.
+                      description: |-
+                        Resources (e.g. repositories, files, memory stores) to mount into each
+                        session's container. Maximum 500.
                       items:
                         description: |-
                           SessionResource describes a resource mounted into the session's container.
@@ -418,15 +532,28 @@ spec:
                             description: URL is the GitHub repository URL (github_repository type).
                             type: string
                         type: object
+                      maxItems: 500
                       type: array
-                    title:
-                      description: Title is a human-readable session title.
-                      type: string
+                    schedule:
+                      description: Schedule is the cron schedule on which the deployment creates sessions.
+                      properties:
+                        expression:
+                          description: |-
+                            Required: Expression is a 5-field POSIX cron expression (minute hour
+                            day-of-month month day-of-week), e.g. "0 9 * * 1-5". Extended cron syntax
+                            and predefined shortcuts are not supported.
+                          type: string
+                        timezone:
+                          description: |-
+                            Required: Timezone is an IANA timezone identifier (e.g.
+                            "America/Los_Angeles", "UTC").
+                          type: string
+                      type: object
                     vaultIds:
                       description: |-
-                        VaultIDs lists vault IDs for stored credentials the agent can use.
+                        VaultIDs lists vault IDs for stored credentials the agent can use during
+                        sessions created from this deployment. Maximum 50.
                         Populate directly or via VaultIDsRefs / VaultIDsSelector.
-                        Immutable after creation.
                       items:
                         type: string
                       type: array
@@ -573,49 +700,74 @@ spec:
                 - forProvider
               type: object
             status:
-              description: SessionStatus defines the observed state of Session.
+              description: DeploymentStatus defines the observed state of Deployment.
               properties:
                 atProvider:
                   description: AtProvider holds the observed state as returned by the Anthropic API.
                   properties:
                     agentId:
-                      description: AgentID is the ID of the agent snapshot bound to this session.
+                      description: AgentID is the resolved agent ID bound to this deployment.
                       type: string
+                    agentVersion:
+                      description: AgentVersion is the resolved agent version bound to this deployment.
+                      format: int64
+                      type: integer
                     archivedAt:
-                      description: ArchivedAt is set when the session has been archived.
+                      description: ArchivedAt is set when the deployment has been archived.
                       type: string
                     createdAt:
-                      description: CreatedAt is the RFC 3339 timestamp when the session was created.
+                      description: CreatedAt is the RFC 3339 timestamp when the deployment was created.
                       type: string
-                    deploymentId:
-                      description: |-
-                        DeploymentID is the deployment ID when the session was created from a
-                        deployment reference. Empty otherwise.
+                    description:
+                      description: Description is the observed description.
                       type: string
                     environmentId:
-                      description: EnvironmentID is the observed environment ID returned by the API.
+                      description: EnvironmentID is the observed environment ID.
                       type: string
                     id:
                       description: |-
-                        ID is the Anthropic-assigned session identifier. Also stored in the
-                        external-name annotation, which the reconciler uses as the primary key.
+                        ID is the Anthropic-assigned identifier. Also stored in the external-name
+                        annotation, which the reconciler uses as the primary key.
                       type: string
                     metadata:
                       additionalProperties:
                         type: string
                       description: Metadata is the observed key-value metadata map.
                       type: object
-                    status:
-                      description: Status is the current session status.
+                    name:
+                      description: Name is the observed human-readable deployment name.
                       type: string
-                    title:
-                      description: Title is the observed human-readable session title.
+                    paused:
+                      description: |-
+                        Paused mirrors the desired pause state derived from Status, so drift in
+                        spec.forProvider.paused is detected.
+                      type: boolean
+                    schedule:
+                      description: Schedule is the observed cron schedule with computed runtime timestamps.
+                      properties:
+                        expression:
+                          description: Expression is the observed cron expression.
+                          type: string
+                        lastRunAt:
+                          description: LastRunAt is the RFC 3339 timestamp of the last schedule run.
+                          type: string
+                        timezone:
+                          description: Timezone is the observed IANA timezone identifier.
+                          type: string
+                        upcomingRunsAt:
+                          description: UpcomingRunsAt lists RFC 3339 timestamps of upcoming cron occurrences.
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    status:
+                      description: 'Status is the lifecycle status: "active" or "paused".'
                       type: string
                     updatedAt:
                       description: UpdatedAt is the RFC 3339 timestamp of the last modification.
                       type: string
                     vaultIds:
-                      description: VaultIDs is the observed list of vault IDs attached at creation.
+                      description: VaultIDs is the observed list of vault IDs.
                       items:
                         type: string
                       type: array

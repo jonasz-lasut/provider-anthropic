@@ -93,6 +93,7 @@ func (r *Session) FromAnthropicObservation(resp anthropic.BetaManagedAgentsSessi
 	r.Status.AtProvider.Status = &status
 	agentID := resp.Agent.ID
 	r.Status.AtProvider.AgentID = &agentID
+	r.Status.AtProvider.DeploymentID = &resp.DeploymentID
 	createdAt := resp.CreatedAt.Format(time.RFC3339)
 	r.Status.AtProvider.CreatedAt = &createdAt
 	updatedAt := resp.UpdatedAt.Format(time.RFC3339)

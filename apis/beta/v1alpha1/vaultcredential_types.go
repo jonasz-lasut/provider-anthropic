@@ -66,18 +66,53 @@ type VaultCredentialRefresh struct {
 	Scope *string `json:"scope,omitempty"`
 }
 
+// VaultCredentialNetworking scopes the outbound hosts on which an
+// environment_variable credential value is substituted.
+type VaultCredentialNetworking struct {
+	// Required: Type is the networking scope: "unrestricted" (any host) or
+	// "limited" (only the hosts in allowedHosts).
+	// +optional
+	// +kubebuilder:validation:Enum=unrestricted;limited
+	Type *string `json:"type,omitempty"`
+
+	// AllowedHosts lists the hostnames on which the secret is substituted when
+	// type is "limited". Each entry is a bare hostname (api.example.com), an
+	// IPv4 address (192.0.2.1), or a *.-prefixed wildcard (*.example.com).
+	// URLs, ports, paths, and IPv6 addresses are not accepted. At most 16 entries.
+	// +optional
+	// +kubebuilder:validation:MaxItems=16
+	AllowedHosts []string `json:"allowedHosts,omitempty"`
+}
+
 // VaultCredentialAuth describes the credential payload. Type selects the
 // variant; only set the fields relevant to that variant.
 type VaultCredentialAuth struct {
 	// Required: Type identifies the credential variant.
 	// +optional
-	// +kubebuilder:validation:Enum=mcp_oauth;static_bearer
+	// +kubebuilder:validation:Enum=mcp_oauth;static_bearer;environment_variable
 	Type *string `json:"type,omitempty"`
 
-	// Required: MCPServerURL is the URL of the MCP server this credential authenticates
-	// against. Required for both variants. Immutable after creation.
+	// MCPServerURL is the URL of the MCP server this credential authenticates
+	// against. Required for the mcp_oauth and static_bearer variants; omit for
+	// environment_variable. Immutable after creation.
 	// +optional
 	MCPServerURL *string `json:"mcpServerUrl,omitempty"`
+
+	// SecretName is the name of the environment variable (environment_variable
+	// variant). Immutable after creation.
+	// +optional
+	SecretName *string `json:"secretName,omitempty"`
+
+	// SecretValueSecretRef references a Secret in the MR's namespace holding the
+	// environment variable's value at the given key (environment_variable
+	// variant). Write-only; never returned by the API.
+	// +optional
+	SecretValueSecretRef *xpv1.LocalSecretKeySelector `json:"secretValueSecretRef,omitempty"`
+
+	// Networking scopes the outbound hosts the secret value is substituted on
+	// (environment_variable variant). Required for that variant.
+	// +optional
+	Networking *VaultCredentialNetworking `json:"networking,omitempty"`
 
 	// TokenSecretRef references a Secret in the MR's namespace holding the
 	// static bearer token at the given key (static_bearer variant). Omit
@@ -144,17 +179,40 @@ type VaultCredentialParameters struct {
 	AnthropicDeletionPolicy *string `json:"anthropicDeletionPolicy,omitempty"`
 }
 
+// VaultCredentialNetworkingObservation holds the observed networking scope of
+// an environment_variable credential.
+type VaultCredentialNetworkingObservation struct {
+	// Type is the networking scope: "unrestricted" or "limited".
+	// +optional
+	Type *string `json:"type,omitempty"`
+
+	// AllowedHosts lists the hosts the secret is substituted on (limited scope).
+	// +optional
+	AllowedHosts []string `json:"allowedHosts,omitempty"`
+}
+
 // VaultCredentialAuthObservation holds the non-sensitive observed auth fields
 // returned by the API. Tokens, client secrets, and refresh details are
 // write-only and not included.
 type VaultCredentialAuthObservation struct {
-	// Type is the credential variant: "mcp_oauth" or "static_bearer".
+	// Type is the credential variant: "mcp_oauth", "static_bearer", or
+	// "environment_variable".
 	// +optional
 	Type *string `json:"type,omitempty"`
 
-	// MCPServerURL is the MCP server endpoint this credential authenticates against.
+	// MCPServerURL is the MCP server endpoint this credential authenticates
+	// against (mcp_oauth and static_bearer variants).
 	// +optional
 	MCPServerURL *string `json:"mcpServerUrl,omitempty"`
+
+	// SecretName is the observed environment variable name
+	// (environment_variable variant).
+	// +optional
+	SecretName *string `json:"secretName,omitempty"`
+
+	// Networking is the observed networking scope (environment_variable variant).
+	// +optional
+	Networking *VaultCredentialNetworkingObservation `json:"networking,omitempty"`
 }
 
 // VaultCredentialObservation holds the observed state of an Anthropic
