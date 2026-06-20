@@ -92,13 +92,24 @@ case: a desired plain-string ID is compared against an observed `{id: …}` obje
 fields (e.g. an Agent's `system` prompt) are stored as a SHA-256 in `AtProvider` and compared
 separately, since the secret never appears in the API response.
 
-### Two resources that deviate from the standard pattern
+### Resources that deviate from the standard pattern
+
+Each deviating resource has a `docs/overlays/<lowercase-resource>.md` that lists every departure
+from the standard `/add-resource` procedure. The skill's Step 0 reads the overlay before
+scaffolding, so always read the overlay before touching the resource.
 
 - **`Skill`** maps one CRD onto two SDK services (`Skills` + `Skills.Versions`), uploads files via
   multipart (not JSON), and holds a long-lived content-addressed filesystem cache
   (`internal/controller/skill/fs.go`, `internal/capabilities/fs.go`). `Update` creates a new
   version rather than patching. The full deviation list is in **`docs/overlays/skill.md`** — read it
   before touching anything under `skill/`.
+- **`MemoryStoreMemory`** and **`VaultCredential`** are *sub-resources*: each maps onto a service
+  nested under a parent (`Beta.MemoryStores.Memories`, `Beta.Vaults.Credentials`) whose methods take
+  the parent ID as a **positional argument** on `New` and inside the params struct on
+  Get/Update/Delete. The parent ID (`memoryStoreId` / `vaultId`) is a *required* cross-reference and
+  every reconciler method guards on it. `VaultCredential` additionally maps a discriminated `Auth`
+  union with five SecretRefs across its variants. See **`docs/overlays/memorystorememory.md`** and
+  **`docs/overlays/vaultcredential.md`**.
 - **`ObservedAgentCollection`** is *not* a managed resource. It lists agents from the API and
   materializes one Observe-only `Agent` child per match via Server-Side Apply, deleting stale
   children. It uses `NewClientFromProviderConfig` (no usage tracker) and filters results with
