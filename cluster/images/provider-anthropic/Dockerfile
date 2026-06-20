@@ -1,5 +1,4 @@
-FROM alpine:3.23.4
-RUN apk --no-cache add ca-certificates bash
+FROM gcr.io/distroless/static-debian13:nonroot
 
 ARG TARGETOS
 ARG TARGETARCH
