@@ -1,6 +1,6 @@
 module github.com/jonasz-lasut/provider-anthropic
 
-go 1.25.9
+go 1.26.4
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
