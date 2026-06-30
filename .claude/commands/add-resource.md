@@ -318,7 +318,7 @@ Then fill in each method using the SDK surface found in Step 1. Key rules:
 5. `res.SetConditions(xpv1.Available())`
 6. If the resource has SecretRef fields, resolve them into a `convCtx` and return connection details:
    ```go
-   convCtx := &betav1alpha1.<Resource>ConversionContext{<Field>: resolved}
+   convCtx := &managedagentsv1beta1.<Resource>ConversionContext{<Field>: resolved}
    return managed.ExternalObservation{
        ResourceExists:    true,
        ResourceUpToDate:  isUpToDate(res, resolved),
@@ -331,7 +331,7 @@ Cross-resource reference resolution is handled automatically before `Observe()` 
 
 ### Create
 1. If the resource has SecretRef fields, resolve them into a `*<Resource>ConversionContext` (via a `resolve<Resource>Context` helper in the reconciler that calls `clients.ResolveLocalSecretKey` for each SecretRef). The reconciler's `external` struct grows a `kube client.Client` field populated in `Connect`.
-2. Build params: `convCtx := &betav1alpha1.<Resource>ConversionContext{...}; params := res.ToAnthropicNew(convCtx)`
+2. Build params: `convCtx := &managedagentsv1beta1.<Resource>ConversionContext{...}; params := res.ToAnthropicNew(convCtx)`
 3. Call SDK `New(ctx, params)`
 4. `meta.SetExternalName(res, resp.ID)` then `res.Status.AtProvider.ID = &resp.ID`
 5. Return connection details: `return managed.ExternalCreation{ConnectionDetails: convCtx.ToConnectionDetails()}, nil`
@@ -366,7 +366,7 @@ Use the deletion stub in the template: uncomment the correct variant (Archive on
 Use a structured JSON diff rather than field-by-field comparison:
 
 ```go
-func isUpToDate(res *betav1alpha1.<Resource>) bool {
+func isUpToDate(res *managedagentsv1beta1.<Resource>) bool {
     fpRaw, err := json.Marshal(res.Spec.ForProvider)
     if err != nil {
         return true
@@ -398,7 +398,7 @@ Key properties of this approach:
 For any SecretRef field (whether the API returns the value or not), store a `<Field>Sha256 *string` in AtProvider and compare hashes:
 
 ```go
-func isUpToDate(res *betav1alpha1.<Resource>, resolvedSecret string) bool {
+func isUpToDate(res *managedagentsv1beta1.<Resource>, resolvedSecret string) bool {
     // ... JSON diff as above ...
     if resolvedSecret != "" {
         sum := sha256.Sum256([]byte(resolvedSecret))
