@@ -20,14 +20,14 @@ import (
 	"strings"
 	"testing"
 
-	pcv1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/config/v1alpha1"
+	pcv1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/config/v1beta1"
 )
 
 func TestAPIKeyFromCredentials(t *testing.T) {
 	tests := []struct {
 		name            string
 		data            string
-		identityType    pcv1alpha1.IdentityType
+		identityType    pcv1beta1.IdentityType
 		want            string
 		wantErr         bool
 		wantErrContains string
@@ -35,34 +35,34 @@ func TestAPIKeyFromCredentials(t *testing.T) {
 		{
 			name:         "APIKey success",
 			data:         `{"api_key":"sk-ant-abc123"}`,
-			identityType: pcv1alpha1.IdentityTypeAPIKey,
+			identityType: pcv1beta1.IdentityTypeAPIKey,
 			want:         "sk-ant-abc123",
 		},
 		{
 			name:            "APIKey missing api_key field",
 			data:            `{"something_else":"value"}`,
-			identityType:    pcv1alpha1.IdentityTypeAPIKey,
+			identityType:    pcv1beta1.IdentityTypeAPIKey,
 			wantErr:         true,
 			wantErrContains: "api_key",
 		},
 		{
 			name:            "APIKey empty api_key value",
 			data:            `{"api_key":""}`,
-			identityType:    pcv1alpha1.IdentityTypeAPIKey,
+			identityType:    pcv1beta1.IdentityTypeAPIKey,
 			wantErr:         true,
 			wantErrContains: "api_key",
 		},
 		{
 			name:            "invalid JSON",
 			data:            `not-json`,
-			identityType:    pcv1alpha1.IdentityTypeAPIKey,
+			identityType:    pcv1beta1.IdentityTypeAPIKey,
 			wantErr:         true,
 			wantErrContains: "unmarshal",
 		},
 		{
 			name:            "unknown identity type",
 			data:            `{"api_key":"sk-ant-abc123"}`,
-			identityType:    pcv1alpha1.IdentityType("Bogus"),
+			identityType:    pcv1beta1.IdentityType("Bogus"),
 			wantErr:         true,
 			wantErrContains: "Bogus",
 		},

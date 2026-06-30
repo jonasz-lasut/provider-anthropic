@@ -22,7 +22,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/fieldpath"
 	"github.com/pkg/errors"
 
-	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
+	v1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 )
 
 const (
@@ -35,7 +35,7 @@ const (
 // Anthropic API response type can be filtered without boilerplate in each
 // reconciler. Server-side predicates (CreatedAtGte, CreatedAtLte) are handled
 // by buildListParams in each reconciler; this function covers the remainder.
-func ClientSideFilter[T any](p *betav1alpha1.Predicates, item T) (bool, error) {
+func ClientSideFilter[T any](p *v1beta1.Predicates, item T) (bool, error) {
 	if p == nil || (len(p.MetadataMatch) == 0 && p.CELFilter == nil) {
 		return true, nil
 	}

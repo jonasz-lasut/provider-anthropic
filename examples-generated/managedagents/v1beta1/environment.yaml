@@ -1,0 +1,22 @@
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Environment
+metadata:
+  name: example-environment
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: managedagents/v1beta1/environment
+spec:
+  forProvider:
+    name: example-environment
+    description: Example environment for E2E testing.
+    metadata:
+      example: "true"
+    config:
+      networking:
+        type: unrestricted
+      packages:
+        pip:
+          - requests

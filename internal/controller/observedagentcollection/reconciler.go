@@ -44,7 +44,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
-	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
+	v1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 	"github.com/jonasz-lasut/provider-anthropic/internal/clients"
 	"github.com/jonasz-lasut/provider-anthropic/internal/predicates"
 	"k8s.io/utils/ptr"
@@ -80,7 +80,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		For(&betav1alpha1.ObservedAgentCollection{}).
+		For(&v1beta1.ObservedAgentCollection{}).
 		WithEventFilter(resource.DesiredStateChanged()).
 		Complete(ratelimiter.NewReconciler(name, xperrors.WithSilentRequeueOnConflict(r), o.GlobalRateLimiter))
 }
@@ -90,9 +90,9 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 	o.Gate.Register(func() {
 		if err := Setup(mgr, o); err != nil {
 			mgr.GetLogger().Error(err, "unable to setup reconciler", "gvk",
-				betav1alpha1.ObservedAgentCollectionGroupVersionKind.String())
+				v1beta1.ObservedAgentCollectionGroupVersionKind.String())
 		}
-	}, betav1alpha1.ObservedAgentCollectionGroupVersionKind)
+	}, v1beta1.ObservedAgentCollectionGroupVersionKind)
 	return nil
 }
 
@@ -100,7 +100,7 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.log.WithValues("request", req)
 
-	c := &betav1alpha1.ObservedAgentCollection{}
+	c := &v1beta1.ObservedAgentCollection{}
 	if err := r.client.Get(ctx, req.NamespacedName, c); err != nil {
 		if kerrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -157,7 +157,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	ml := map[string]string{membershipLabelKey: c.Name}
 	keep := sets.New[string]()
-	items := make([]betav1alpha1.ObservedCollectionMember, 0, len(matches))
+	items := make([]v1beta1.ObservedCollectionMember, 0, len(matches))
 	for i := range matches {
 		m := &matches[i]
 		childName := childResourceName(c.Name, m.ID)
@@ -176,10 +176,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			return ctrl.Result{}, werr
 		}
 		keep.Insert(childName)
-		items = append(items, betav1alpha1.ObservedCollectionMember{Name: childName, ID: m.ID})
+		items = append(items, v1beta1.ObservedCollectionMember{Name: childName, ID: m.ID})
 	}
 
-	childList := &betav1alpha1.AgentList{}
+	childList := &v1beta1.AgentList{}
 	if err := r.client.List(ctx, childList,
 		client.MatchingLabels(ml),
 		client.InNamespace(c.GetNamespace()),
@@ -215,7 +215,7 @@ func childResourceName(collection, id string) string {
 	return fmt.Sprintf("%s-%s", collection, fmt.Sprintf("%x", h)[:7])
 }
 
-func buildListParams(p *betav1alpha1.Predicates) anthropic.BetaAgentListParams {
+func buildListParams(p *v1beta1.Predicates) anthropic.BetaAgentListParams {
 	params := anthropic.BetaAgentListParams{}
 	if p == nil {
 		return params
@@ -230,11 +230,11 @@ func buildListParams(p *betav1alpha1.Predicates) anthropic.BetaAgentListParams {
 }
 
 func buildChildPatch(
-	c *betav1alpha1.ObservedAgentCollection,
+	c *v1beta1.ObservedAgentCollection,
 	childName string,
 	item *anthropic.BetaManagedAgentsAgent,
 	membership map[string]string,
-) *betav1alpha1.Agent {
+) *v1beta1.Agent {
 	labels := map[string]string{}
 	for k, v := range membership {
 		labels[k] = v
@@ -251,10 +251,10 @@ func buildChildPatch(
 		}
 	}
 
-	child := &betav1alpha1.Agent{
+	child := &v1beta1.Agent{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: betav1alpha1.GroupVersion.String(),
-			Kind:       betav1alpha1.AgentKind,
+			APIVersion: v1beta1.GroupVersion.String(),
+			Kind:       v1beta1.AgentKind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        childName,
@@ -263,8 +263,8 @@ func buildChildPatch(
 			Annotations: annotations,
 			OwnerReferences: []metav1.OwnerReference{
 				{
-					APIVersion:         betav1alpha1.GroupVersion.String(),
-					Kind:               betav1alpha1.ObservedAgentCollectionKind,
+					APIVersion:         v1beta1.GroupVersion.String(),
+					Kind:               v1beta1.ObservedAgentCollectionKind,
 					Name:               c.GetName(),
 					UID:                c.GetUID(),
 					Controller:         ptr.To(true),
@@ -283,7 +283,7 @@ func buildChildPatch(
 // populateForProvider copies observable Agent fields from the API item into
 // ForProvider so the child CRD admits successfully. Observe-only policy
 // prevents anything written here from being pushed back to the API.
-func populateForProvider(p *betav1alpha1.AgentParameters, item *anthropic.BetaManagedAgentsAgent) {
+func populateForProvider(p *v1beta1.AgentParameters, item *anthropic.BetaManagedAgentsAgent) {
 	name := item.Name
 	p.Name = &name
 	model := item.Model.ID

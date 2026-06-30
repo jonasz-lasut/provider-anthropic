@@ -25,26 +25,26 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
+	v1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 )
 
 func newScheme(t *testing.T) *runtime.Scheme {
 	t.Helper()
 	s := runtime.NewScheme()
-	if err := betav1alpha1.AddToScheme(s); err != nil {
-		t.Fatalf("add betav1alpha1 to scheme: %v", err)
+	if err := v1beta1.AddToScheme(s); err != nil {
+		t.Fatalf("add v1beta1 to scheme: %v", err)
 	}
 	return s
 }
 
-func newMemoryStore(name, namespace string, meta map[string]string, pcName, pcKind string) *betav1alpha1.MemoryStore {
-	ms := &betav1alpha1.MemoryStore{
+func newMemoryStore(name, namespace string, meta map[string]string, pcName, pcKind string) *v1beta1.MemoryStore {
+	ms := &v1beta1.MemoryStore{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
-		Spec: betav1alpha1.MemoryStoreSpec{
-			ForProvider: betav1alpha1.MemoryStoreParameters{Metadata: meta},
+		Spec: v1beta1.MemoryStoreSpec{
+			ForProvider: v1beta1.MemoryStoreParameters{Metadata: meta},
 		},
 	}
-	ms.SetGroupVersionKind(betav1alpha1.MemoryStoreGroupVersionKind)
+	ms.SetGroupVersionKind(v1beta1.MemoryStoreGroupVersionKind)
 	if pcName != "" || pcKind != "" {
 		ms.Spec.ProviderConfigReference = &xpv1.ProviderConfigReference{
 			Name: pcName,
@@ -76,8 +76,8 @@ func TestInitialize_FreshMR_AddsAllDefaults(t *testing.T) {
 			t.Errorf("missing default key %q in %v", k, got)
 		}
 	}
-	if got["crossplane-kind"] != "memorystore.beta.anthropic.crossplane.io" {
-		t.Errorf("crossplane-kind = %q, want %q", got["crossplane-kind"], "memorystore.beta.anthropic.crossplane.io")
+	if got["crossplane-kind"] != "memorystore.managedagents.anthropic.crossplane.io" {
+		t.Errorf("crossplane-kind = %q, want %q", got["crossplane-kind"], "memorystore.managedagents.anthropic.crossplane.io")
 	}
 	if got["crossplane-name"] != "my-store" {
 		t.Errorf("crossplane-name = %q, want %q", got["crossplane-name"], "my-store")

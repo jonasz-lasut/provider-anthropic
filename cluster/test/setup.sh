@@ -9,7 +9,7 @@ if [[ -n "${UPTEST_CLOUD_CREDENTIALS:-}" ]]; then
 
   echo "Creating a default provider config..."
   cat <<EOF | ${KUBECTL} apply -f -
-apiVersion: anthropic.crossplane.io/v1alpha1
+apiVersion: anthropic.crossplane.io/v1beta1
 kind: ClusterProviderConfig
 metadata:
   name: default

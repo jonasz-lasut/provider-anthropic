@@ -34,7 +34,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
-	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
+	v1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 	"github.com/jonasz-lasut/provider-anthropic/internal/clients"
 	"github.com/jonasz-lasut/provider-anthropic/internal/initializer"
 )
@@ -50,7 +50,7 @@ const (
 
 // Setup adds a controller for Session to the supplied manager.
 func Setup(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) error {
-	name := managed.ControllerName(betav1alpha1.SessionKind)
+	name := managed.ControllerName(v1beta1.SessionKind)
 
 	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnector(&connector{kube: mgr.GetClient()}),
@@ -65,9 +65,9 @@ func Setup(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) err
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
-		For(&betav1alpha1.Session{}).
+		For(&v1beta1.Session{}).
 		Complete(managed.NewReconciler(mgr,
-			resource.ManagedKind(betav1alpha1.SessionGroupVersionKind),
+			resource.ManagedKind(v1beta1.SessionGroupVersionKind),
 			opts...,
 		))
 }
@@ -79,7 +79,7 @@ func SetupGated(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool
 		if err := Setup(mgr, o, skipDefaultMetadata); err != nil {
 			panic(err)
 		}
-	}, betav1alpha1.SessionGroupVersionKind)
+	}, v1beta1.SessionGroupVersionKind)
 	return nil
 }
 
@@ -89,7 +89,7 @@ type connector struct {
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	sess, ok := mg.(*betav1alpha1.Session)
+	sess, ok := mg.(*v1beta1.Session)
 	if !ok {
 		return nil, xperrors.New(errNotSession)
 	}
@@ -109,7 +109,7 @@ type external struct {
 }
 
 func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	sess, ok := mg.(*betav1alpha1.Session)
+	sess, ok := mg.(*v1beta1.Session)
 	if !ok {
 		return managed.ExternalObservation{}, xperrors.New(errNotSession)
 	}
@@ -147,7 +147,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	sess, ok := mg.(*betav1alpha1.Session)
+	sess, ok := mg.(*v1beta1.Session)
 	if !ok {
 		return managed.ExternalCreation{}, xperrors.New(errNotSession)
 	}
@@ -172,7 +172,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	sess, ok := mg.(*betav1alpha1.Session)
+	sess, ok := mg.(*v1beta1.Session)
 	if !ok {
 		return managed.ExternalUpdate{}, xperrors.New(errNotSession)
 	}
@@ -191,7 +191,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	sess, ok := mg.(*betav1alpha1.Session)
+	sess, ok := mg.(*v1beta1.Session)
 	if !ok {
 		return managed.ExternalDelete{}, xperrors.New(errNotSession)
 	}
@@ -201,13 +201,13 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalDelete{}, nil
 	}
 
-	policy := betav1alpha1.DeletionPolicyArchive
+	policy := v1beta1.DeletionPolicyArchive
 	if sess.Spec.ForProvider.AnthropicDeletionPolicy != nil {
 		policy = *sess.Spec.ForProvider.AnthropicDeletionPolicy
 	}
 
 	var err error
-	if policy == betav1alpha1.DeletionPolicyDelete {
+	if policy == v1beta1.DeletionPolicyDelete {
 		_, err = e.client.Beta.Sessions.Delete(ctx, sessID, anthropic.BetaSessionDeleteParams{})
 	} else {
 		_, err = e.client.Beta.Sessions.Archive(ctx, sessID, anthropic.BetaSessionArchiveParams{})
@@ -230,7 +230,7 @@ func (e *external) Disconnect(_ context.Context) error { return nil }
 // VaultIDs) are included in the diff but never reported as drift because
 // the API ensures they never change after creation. Ref/Selector and
 // SecretRef ForProvider-only fields are absent from AtProvider and skipped.
-func isUpToDate(sess *betav1alpha1.Session) bool {
+func isUpToDate(sess *v1beta1.Session) bool {
 	fpRaw, err := json.Marshal(sess.Spec.ForProvider)
 	if err != nil {
 		return true
@@ -253,8 +253,8 @@ func isUpToDate(sess *betav1alpha1.Session) bool {
 // referenced by ForProvider.Resources[*].AuthorizationTokenSecretRef into a
 // SessionConversionContext. Called from Create only; Resources are immutable
 // post-creation so Update never re-resolves.
-func resolveSessionContext(ctx context.Context, kube client.Client, sess *betav1alpha1.Session) (*betav1alpha1.SessionConversionContext, error) {
-	cctx := &betav1alpha1.SessionConversionContext{
+func resolveSessionContext(ctx context.Context, kube client.Client, sess *v1beta1.Session) (*v1beta1.SessionConversionContext, error) {
+	cctx := &v1beta1.SessionConversionContext{
 		ResourceTokens: make([]string, len(sess.Spec.ForProvider.Resources)),
 	}
 	for i, res := range sess.Spec.ForProvider.Resources {

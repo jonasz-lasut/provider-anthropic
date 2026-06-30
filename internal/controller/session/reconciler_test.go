@@ -11,7 +11,7 @@ import (
 
 	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 
-	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
+	v1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 )
 
 func newScheme(t *testing.T) *runtime.Scheme {
@@ -20,8 +20,8 @@ func newScheme(t *testing.T) *runtime.Scheme {
 	if err := corev1.AddToScheme(s); err != nil {
 		t.Fatalf("add corev1: %v", err)
 	}
-	if err := betav1alpha1.AddToScheme(s); err != nil {
-		t.Fatalf("add betav1alpha1: %v", err)
+	if err := v1beta1.AddToScheme(s); err != nil {
+		t.Fatalf("add v1beta1: %v", err)
 	}
 	return s
 }
@@ -33,10 +33,10 @@ func TestResolveSessionContext_ResolvesPerResourceTokens(t *testing.T) {
 	}
 	kube := fake.NewClientBuilder().WithScheme(newScheme(t)).WithObjects(secret).Build()
 
-	sess := &betav1alpha1.Session{
+	sess := &v1beta1.Session{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns"},
-		Spec: betav1alpha1.SessionSpec{ForProvider: betav1alpha1.SessionParameters{
-			Resources: []betav1alpha1.SessionResource{
+		Spec: v1beta1.SessionSpec{ForProvider: v1beta1.SessionParameters{
+			Resources: []v1beta1.SessionResource{
 				{
 					Type: ptr("github_repository"),
 					AuthorizationTokenSecretRef: &xpv1.LocalSecretKeySelector{
@@ -66,10 +66,10 @@ func TestResolveSessionContext_ResolvesPerResourceTokens(t *testing.T) {
 
 func TestResolveSessionContext_MissingSecretReturnsError(t *testing.T) {
 	kube := fake.NewClientBuilder().WithScheme(newScheme(t)).Build()
-	sess := &betav1alpha1.Session{
+	sess := &v1beta1.Session{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns"},
-		Spec: betav1alpha1.SessionSpec{ForProvider: betav1alpha1.SessionParameters{
-			Resources: []betav1alpha1.SessionResource{{
+		Spec: v1beta1.SessionSpec{ForProvider: v1beta1.SessionParameters{
+			Resources: []v1beta1.SessionResource{{
 				Type: ptr("github_repository"),
 				AuthorizationTokenSecretRef: &xpv1.LocalSecretKeySelector{
 					LocalSecretReference: xpv1.LocalSecretReference{Name: "missing"},

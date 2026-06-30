@@ -34,7 +34,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
-	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
+	v1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 	"github.com/jonasz-lasut/provider-anthropic/internal/clients"
 	"github.com/jonasz-lasut/provider-anthropic/internal/initializer"
 )
@@ -50,7 +50,7 @@ const (
 
 // Setup adds a controller for Deployment to the supplied manager.
 func Setup(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) error {
-	name := managed.ControllerName(betav1alpha1.DeploymentKind)
+	name := managed.ControllerName(v1beta1.DeploymentKind)
 
 	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnector(&connector{kube: mgr.GetClient()}),
@@ -65,9 +65,9 @@ func Setup(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) err
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
-		For(&betav1alpha1.Deployment{}).
+		For(&v1beta1.Deployment{}).
 		Complete(managed.NewReconciler(mgr,
-			resource.ManagedKind(betav1alpha1.DeploymentGroupVersionKind),
+			resource.ManagedKind(v1beta1.DeploymentGroupVersionKind),
 			opts...,
 		))
 }
@@ -79,7 +79,7 @@ func SetupGated(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool
 		if err := Setup(mgr, o, skipDefaultMetadata); err != nil {
 			panic(err)
 		}
-	}, betav1alpha1.DeploymentGroupVersionKind)
+	}, v1beta1.DeploymentGroupVersionKind)
 	return nil
 }
 
@@ -89,7 +89,7 @@ type connector struct {
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	dep, ok := mg.(*betav1alpha1.Deployment)
+	dep, ok := mg.(*v1beta1.Deployment)
 	if !ok {
 		return nil, xperrors.New(errNotDeployment)
 	}
@@ -109,7 +109,7 @@ type external struct {
 }
 
 func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	dep, ok := mg.(*betav1alpha1.Deployment)
+	dep, ok := mg.(*v1beta1.Deployment)
 	if !ok {
 		return managed.ExternalObservation{}, xperrors.New(errNotDeployment)
 	}
@@ -147,7 +147,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	dep, ok := mg.(*betav1alpha1.Deployment)
+	dep, ok := mg.(*v1beta1.Deployment)
 	if !ok {
 		return managed.ExternalCreation{}, xperrors.New(errNotDeployment)
 	}
@@ -172,7 +172,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	dep, ok := mg.(*betav1alpha1.Deployment)
+	dep, ok := mg.(*v1beta1.Deployment)
 	if !ok {
 		return managed.ExternalUpdate{}, xperrors.New(errNotDeployment)
 	}
@@ -202,7 +202,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 // reconcilePause converges the deployment's observed pause state to the desired
 // spec.forProvider.paused via the imperative Pause/Unpause endpoints. A nil
 // desired value means the user does not manage pause state, so it is left as-is.
-func (e *external) reconcilePause(ctx context.Context, dep *betav1alpha1.Deployment, depID string) error {
+func (e *external) reconcilePause(ctx context.Context, dep *v1beta1.Deployment, depID string) error {
 	if dep.Spec.ForProvider.Paused == nil {
 		return nil
 	}
@@ -221,7 +221,7 @@ func (e *external) reconcilePause(ctx context.Context, dep *betav1alpha1.Deploym
 }
 
 func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	dep, ok := mg.(*betav1alpha1.Deployment)
+	dep, ok := mg.(*v1beta1.Deployment)
 	if !ok {
 		return managed.ExternalDelete{}, xperrors.New(errNotDeployment)
 	}
@@ -250,7 +250,7 @@ func (e *external) Disconnect(_ context.Context) error { return nil }
 // (see DeploymentObservation doc) and so are not independently drift-detected;
 // they are still sent on every update. Ref/Selector ForProvider-only fields are
 // absent from AtProvider and skipped automatically.
-func isUpToDate(dep *betav1alpha1.Deployment) bool {
+func isUpToDate(dep *v1beta1.Deployment) bool {
 	fpRaw, err := json.Marshal(dep.Spec.ForProvider)
 	if err != nil {
 		return true
@@ -272,8 +272,8 @@ func isUpToDate(dep *betav1alpha1.Deployment) bool {
 // resolveDeploymentContext pre-resolves the per-resource Kubernetes secrets
 // referenced by ForProvider.Resources[*].AuthorizationTokenSecretRef into a
 // DeploymentConversionContext. Called from Create and Update.
-func resolveDeploymentContext(ctx context.Context, kube client.Client, dep *betav1alpha1.Deployment) (*betav1alpha1.DeploymentConversionContext, error) {
-	cctx := &betav1alpha1.DeploymentConversionContext{
+func resolveDeploymentContext(ctx context.Context, kube client.Client, dep *v1beta1.Deployment) (*v1beta1.DeploymentConversionContext, error) {
+	cctx := &v1beta1.DeploymentConversionContext{
 		ResourceTokens: make([]string, len(dep.Spec.ForProvider.Resources)),
 	}
 	for i, res := range dep.Spec.ForProvider.Resources {

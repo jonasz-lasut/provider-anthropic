@@ -34,7 +34,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
-	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
+	v1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 	"github.com/jonasz-lasut/provider-anthropic/internal/clients"
 	"github.com/jonasz-lasut/provider-anthropic/internal/initializer"
 )
@@ -50,7 +50,7 @@ const (
 
 // Setup adds a controller for Vault to the supplied manager.
 func Setup(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) error {
-	name := managed.ControllerName(betav1alpha1.VaultKind)
+	name := managed.ControllerName(v1beta1.VaultKind)
 
 	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnector(&connector{kube: mgr.GetClient()}),
@@ -65,9 +65,9 @@ func Setup(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) err
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
-		For(&betav1alpha1.Vault{}).
+		For(&v1beta1.Vault{}).
 		Complete(managed.NewReconciler(mgr,
-			resource.ManagedKind(betav1alpha1.VaultGroupVersionKind),
+			resource.ManagedKind(v1beta1.VaultGroupVersionKind),
 			opts...,
 		))
 }
@@ -79,7 +79,7 @@ func SetupGated(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool
 		if err := Setup(mgr, o, skipDefaultMetadata); err != nil {
 			panic(err)
 		}
-	}, betav1alpha1.VaultGroupVersionKind)
+	}, v1beta1.VaultGroupVersionKind)
 	return nil
 }
 
@@ -89,7 +89,7 @@ type connector struct {
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	v, ok := mg.(*betav1alpha1.Vault)
+	v, ok := mg.(*v1beta1.Vault)
 	if !ok {
 		return nil, xperrors.New(errNotVault)
 	}
@@ -108,7 +108,7 @@ type external struct {
 }
 
 func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	v, ok := mg.(*betav1alpha1.Vault)
+	v, ok := mg.(*v1beta1.Vault)
 	if !ok {
 		return managed.ExternalObservation{}, xperrors.New(errNotVault)
 	}
@@ -146,7 +146,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	v, ok := mg.(*betav1alpha1.Vault)
+	v, ok := mg.(*v1beta1.Vault)
 	if !ok {
 		return managed.ExternalCreation{}, xperrors.New(errNotVault)
 	}
@@ -164,7 +164,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	v, ok := mg.(*betav1alpha1.Vault)
+	v, ok := mg.(*v1beta1.Vault)
 	if !ok {
 		return managed.ExternalUpdate{}, xperrors.New(errNotVault)
 	}
@@ -183,7 +183,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	v, ok := mg.(*betav1alpha1.Vault)
+	v, ok := mg.(*v1beta1.Vault)
 	if !ok {
 		return managed.ExternalDelete{}, xperrors.New(errNotVault)
 	}
@@ -193,13 +193,13 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalDelete{}, nil
 	}
 
-	policy := betav1alpha1.DeletionPolicyArchive
+	policy := v1beta1.DeletionPolicyArchive
 	if v.Spec.ForProvider.AnthropicDeletionPolicy != nil {
 		policy = *v.Spec.ForProvider.AnthropicDeletionPolicy
 	}
 
 	var err error
-	if policy == betav1alpha1.DeletionPolicyDelete {
+	if policy == v1beta1.DeletionPolicyDelete {
 		_, err = e.client.Beta.Vaults.Delete(ctx, vID, anthropic.BetaVaultDeleteParams{})
 	} else {
 		_, err = e.client.Beta.Vaults.Archive(ctx, vID, anthropic.BetaVaultArchiveParams{})
@@ -221,7 +221,7 @@ func (e *external) Disconnect(_ context.Context) error { return nil }
 // isUpToDate performs a structured diff between spec.forProvider and
 // status.atProvider, skipping nil ForProvider fields and ForProvider-only
 // fields that have no AtProvider counterpart (e.g. AnthropicDeletionPolicy).
-func isUpToDate(v *betav1alpha1.Vault) bool {
+func isUpToDate(v *v1beta1.Vault) bool {
 	fpRaw, err := json.Marshal(v.Spec.ForProvider)
 	if err != nil {
 		return true

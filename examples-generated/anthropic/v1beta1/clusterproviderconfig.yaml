@@ -1,0 +1,30 @@
+---
+apiVersion: anthropic.crossplane.io/v1beta1
+kind: ClusterProviderConfig
+metadata:
+  name: default
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: anthropic/v1beta1/clusterproviderconfig
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      name: anthropic-credentials
+      namespace: crossplane-system
+      key: credentials
+  identity:
+    type: APIKey
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: anthropic-credentials
+  namespace: crossplane-system
+type: Opaque
+stringData:
+  credentials: |
+    {
+      "api_key": "REPLACE_WITH_ANTHROPIC_API_KEY"
+    }
