@@ -13,11 +13,13 @@ and management of resources on the [Anthropic platform](https://docs.anthropic.c
 |---|---|---|
 | `Agent` | `managedagents.anthropic.crossplane.io/v1beta1` | Create and update [Managed Agents](https://docs.anthropic.com/en/docs/managed-agents) |
 | `Session` | `managedagents.anthropic.crossplane.io/v1beta1` | Agent sessions with environments and vaults |
+| `Deployment` | `managedagents.anthropic.crossplane.io/v1beta1` | Scheduled agent runs that materialize sessions on a cron schedule |
 | `Vault` | `managedagents.anthropic.crossplane.io/v1beta1` | Credential containers for agents |
 | `VaultCredential` | `managedagents.anthropic.crossplane.io/v1beta1` | OAuth and static bearer tokens in a vault |
 | `Environment` | `managedagents.anthropic.crossplane.io/v1beta1` | Cloud container configuration for sessions |
 | `MemoryStore` | `managedagents.anthropic.crossplane.io/v1beta1` | Named stores for agent memories |
 | `MemoryStoreMemory` | `managedagents.anthropic.crossplane.io/v1beta1` | Individual text memories in a store |
+| `Skill` | `managedagents.anthropic.crossplane.io/v1beta1` | Reusable skill packages and their versioned file content for agents |
 
 ## Install
 
@@ -95,7 +97,7 @@ See [Required configuration](#required-configuration) for how to set up credenti
 1. Apply a `ProviderConfig` that references the secret and selects the `APIKey` identity:
 
     ```console
-    kubectl apply -f examples-generated/anthropic/v1alpha1/providerconfig.yaml
+    kubectl apply -f examples-generated/anthropic/v1beta1/providerconfig.yaml
     ```
 
     Or use a cluster-scoped `ClusterProviderConfig` if your managed resources span multiple namespaces:
