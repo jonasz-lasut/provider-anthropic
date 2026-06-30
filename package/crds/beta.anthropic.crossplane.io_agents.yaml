@@ -4,7 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.0
-    anthropic.crossplane.io/sdk-version: v1.51.0
+    anthropic.crossplane.io/sdk-version: v1.55.0
   name: agents.beta.anthropic.crossplane.io
 spec:
   group: beta.anthropic.crossplane.io

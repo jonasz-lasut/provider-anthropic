@@ -94,6 +94,10 @@ func TestVaultCredentialToAnthropicNewEnvironmentVariableLimited(t *testing.T) {
 					Type:         &netType,
 					AllowedHosts: []string{"api.example.com", "*.internal.example.com"},
 				},
+				InjectionLocation: &VaultCredentialInjectionLocation{
+					Body:   ptr(true),
+					Header: ptr(false),
+				},
 			},
 		}},
 	}
@@ -117,6 +121,12 @@ func TestVaultCredentialToAnthropicNewEnvironmentVariableLimited(t *testing.T) {
 	}
 	if len(ev.Networking.OfLimited.AllowedHosts) != 2 || ev.Networking.OfLimited.AllowedHosts[0] != "api.example.com" {
 		t.Errorf("AllowedHosts = %v", ev.Networking.OfLimited.AllowedHosts)
+	}
+	if ev.InjectionLocation.Body.Value != true {
+		t.Errorf("InjectionLocation.Body = %v, want true", ev.InjectionLocation.Body.Value)
+	}
+	if ev.InjectionLocation.Header.Value != false {
+		t.Errorf("InjectionLocation.Header = %v, want false", ev.InjectionLocation.Header.Value)
 	}
 }
 
@@ -154,6 +164,9 @@ func TestVaultCredentialToAnthropicUpdateEnvironmentVariable(t *testing.T) {
 			Auth: VaultCredentialAuth{
 				Type:       &authType,
 				Networking: &VaultCredentialNetworking{Type: &netType},
+				InjectionLocation: &VaultCredentialInjectionLocation{
+					Header: ptr(true),
+				},
 			},
 		}},
 	}
@@ -172,6 +185,12 @@ func TestVaultCredentialToAnthropicUpdateEnvironmentVariable(t *testing.T) {
 	if ev.Networking.OfUnrestricted == nil {
 		t.Fatalf("expected OfUnrestricted networking")
 	}
+	if ev.InjectionLocation.Header.Value != true {
+		t.Errorf("InjectionLocation.Header = %v, want true", ev.InjectionLocation.Header.Value)
+	}
+	if ev.InjectionLocation.Body.Valid() {
+		t.Errorf("InjectionLocation.Body should be unset, got %v", ev.InjectionLocation.Body.Value)
+	}
 }
 
 func TestVaultCredentialFromAnthropicObservationEnvironmentVariable(t *testing.T) {
@@ -186,6 +205,10 @@ func TestVaultCredentialFromAnthropicObservationEnvironmentVariable(t *testing.T
 			Networking: anthropic.BetaManagedAgentsEnvironmentVariableAuthResponseNetworkingUnion{
 				Type:         "limited",
 				AllowedHosts: []string{"api.example.com"},
+			},
+			InjectionLocation: anthropic.BetaManagedAgentsInjectionLocationResponse{
+				Body:   true,
+				Header: false,
 			},
 		},
 		CreatedAt: now,
@@ -211,6 +234,15 @@ func TestVaultCredentialFromAnthropicObservationEnvironmentVariable(t *testing.T
 	}
 	if len(r.Status.AtProvider.Auth.Networking.AllowedHosts) != 1 || r.Status.AtProvider.Auth.Networking.AllowedHosts[0] != "api.example.com" {
 		t.Errorf("Networking.AllowedHosts = %v", r.Status.AtProvider.Auth.Networking.AllowedHosts)
+	}
+	if r.Status.AtProvider.Auth.InjectionLocation == nil {
+		t.Fatal("Auth.InjectionLocation is nil")
+	}
+	if r.Status.AtProvider.Auth.InjectionLocation.Body == nil || *r.Status.AtProvider.Auth.InjectionLocation.Body != true {
+		t.Errorf("InjectionLocation.Body = %v, want true", r.Status.AtProvider.Auth.InjectionLocation.Body)
+	}
+	if r.Status.AtProvider.Auth.InjectionLocation.Header == nil || *r.Status.AtProvider.Auth.InjectionLocation.Header != false {
+		t.Errorf("InjectionLocation.Header = %v, want false", r.Status.AtProvider.Auth.InjectionLocation.Header)
 	}
 }
 

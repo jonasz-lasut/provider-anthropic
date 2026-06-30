@@ -84,6 +84,20 @@ type VaultCredentialNetworking struct {
 	AllowedHosts []string `json:"allowedHosts,omitempty"`
 }
 
+// VaultCredentialInjectionLocation selects where in the outbound request the
+// environment_variable secret value may be substituted. Omit a field to leave
+// it unset so the API applies its own default.
+type VaultCredentialInjectionLocation struct {
+	// Body substitutes the secret when the placeholder appears in the request body.
+	// +optional
+	Body *bool `json:"body,omitempty"`
+
+	// Header substitutes the secret when the placeholder appears in a request
+	// header value.
+	// +optional
+	Header *bool `json:"header,omitempty"`
+}
+
 // VaultCredentialAuth describes the credential payload. Type selects the
 // variant; only set the fields relevant to that variant.
 type VaultCredentialAuth struct {
@@ -113,6 +127,12 @@ type VaultCredentialAuth struct {
 	// (environment_variable variant). Required for that variant.
 	// +optional
 	Networking *VaultCredentialNetworking `json:"networking,omitempty"`
+
+	// InjectionLocation selects where in the outbound request the secret value
+	// is substituted (environment_variable variant). Omit to let the API apply
+	// its own default.
+	// +optional
+	InjectionLocation *VaultCredentialInjectionLocation `json:"injectionLocation,omitempty"`
 
 	// TokenSecretRef references a Secret in the MR's namespace holding the
 	// static bearer token at the given key (static_bearer variant). Omit
@@ -191,6 +211,18 @@ type VaultCredentialNetworkingObservation struct {
 	AllowedHosts []string `json:"allowedHosts,omitempty"`
 }
 
+// VaultCredentialInjectionLocationObservation holds the observed injection
+// location of an environment_variable credential.
+type VaultCredentialInjectionLocationObservation struct {
+	// Body indicates the secret is substituted in the request body.
+	// +optional
+	Body *bool `json:"body,omitempty"`
+
+	// Header indicates the secret is substituted in request header values.
+	// +optional
+	Header *bool `json:"header,omitempty"`
+}
+
 // VaultCredentialAuthObservation holds the non-sensitive observed auth fields
 // returned by the API. Tokens, client secrets, and refresh details are
 // write-only and not included.
@@ -213,6 +245,11 @@ type VaultCredentialAuthObservation struct {
 	// Networking is the observed networking scope (environment_variable variant).
 	// +optional
 	Networking *VaultCredentialNetworkingObservation `json:"networking,omitempty"`
+
+	// InjectionLocation is the observed injection location
+	// (environment_variable variant).
+	// +optional
+	InjectionLocation *VaultCredentialInjectionLocationObservation `json:"injectionLocation,omitempty"`
 }
 
 // VaultCredentialObservation holds the observed state of an Anthropic

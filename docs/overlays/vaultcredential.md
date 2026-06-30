@@ -90,7 +90,8 @@ helpers in `vaultcredential_conversion.go`, with parallel New/Update variants:
 
 `FromAnthropicObservation` writes a **partial** `VaultCredentialAuthObservation`
 holding only non-sensitive sub-fields (`type`, `mcpServerUrl`, or — for
-`environment_variable` — `secretName` + `networking`); secrets are never observed.
+`environment_variable` — `secretName` + `networking` + `injectionLocation`);
+secrets are never observed.
 
 ---
 

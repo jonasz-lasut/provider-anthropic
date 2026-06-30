@@ -107,6 +107,12 @@ func (r *VaultCredential) FromAnthropicObservation(resp anthropic.BetaManagedAge
 			Type:         &netType,
 			AllowedHosts: resp.Auth.Networking.AllowedHosts,
 		}
+		body := resp.Auth.InjectionLocation.Body
+		header := resp.Auth.InjectionLocation.Header
+		auth.InjectionLocation = &VaultCredentialInjectionLocationObservation{
+			Body:   &body,
+			Header: &header,
+		}
 	default:
 		authURL := resp.Auth.MCPServerURL
 		auth.MCPServerURL = &authURL
@@ -176,9 +182,25 @@ func vcNewAuthUnion(a VaultCredentialAuth, ctx *VaultCredentialConversionContext
 		if a.Networking != nil {
 			ev.Networking = vcNetworkingUnion(*a.Networking)
 		}
+		if a.InjectionLocation != nil {
+			ev.InjectionLocation = vcNewInjectionLocation(*a.InjectionLocation)
+		}
 		return anthropic.BetaVaultCredentialNewParamsAuthUnion{OfEnvironmentVariable: ev}, nil
 	}
 	return anthropic.BetaVaultCredentialNewParamsAuthUnion{}, nil
+}
+
+// vcNewInjectionLocation maps the CRD injection location to the SDK create
+// params for the environment_variable variant.
+func vcNewInjectionLocation(il VaultCredentialInjectionLocation) anthropic.BetaManagedAgentsInjectionLocationParams {
+	p := anthropic.BetaManagedAgentsInjectionLocationParams{}
+	if il.Body != nil {
+		p.Body = anthropic.Bool(*il.Body)
+	}
+	if il.Header != nil {
+		p.Header = anthropic.Bool(*il.Header)
+	}
+	return p
 }
 
 // vcNetworkingUnion maps the CRD networking scope to the SDK credential
@@ -308,9 +330,25 @@ func vcUpdateAuthUnion(a VaultCredentialAuth, ctx *VaultCredentialConversionCont
 		if a.Networking != nil {
 			ev.Networking = vcNetworkingUnion(*a.Networking)
 		}
+		if a.InjectionLocation != nil {
+			ev.InjectionLocation = vcUpdateInjectionLocation(*a.InjectionLocation)
+		}
 		return anthropic.BetaVaultCredentialUpdateParamsAuthUnion{OfEnvironmentVariable: ev}, nil
 	}
 	return anthropic.BetaVaultCredentialUpdateParamsAuthUnion{}, nil
+}
+
+// vcUpdateInjectionLocation maps the CRD injection location to the SDK update
+// params for the environment_variable variant.
+func vcUpdateInjectionLocation(il VaultCredentialInjectionLocation) anthropic.BetaManagedAgentsInjectionLocationUpdateParams {
+	p := anthropic.BetaManagedAgentsInjectionLocationUpdateParams{}
+	if il.Body != nil {
+		p.Body = anthropic.Bool(*il.Body)
+	}
+	if il.Header != nil {
+		p.Header = anthropic.Bool(*il.Header)
+	}
+	return p
 }
 
 func vcUpdateRefreshParams(r VaultCredentialRefresh, ctx *VaultCredentialConversionContext) anthropic.BetaManagedAgentsMCPOAuthRefreshUpdateParams {
