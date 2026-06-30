@@ -120,11 +120,11 @@ initializer block, and the `internal/initializer` import — `setup.go` calls
 
 ## Checklist for implementers
 
-- [ ] `apis/beta/v1alpha1/memorystorememory_types.go` — `MemoryStoreID` value field
+- [ ] `apis/managedagents/v1beta1/memorystorememory_types.go` — `MemoryStoreID` value field
       + `MemoryStoreIDRef`/`MemoryStoreIDSelector` (reference to `MemoryStore`);
       `ContentSecretRef`; `ContentSha256` in AtProvider; **no** `AnthropicDeletionPolicy`;
       **no** `Metadata` field
-- [ ] `apis/beta/v1alpha1/memorystorememory_conversion.go` — `ToAnthropicNew` omits
+- [ ] `apis/managedagents/v1beta1/memorystorememory_conversion.go` — `ToAnthropicNew` omits
       parent ID (positional); `ToAnthropicUpdate` sets `params.MemoryStoreID`;
       `MemoryStoreMemoryConversionContext{Content}` + `ToConnectionDetails`
 - [ ] `internal/controller/memorystorememory/reconciler.go` — calls

@@ -40,8 +40,8 @@ After **any** change to `apis/` types, run `make generate` and commit the regene
 
 ```
 apis/<group>/<version>/        CRD Go types + handwritten conversion + generated zz_* files
-  config/v1alpha1/             ProviderConfig / ClusterProviderConfig (credential plumbing)
-  beta/v1alpha1/               every managed resource + ObservedAgentCollection + Predicates
+  config/v1beta1/             ProviderConfig / ClusterProviderConfig (credential plumbing)
+  managedagents/v1beta1/               every managed resource
 internal/clients/              Anthropic SDK client builder, secret resolution, drift diffing
 internal/controller/<kind>/    one package per resource: reconciler.go implements ExternalClient
 internal/controller/setup.go   SetupProviders wires every controller (gated on CRD readiness)
@@ -76,7 +76,7 @@ non-prefixed IDs, so "not yet created" is detected by comparing the external nam
 `mg.GetName()`, not by checking for empty. After `Create`, the real ID (`agent_…`, `skl_…`, …) is
 stored in both the external-name annotation and `Status.AtProvider.ID`.
 
-### Conversion layer (`apis/beta/v1alpha1/*_conversion.go`)
+### Conversion layer (`apis/managedagents/v1beta1/*_conversion.go`)
 
 Conversion lives on the API types, not in the reconciler, and is unit-tested per resource
 (`*_conversion_test.go`). Resources with secret-valued fields define a `<Resource>ConversionContext`
@@ -110,11 +110,6 @@ scaffolding, so always read the overlay before touching the resource.
   every reconciler method guards on it. `VaultCredential` additionally maps a discriminated `Auth`
   union with five SecretRefs across its variants. See **`docs/overlays/memorystorememory.md`** and
   **`docs/overlays/vaultcredential.md`**.
-- **`ObservedAgentCollection`** is *not* a managed resource. It lists agents from the API and
-  materializes one Observe-only `Agent` child per match via Server-Side Apply, deleting stale
-  children. It uses `NewClientFromProviderConfig` (no usage tracker) and filters results with
-  `internal/predicates/` (`MetadataMatch`, `CELFilter` client-side; `CreatedAtGte/Lte` server-side).
-  See the README "Filtering collections with predicates" section for the user-facing surface.
 
 ## Slash commands (`.claude/commands/`)
 
@@ -125,11 +120,10 @@ reproducing the steps by hand.
 | Command | When to use it |
 |---|---|
 | `/add-resource ResourceName[,…]` | Adding a brand-new managed resource backed by a `Beta<Resource>` SDK service. Scaffolds the types file, conversion, reconciler, controller wiring, and `setup.go` entry, then generates. |
-| `/add-collection ResourceName[,…]` | Adding an `Observed<Resource>Collection` for a resource whose SDK service exposes `List`/`ListAutoPaging`. Wires the materializing reconciler + predicate plumbing. |
 | `/generate-examples` | Regenerating `examples-generated/` manifests for every CRD (feasible defaults, used as the E2E corpus). |
 | `/update-anthropic-sdk` | Bumping the `anthropic-sdk-go` dependency and syncing all reconciler/conversion logic to upstream API changes, then re-stamping the version into the CRDs. |
 
-When asked to "add a resource", "support kind X", "add a collection", "regenerate examples", or
+When asked to "add a resource", "support kind X", "regenerate examples", or
 "update the SDK", reach for the matching command first — these encode this repo's exact conventions
 (external-name handling, gated setup, conversion + drift patterns) that are easy to get subtly wrong.
 
@@ -140,7 +134,7 @@ E2E tests run the real provider against the **real Anthropic API** using
 
 ```console
 UPTEST_CLOUD_CREDENTIALS="YOUR_ANTHROPIC_API_KEY" \
-UPTEST_EXAMPLE_LIST="examples-generated/beta/v1alpha1/agent.yaml" \
+UPTEST_EXAMPLE_LIST="examples-generated/managedagents/v1beta1/agent.yaml" \
 make e2e
 ```
 
@@ -154,17 +148,17 @@ make e2e
   labels that Uptest relies on — keep them when editing examples.
 
 **In CI**, E2E is triggered by a maintainer commenting on a PR:
-`/test-examples="examples-generated/beta/v1alpha1/agent.yaml"` (see `.github/workflows/e2e.yaml`).
+`/test-examples="examples-generated/managedagents/v1beta1/agent.yaml"` (see `.github/workflows/e2e.yaml`).
 It runs only for users with write/admin permission and reports back as a commit status check.
 
 For changes that don't need the live API, prefer the per-resource conversion unit tests
-(`apis/beta/v1alpha1/*_conversion_test.go`) and `internal/controller/session/reconciler_test.go`.
+(`apis/managedagents/v1beta1/*_conversion_test.go`) and `internal/controller/session/reconciler_test.go`.
 
 ## Conventions
 
 - **Generated files** (`zz_generated.*.go`, `package/crds/*.yaml`, `examples-generated/`) are never
   hand-edited — change the source types/conversion and run `make generate`.
 - **API groups:** credential/config types live under `anthropic.crossplane.io` (`apis/config`);
-  every managed resource lives under `beta.anthropic.crossplane.io/v1alpha1` (`apis/beta`).
+  every managed resource lives under `managedagents.anthropic.crossplane.io/v1beta1` (`apis/beta`).
 - The provider declares the `SafeStart` capability; new controllers must register through
   `SetupGated` so they wait for their CRD.

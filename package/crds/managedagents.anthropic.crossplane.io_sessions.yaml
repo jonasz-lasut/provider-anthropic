@@ -1,0 +1,681 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+    anthropic.crossplane.io/sdk-version: v1.55.0
+  name: sessions.managedagents.anthropic.crossplane.io
+spec:
+  group: managedagents.anthropic.crossplane.io
+  names:
+    categories:
+      - crossplane
+      - managed
+      - anthropic
+    kind: Session
+    listKind: SessionList
+    plural: sessions
+    shortNames:
+      - asession
+    singular: session
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .status.conditions[?(@.type=='Ready')].status
+          name: READY
+          type: string
+        - jsonPath: .status.conditions[?(@.type=='Synced')].status
+          name: SYNCED
+          type: string
+        - jsonPath: .metadata.annotations.crossplane\.io/external-name
+          name: EXTERNAL-NAME
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: AGE
+          type: date
+      name: v1beta1
+      schema:
+        openAPIV3Schema:
+          description: |-
+            Session is a managed resource representing an Anthropic agent session
+            (beta API).
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: SessionSpec defines the desired state of Session.
+              properties:
+                forProvider:
+                  description: |-
+                    ForProvider holds the configuration the provider reconciles against the
+                    Anthropic API on every loop.
+                  properties:
+                    agentId:
+                      description: |-
+                        AgentID is the ID of the Agent that runs in this session.
+                        Accepts an agent ID string (pins the latest version) or use
+                        AgentVersion to pin a specific version.
+                        Populate directly or via AgentIDRef / AgentIDSelector.
+                      type: string
+                    agentIdRef:
+                      description: Reference to an Agent to populate agentId.
+                      properties:
+                        name:
+                          description: Name of the referenced object.
+                          type: string
+                        namespace:
+                          description: Namespace of the referenced object
+                          type: string
+                        policy:
+                          description: Policies for referencing.
+                          properties:
+                            resolution:
+                              default: Required
+                              description: |-
+                                Resolution specifies whether resolution of this reference is required.
+                                The default is 'Required', which means the reconcile will fail if the
+                                reference cannot be resolved. 'Optional' means this reference will be
+                                a no-op if it cannot be resolved.
+                              enum:
+                                - Required
+                                - Optional
+                              type: string
+                            resolve:
+                              description: |-
+                                Resolve specifies when this reference should be resolved. The default
+                                is 'IfNotPresent', which will attempt to resolve the reference only when
+                                the corresponding field is not present. Use 'Always' to resolve the
+                                reference on every reconcile.
+                              enum:
+                                - Always
+                                - IfNotPresent
+                              type: string
+                          type: object
+                      required:
+                        - name
+                      type: object
+                    agentIdSelector:
+                      description: Selector for an Agent to populate agentId.
+                      properties:
+                        matchControllerRef:
+                          description: |-
+                            MatchControllerRef ensures an object with the same controller reference
+                            as the selecting object is selected.
+                          type: boolean
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          description: MatchLabels ensures an object with matching labels is selected.
+                          type: object
+                        namespace:
+                          description: Namespace for the selector
+                          type: string
+                        policy:
+                          description: Policies for selection.
+                          properties:
+                            resolution:
+                              default: Required
+                              description: |-
+                                Resolution specifies whether resolution of this reference is required.
+                                The default is 'Required', which means the reconcile will fail if the
+                                reference cannot be resolved. 'Optional' means this reference will be
+                                a no-op if it cannot be resolved.
+                              enum:
+                                - Required
+                                - Optional
+                              type: string
+                            resolve:
+                              description: |-
+                                Resolve specifies when this reference should be resolved. The default
+                                is 'IfNotPresent', which will attempt to resolve the reference only when
+                                the corresponding field is not present. Use 'Always' to resolve the
+                                reference on every reconcile.
+                              enum:
+                                - Always
+                                - IfNotPresent
+                              type: string
+                          type: object
+                      type: object
+                    agentVersion:
+                      description: |-
+                        AgentVersion pins a specific agent version. When nil, the latest version
+                        of the referenced agent is used.
+                      format: int64
+                      type: integer
+                    anthropicDeletionPolicy:
+                      default: Archive
+                      description: |-
+                        AnthropicDeletionPolicy controls whether Crossplane calls Archive or
+                        Delete on the Anthropic API when the resource is deleted in Kubernetes.
+                      enum:
+                        - Archive
+                        - Delete
+                      type: string
+                    environmentId:
+                      description: |-
+                        EnvironmentID is the ID of the Environment that defines the container
+                        configuration for this session.
+                        Populate directly or via EnvironmentIDRef / EnvironmentIDSelector.
+                      type: string
+                    environmentIdRef:
+                      description: Reference to an Environment to populate environmentId.
+                      properties:
+                        name:
+                          description: Name of the referenced object.
+                          type: string
+                        namespace:
+                          description: Namespace of the referenced object
+                          type: string
+                        policy:
+                          description: Policies for referencing.
+                          properties:
+                            resolution:
+                              default: Required
+                              description: |-
+                                Resolution specifies whether resolution of this reference is required.
+                                The default is 'Required', which means the reconcile will fail if the
+                                reference cannot be resolved. 'Optional' means this reference will be
+                                a no-op if it cannot be resolved.
+                              enum:
+                                - Required
+                                - Optional
+                              type: string
+                            resolve:
+                              description: |-
+                                Resolve specifies when this reference should be resolved. The default
+                                is 'IfNotPresent', which will attempt to resolve the reference only when
+                                the corresponding field is not present. Use 'Always' to resolve the
+                                reference on every reconcile.
+                              enum:
+                                - Always
+                                - IfNotPresent
+                              type: string
+                          type: object
+                      required:
+                        - name
+                      type: object
+                    environmentIdSelector:
+                      description: Selector for an Environment to populate environmentId.
+                      properties:
+                        matchControllerRef:
+                          description: |-
+                            MatchControllerRef ensures an object with the same controller reference
+                            as the selecting object is selected.
+                          type: boolean
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          description: MatchLabels ensures an object with matching labels is selected.
+                          type: object
+                        namespace:
+                          description: Namespace for the selector
+                          type: string
+                        policy:
+                          description: Policies for selection.
+                          properties:
+                            resolution:
+                              default: Required
+                              description: |-
+                                Resolution specifies whether resolution of this reference is required.
+                                The default is 'Required', which means the reconcile will fail if the
+                                reference cannot be resolved. 'Optional' means this reference will be
+                                a no-op if it cannot be resolved.
+                              enum:
+                                - Required
+                                - Optional
+                              type: string
+                            resolve:
+                              description: |-
+                                Resolve specifies when this reference should be resolved. The default
+                                is 'IfNotPresent', which will attempt to resolve the reference only when
+                                the corresponding field is not present. Use 'Always' to resolve the
+                                reference on every reconcile.
+                              enum:
+                                - Always
+                                - IfNotPresent
+                              type: string
+                          type: object
+                      type: object
+                    metadata:
+                      additionalProperties:
+                        type: string
+                      description: |-
+                        Metadata is arbitrary key-value data attached to the session.
+                        Maximum 16 pairs; keys up to 64 chars, values up to 512 chars.
+                      type: object
+                    resources:
+                      description: Resources to mount into the session's container. Immutable after creation.
+                      items:
+                        description: |-
+                          SessionResource describes a resource mounted into the session's container.
+                          The Type field selects which variant is active; only supply the fields
+                          relevant to that variant.
+                        properties:
+                          access:
+                            description: |-
+                              Access is the access mode for the memory store: read_write or read_only
+                              (memory_store type). Defaults to read_write.
+                            enum:
+                              - read_write
+                              - read_only
+                            type: string
+                          authorizationTokenSecretRef:
+                            description: |-
+                              AuthorizationTokenSecretRef references a Secret in the MR's namespace
+                              holding the GitHub authorization token used to clone the repository
+                              (github_repository type). The token is resolved at reconcile time and
+                              never stored in status.atProvider.
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                description: Name of the secret.
+                                type: string
+                            required:
+                              - key
+                              - name
+                            type: object
+                          checkout:
+                            description: |-
+                              Checkout specifies the branch or commit to check out (github_repository type).
+                              Defaults to the repository's default branch.
+                            properties:
+                              name:
+                                description: Name is the branch name (when type=branch).
+                                type: string
+                              sha:
+                                description: Sha is the full commit SHA to check out (when type=commit).
+                                type: string
+                              type:
+                                description: 'Required: Type is "branch" or "commit".'
+                                enum:
+                                  - branch
+                                  - commit
+                                type: string
+                            type: object
+                          fileId:
+                            description: FileID is the ID of a previously uploaded file (file type).
+                            type: string
+                          instructions:
+                            description: |-
+                              Instructions guide the agent on how to use this memory store (memory_store type).
+                              Maximum 4096 characters.
+                            type: string
+                          memoryStoreId:
+                            description: |-
+                              MemoryStoreID is the ID of a memory store to attach (memory_store type).
+                              Populate directly or via MemoryStoreIDRef / MemoryStoreIDSelector.
+                            type: string
+                          memoryStoreIdRef:
+                            description: Reference to a MemoryStore to populate memoryStoreId.
+                            properties:
+                              name:
+                                description: Name of the referenced object.
+                                type: string
+                              namespace:
+                                description: Namespace of the referenced object
+                                type: string
+                              policy:
+                                description: Policies for referencing.
+                                properties:
+                                  resolution:
+                                    default: Required
+                                    description: |-
+                                      Resolution specifies whether resolution of this reference is required.
+                                      The default is 'Required', which means the reconcile will fail if the
+                                      reference cannot be resolved. 'Optional' means this reference will be
+                                      a no-op if it cannot be resolved.
+                                    enum:
+                                      - Required
+                                      - Optional
+                                    type: string
+                                  resolve:
+                                    description: |-
+                                      Resolve specifies when this reference should be resolved. The default
+                                      is 'IfNotPresent', which will attempt to resolve the reference only when
+                                      the corresponding field is not present. Use 'Always' to resolve the
+                                      reference on every reconcile.
+                                    enum:
+                                      - Always
+                                      - IfNotPresent
+                                    type: string
+                                type: object
+                            required:
+                              - name
+                            type: object
+                          memoryStoreIdSelector:
+                            description: Selector for a MemoryStore to populate memoryStoreId.
+                            properties:
+                              matchControllerRef:
+                                description: |-
+                                  MatchControllerRef ensures an object with the same controller reference
+                                  as the selecting object is selected.
+                                type: boolean
+                              matchLabels:
+                                additionalProperties:
+                                  type: string
+                                description: MatchLabels ensures an object with matching labels is selected.
+                                type: object
+                              namespace:
+                                description: Namespace for the selector
+                                type: string
+                              policy:
+                                description: Policies for selection.
+                                properties:
+                                  resolution:
+                                    default: Required
+                                    description: |-
+                                      Resolution specifies whether resolution of this reference is required.
+                                      The default is 'Required', which means the reconcile will fail if the
+                                      reference cannot be resolved. 'Optional' means this reference will be
+                                      a no-op if it cannot be resolved.
+                                    enum:
+                                      - Required
+                                      - Optional
+                                    type: string
+                                  resolve:
+                                    description: |-
+                                      Resolve specifies when this reference should be resolved. The default
+                                      is 'IfNotPresent', which will attempt to resolve the reference only when
+                                      the corresponding field is not present. Use 'Always' to resolve the
+                                      reference on every reconcile.
+                                    enum:
+                                      - Always
+                                      - IfNotPresent
+                                    type: string
+                                type: object
+                            type: object
+                          mountPath:
+                            description: |-
+                              MountPath is where to mount the resource in the container.
+                              Defaults to /workspace/<repo-name> for github_repository and
+                              /mnt/session/uploads/<file_id> for file resources.
+                            type: string
+                          type:
+                            description: 'Required: Type identifies the resource variant.'
+                            enum:
+                              - github_repository
+                              - file
+                              - memory_store
+                            type: string
+                          url:
+                            description: URL is the GitHub repository URL (github_repository type).
+                            type: string
+                        type: object
+                      type: array
+                    title:
+                      description: Title is a human-readable session title.
+                      type: string
+                    vaultIds:
+                      description: |-
+                        VaultIDs lists vault IDs for stored credentials the agent can use.
+                        Populate directly or via VaultIDsRefs / VaultIDsSelector.
+                        Immutable after creation.
+                      items:
+                        type: string
+                      type: array
+                      x-kubernetes-list-type: set
+                    vaultIdsRefs:
+                      description: References to Vaults used to populate vaultIds.
+                      items:
+                        description: A NamespacedReference to a named object.
+                        properties:
+                          name:
+                            description: Name of the referenced object.
+                            type: string
+                          namespace:
+                            description: Namespace of the referenced object
+                            type: string
+                          policy:
+                            description: Policies for referencing.
+                            properties:
+                              resolution:
+                                default: Required
+                                description: |-
+                                  Resolution specifies whether resolution of this reference is required.
+                                  The default is 'Required', which means the reconcile will fail if the
+                                  reference cannot be resolved. 'Optional' means this reference will be
+                                  a no-op if it cannot be resolved.
+                                enum:
+                                  - Required
+                                  - Optional
+                                type: string
+                              resolve:
+                                description: |-
+                                  Resolve specifies when this reference should be resolved. The default
+                                  is 'IfNotPresent', which will attempt to resolve the reference only when
+                                  the corresponding field is not present. Use 'Always' to resolve the
+                                  reference on every reconcile.
+                                enum:
+                                  - Always
+                                  - IfNotPresent
+                                type: string
+                            type: object
+                        required:
+                          - name
+                        type: object
+                      type: array
+                    vaultIdsSelector:
+                      description: Selector for Vaults used to populate vaultIds.
+                      properties:
+                        matchControllerRef:
+                          description: |-
+                            MatchControllerRef ensures an object with the same controller reference
+                            as the selecting object is selected.
+                          type: boolean
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          description: MatchLabels ensures an object with matching labels is selected.
+                          type: object
+                        namespace:
+                          description: Namespace for the selector
+                          type: string
+                        policy:
+                          description: Policies for selection.
+                          properties:
+                            resolution:
+                              default: Required
+                              description: |-
+                                Resolution specifies whether resolution of this reference is required.
+                                The default is 'Required', which means the reconcile will fail if the
+                                reference cannot be resolved. 'Optional' means this reference will be
+                                a no-op if it cannot be resolved.
+                              enum:
+                                - Required
+                                - Optional
+                              type: string
+                            resolve:
+                              description: |-
+                                Resolve specifies when this reference should be resolved. The default
+                                is 'IfNotPresent', which will attempt to resolve the reference only when
+                                the corresponding field is not present. Use 'Always' to resolve the
+                                reference on every reconcile.
+                              enum:
+                                - Always
+                                - IfNotPresent
+                              type: string
+                          type: object
+                      type: object
+                  type: object
+                managementPolicies:
+                  default:
+                    - '*'
+                  description: |-
+                    THIS IS A BETA FIELD. It is on by default but can be opted out
+                    through a Crossplane feature flag.
+                    ManagementPolicies specify the array of actions Crossplane is allowed to
+                    take on the managed and external resources.
+                    See the design doc for more information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223
+                    and this one: https://github.com/crossplane/crossplane/blob/444267e84783136daa93568b364a5f01228cacbe/design/one-pager-ignore-changes.md
+                  items:
+                    description: |-
+                      A ManagementAction represents an action that the Crossplane controllers
+                      can take on an external resource.
+                    enum:
+                      - Observe
+                      - Create
+                      - Update
+                      - Delete
+                      - LateInitialize
+                      - '*'
+                    type: string
+                  type: array
+                providerConfigRef:
+                  default:
+                    kind: ClusterProviderConfig
+                    name: default
+                  description: |-
+                    ProviderConfigReference specifies how the provider that will be used to
+                    create, observe, update, and delete this managed resource should be
+                    configured.
+                  properties:
+                    kind:
+                      description: Kind of the referenced object.
+                      type: string
+                    name:
+                      description: Name of the referenced object.
+                      type: string
+                  required:
+                    - kind
+                    - name
+                  type: object
+                writeConnectionSecretToRef:
+                  description: |-
+                    WriteConnectionSecretToReference specifies the namespace and name of a
+                    Secret to which any connection details for this managed resource should
+                    be written. Connection details frequently include the endpoint, username,
+                    and password required to connect to the managed resource.
+                  properties:
+                    name:
+                      description: Name of the secret.
+                      type: string
+                  required:
+                    - name
+                  type: object
+              required:
+                - forProvider
+              type: object
+            status:
+              description: SessionStatus defines the observed state of Session.
+              properties:
+                atProvider:
+                  description: AtProvider holds the observed state as returned by the Anthropic API.
+                  properties:
+                    agentId:
+                      description: AgentID is the ID of the agent snapshot bound to this session.
+                      type: string
+                    archivedAt:
+                      description: ArchivedAt is set when the session has been archived.
+                      type: string
+                    createdAt:
+                      description: CreatedAt is the RFC 3339 timestamp when the session was created.
+                      type: string
+                    deploymentId:
+                      description: |-
+                        DeploymentID is the deployment ID when the session was created from a
+                        deployment reference. Empty otherwise.
+                      type: string
+                    environmentId:
+                      description: EnvironmentID is the observed environment ID returned by the API.
+                      type: string
+                    id:
+                      description: |-
+                        ID is the Anthropic-assigned session identifier. Also stored in the
+                        external-name annotation, which the reconciler uses as the primary key.
+                      type: string
+                    metadata:
+                      additionalProperties:
+                        type: string
+                      description: Metadata is the observed key-value metadata map.
+                      type: object
+                    status:
+                      description: Status is the current session status.
+                      type: string
+                    title:
+                      description: Title is the observed human-readable session title.
+                      type: string
+                    updatedAt:
+                      description: UpdatedAt is the RFC 3339 timestamp of the last modification.
+                      type: string
+                    vaultIds:
+                      description: VaultIDs is the observed list of vault IDs attached at creation.
+                      items:
+                        type: string
+                      type: array
+                  type: object
+                conditions:
+                  description: Conditions of the resource.
+                  items:
+                    description: A Condition that may apply to a resource.
+                    properties:
+                      lastTransitionTime:
+                        description: |-
+                          LastTransitionTime is the last time this condition transitioned from one
+                          status to another.
+                        format: date-time
+                        type: string
+                      message:
+                        description: |-
+                          A Message containing details about this condition's last transition from
+                          one status to another, if any.
+                        type: string
+                      observedGeneration:
+                        description: |-
+                          ObservedGeneration represents the .metadata.generation that the condition was set based upon.
+                          For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                          with respect to the current state of the instance.
+                        format: int64
+                        type: integer
+                      reason:
+                        description: A Reason for this condition's last transition from one status to another.
+                        type: string
+                      status:
+                        description: Status of this condition; is it currently True, False, or Unknown?
+                        type: string
+                      type:
+                        description: |-
+                          Type of this condition. At most one of each condition type may apply to
+                          a resource at any point in time.
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                  x-kubernetes-list-map-keys:
+                    - type
+                  x-kubernetes-list-type: map
+                observedGeneration:
+                  description: |-
+                    ObservedGeneration is the latest metadata.generation
+                    which resulted in either a ready state, or stalled due to error
+                    it can not recover from without human intervention.
+                  format: int64
+                  type: integer
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}

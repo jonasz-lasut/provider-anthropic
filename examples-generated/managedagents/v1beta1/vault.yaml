@@ -1,0 +1,16 @@
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Vault
+metadata:
+  name: example-vault
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: managedagents/v1beta1/vault
+spec:
+  forProvider:
+    displayName: example-vault
+    anthropicDeletionPolicy: Delete
+    metadata:
+      example: "true"

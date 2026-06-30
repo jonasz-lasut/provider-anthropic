@@ -1,0 +1,417 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+    anthropic.crossplane.io/sdk-version: v1.55.0
+  name: agents.managedagents.anthropic.crossplane.io
+spec:
+  group: managedagents.anthropic.crossplane.io
+  names:
+    categories:
+      - crossplane
+      - managed
+      - anthropic
+    kind: Agent
+    listKind: AgentList
+    plural: agents
+    shortNames:
+      - agent
+    singular: agent
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .status.conditions[?(@.type=='Ready')].status
+          name: READY
+          type: string
+        - jsonPath: .status.conditions[?(@.type=='Synced')].status
+          name: SYNCED
+          type: string
+        - jsonPath: .metadata.annotations.crossplane\.io/external-name
+          name: EXTERNAL-NAME
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: AGE
+          type: date
+      name: v1beta1
+      schema:
+        openAPIV3Schema:
+          description: |-
+            Agent is a managed resource representing an Anthropic Managed Agent
+            (beta API).
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: AgentSpec defines the desired state of Agent.
+              properties:
+                forProvider:
+                  description: |-
+                    ForProvider holds the configuration the provider reconciles against the
+                    Anthropic API on every loop.
+                  properties:
+                    description:
+                      description: Description of what the agent does. Up to 2048 characters.
+                      maxLength: 2048
+                      type: string
+                    mcpServers:
+                      description: MCPServers this agent connects to. Maximum 20. Names must be unique.
+                      items:
+                        description: MCPServerConfig configures a single MCP server for an agent.
+                        properties:
+                          name:
+                            description: 'Required: Name is a unique identifier for this MCP server within the agent.'
+                            type: string
+                          url:
+                            description: 'Required: URL is the endpoint of the MCP server.'
+                            type: string
+                        type: object
+                      maxItems: 20
+                      type: array
+                    metadata:
+                      additionalProperties:
+                        type: string
+                      description: |-
+                        Metadata is arbitrary key-value data attached to the agent.
+                        Maximum 16 pairs; keys up to 64 chars, values up to 512 chars.
+                      type: object
+                    model:
+                      description: 'Required: Model is the model identifier for the agent, e.g. "claude-opus-4-7".'
+                      type: string
+                    name:
+                      description: 'Required: Name is the human-readable name for the agent (1–256 characters).'
+                      maxLength: 256
+                      type: string
+                    skills:
+                      description: Skills available to the agent. Maximum 20.
+                      items:
+                        description: AgentSkillConfig configures a single skill for an agent.
+                        properties:
+                          skillId:
+                            description: 'Required: SkillID is the identifier of the skill to attach.'
+                            type: string
+                          type:
+                            description: 'Required: Type is either "anthropic" or "custom".'
+                            enum:
+                              - anthropic
+                              - custom
+                            type: string
+                        type: object
+                      maxItems: 20
+                      type: array
+                    systemSecretRef:
+                      description: |-
+                        SystemSecretRef references a Secret in the MR's namespace holding the
+                        system prompt at the given key. Up to 100,000 characters; the API
+                        rejects larger payloads. Omit to send no system prompt.
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          description: Name of the secret.
+                          type: string
+                      required:
+                        - key
+                        - name
+                      type: object
+                    tools:
+                      description: Tools available to the agent. Maximum 128 tools across all toolsets.
+                      items:
+                        description: AgentToolConfig configures a single tool (toolset) for an agent.
+                        properties:
+                          description:
+                            description: Description of the custom tool for type "custom". 1-1024 characters.
+                            maxLength: 1024
+                            type: string
+                          inputSchema:
+                            description: |-
+                              InputSchema is the JSON Schema for the custom tool's input parameters.
+                              Required for type "custom".
+                            properties:
+                              properties:
+                                description: Properties defines the input parameter schemas as raw JSON values.
+                                type: object
+                                x-kubernetes-preserve-unknown-fields: true
+                              required:
+                                description: Required lists required property names.
+                                items:
+                                  type: string
+                                type: array
+                            type: object
+                          mcpServerName:
+                            description: |-
+                              MCPServerName is the MCP server name for type "mcp_toolset".
+                              Must match a server name from the mcpServers array. 1-255 characters.
+                            maxLength: 255
+                            type: string
+                          name:
+                            description: Name is the unique tool name for type "custom". 1-128 characters.
+                            maxLength: 128
+                            type: string
+                          type:
+                            description: 'Type identifies the toolset kind: "agent_toolset_20260401", "mcp_toolset", or "custom".'
+                            enum:
+                              - agent_toolset_20260401
+                              - mcp_toolset
+                              - custom
+                            type: string
+                        type: object
+                      maxItems: 128
+                      type: array
+                  type: object
+                managementPolicies:
+                  default:
+                    - '*'
+                  description: |-
+                    THIS IS A BETA FIELD. It is on by default but can be opted out
+                    through a Crossplane feature flag.
+                    ManagementPolicies specify the array of actions Crossplane is allowed to
+                    take on the managed and external resources.
+                    See the design doc for more information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223
+                    and this one: https://github.com/crossplane/crossplane/blob/444267e84783136daa93568b364a5f01228cacbe/design/one-pager-ignore-changes.md
+                  items:
+                    description: |-
+                      A ManagementAction represents an action that the Crossplane controllers
+                      can take on an external resource.
+                    enum:
+                      - Observe
+                      - Create
+                      - Update
+                      - Delete
+                      - LateInitialize
+                      - '*'
+                    type: string
+                  type: array
+                providerConfigRef:
+                  default:
+                    kind: ClusterProviderConfig
+                    name: default
+                  description: |-
+                    ProviderConfigReference specifies how the provider that will be used to
+                    create, observe, update, and delete this managed resource should be
+                    configured.
+                  properties:
+                    kind:
+                      description: Kind of the referenced object.
+                      type: string
+                    name:
+                      description: Name of the referenced object.
+                      type: string
+                  required:
+                    - kind
+                    - name
+                  type: object
+                writeConnectionSecretToRef:
+                  description: |-
+                    WriteConnectionSecretToReference specifies the namespace and name of a
+                    Secret to which any connection details for this managed resource should
+                    be written. Connection details frequently include the endpoint, username,
+                    and password required to connect to the managed resource.
+                  properties:
+                    name:
+                      description: Name of the secret.
+                      type: string
+                  required:
+                    - name
+                  type: object
+              required:
+                - forProvider
+              type: object
+            status:
+              description: AgentStatus defines the observed state of Agent.
+              properties:
+                atProvider:
+                  description: AtProvider holds the observed state as returned by the Anthropic API.
+                  properties:
+                    archivedAt:
+                      description: ArchivedAt is set when the agent has been archived.
+                      type: string
+                    createdAt:
+                      description: CreatedAt is the RFC 3339 timestamp when the agent was created.
+                      type: string
+                    description:
+                      description: Description is the observed description.
+                      type: string
+                    id:
+                      description: |-
+                        ID is the Anthropic-assigned agent identifier. Also stored in the
+                        external-name annotation, which the reconciler uses as the primary key.
+                      type: string
+                    mcpServers:
+                      description: MCPServers is the observed list of MCP server configurations.
+                      items:
+                        description: MCPServerConfig configures a single MCP server for an agent.
+                        properties:
+                          name:
+                            description: 'Required: Name is a unique identifier for this MCP server within the agent.'
+                            type: string
+                          url:
+                            description: 'Required: URL is the endpoint of the MCP server.'
+                            type: string
+                        type: object
+                      type: array
+                    metadata:
+                      additionalProperties:
+                        type: string
+                      description: Metadata is the observed key-value metadata map.
+                      type: object
+                    model:
+                      description: Model is the observed model configuration.
+                      properties:
+                        id:
+                          description: ID is the model identifier, e.g. "claude-opus-4-7".
+                          type: string
+                      type: object
+                    name:
+                      description: Name is the observed human-readable name.
+                      type: string
+                    skills:
+                      description: Skills is the observed list of skill configurations.
+                      items:
+                        description: AgentSkillConfig configures a single skill for an agent.
+                        properties:
+                          skillId:
+                            description: 'Required: SkillID is the identifier of the skill to attach.'
+                            type: string
+                          type:
+                            description: 'Required: Type is either "anthropic" or "custom".'
+                            enum:
+                              - anthropic
+                              - custom
+                            type: string
+                        type: object
+                      type: array
+                    systemSha256:
+                      description: |-
+                        SystemSha256 is the lowercase hex SHA-256 digest of the system prompt
+                        stored on the API. Used for drift detection; the raw value is never
+                        stored in status. Access the system prompt via spec.writeConnectionSecretToRef.
+                      type: string
+                    tools:
+                      description: Tools is the observed list of tool configurations.
+                      items:
+                        description: AgentToolConfig configures a single tool (toolset) for an agent.
+                        properties:
+                          description:
+                            description: Description of the custom tool for type "custom". 1-1024 characters.
+                            maxLength: 1024
+                            type: string
+                          inputSchema:
+                            description: |-
+                              InputSchema is the JSON Schema for the custom tool's input parameters.
+                              Required for type "custom".
+                            properties:
+                              properties:
+                                description: Properties defines the input parameter schemas as raw JSON values.
+                                type: object
+                                x-kubernetes-preserve-unknown-fields: true
+                              required:
+                                description: Required lists required property names.
+                                items:
+                                  type: string
+                                type: array
+                            type: object
+                          mcpServerName:
+                            description: |-
+                              MCPServerName is the MCP server name for type "mcp_toolset".
+                              Must match a server name from the mcpServers array. 1-255 characters.
+                            maxLength: 255
+                            type: string
+                          name:
+                            description: Name is the unique tool name for type "custom". 1-128 characters.
+                            maxLength: 128
+                            type: string
+                          type:
+                            description: 'Type identifies the toolset kind: "agent_toolset_20260401", "mcp_toolset", or "custom".'
+                            enum:
+                              - agent_toolset_20260401
+                              - mcp_toolset
+                              - custom
+                            type: string
+                        type: object
+                      type: array
+                    updatedAt:
+                      description: UpdatedAt is the RFC 3339 timestamp of the last modification.
+                      type: string
+                    version:
+                      description: |-
+                        Version is incremented each time the agent is modified and is required
+                        for optimistic-concurrency updates.
+                      format: int64
+                      type: integer
+                  type: object
+                conditions:
+                  description: Conditions of the resource.
+                  items:
+                    description: A Condition that may apply to a resource.
+                    properties:
+                      lastTransitionTime:
+                        description: |-
+                          LastTransitionTime is the last time this condition transitioned from one
+                          status to another.
+                        format: date-time
+                        type: string
+                      message:
+                        description: |-
+                          A Message containing details about this condition's last transition from
+                          one status to another, if any.
+                        type: string
+                      observedGeneration:
+                        description: |-
+                          ObservedGeneration represents the .metadata.generation that the condition was set based upon.
+                          For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                          with respect to the current state of the instance.
+                        format: int64
+                        type: integer
+                      reason:
+                        description: A Reason for this condition's last transition from one status to another.
+                        type: string
+                      status:
+                        description: Status of this condition; is it currently True, False, or Unknown?
+                        type: string
+                      type:
+                        description: |-
+                          Type of this condition. At most one of each condition type may apply to
+                          a resource at any point in time.
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                  x-kubernetes-list-map-keys:
+                    - type
+                  x-kubernetes-list-type: map
+                observedGeneration:
+                  description: |-
+                    ObservedGeneration is the latest metadata.generation
+                    which resulted in either a ready state, or stalled due to error
+                    it can not recover from without human intervention.
+                  format: int64
+                  type: integer
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}

@@ -49,7 +49,7 @@ From the SDK file, extract:
 - **Optimistic concurrency**: check if UpdateParams has a `Version int64` or similar field
 - **Archived status**: check if the response has `ArchivedAt time.Time` (nullable)
 - **Deletion methods**: does the service have `Archive()`? `Delete()`? Both? Record this.
-- **Cross-resource references**: any param field named `<Other>ID string` where `<Other>` is another managed resource kind already in `apis/beta.anthropic.crossplane.io/v1alpha1/`. List these.
+- **Cross-resource references**: any param field named `<Other>ID string` where `<Other>` is another managed resource kind already in `apis/managedagents.anthropic.crossplane.io/v1beta1/`. List these.
 
 ## Step 2 — Determine deletion policy
 
@@ -66,7 +66,7 @@ From the SDK file, extract:
 
 ## Step 3 — Create the types file
 
-Create `apis/beta.anthropic.crossplane.io/v1alpha1/<lowercase-resource>_types.go`.
+Create `apis/managedagents.anthropic.crossplane.io/v1beta1/<lowercase-resource>_types.go`.
 
 **Start from the template**: Read `hack/resource_types.go.txt` and substitute every `<Resource>` occurrence with the actual resource name (and `<plural>` / `<short>` with the plural form and short name). This gives you the license header, package declaration, imports, Spec/Status structs, kubebuilder markers, main struct, List struct, `var` block, and `init()` — all correct and ready to fill in.
 
@@ -85,7 +85,7 @@ Map each SDK NewParams/UpdateParams field:
 - If deletion policy field is needed, add it here (Step 2)
 - **Cross-resource references**: for each `<Other>ID` field in the params, declare the value field with markers AND the `Ref`/`Selector` fields manually. angryjet generates only the `ResolveReferences` method — it does NOT generate the field declarations:
   ```go
-  // +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1.<Other>
+  // +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1.<Other>
   // +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic/internal/extractors.ComputedFieldExtractor("id")
   // +optional
   <Other>ID *string `json:"<lowerOther>Id,omitempty"`
@@ -241,7 +241,7 @@ ContentSecretRef xpv1.LocalSecretKeySelector `json:"contentSecretRef"`
 
 ## Step 3b — Create the conversion file
 
-Create `apis/beta/v1alpha1/<lowercase-resource>_conversion.go` (same package as the types file).
+Create `apis/managedagents/v1beta1/<lowercase-resource>_conversion.go` (same package as the types file).
 
 This file contains the stable conversion interface between the Crossplane types and the Anthropic SDK. It is tested separately from the reconciler.
 
@@ -290,7 +290,7 @@ func (r *<Resource>) ToAnthropicUpdate([ctx *<Resource>ConversionContext]) anthr
 func (r *<Resource>) FromAnthropicObservation(resp anthropic.<ResponseType>)
 ```
 
-Create `apis/beta/v1alpha1/<lowercase-resource>_conversion_test.go` (package `v1alpha1_test`) and write tests **before** implementing the methods (TDD). Use dot import `. "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"` since the test package is external.
+Create `apis/managedagents/v1beta1/<lowercase-resource>_conversion_test.go` (package `v1alpha1_test`) and write tests **before** implementing the methods (TDD). Use dot import `. "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"` since the test package is external.
 
 ## Step 4 — Create the reconciler
 

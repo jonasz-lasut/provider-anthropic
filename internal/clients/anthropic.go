@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	pcv1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/config/v1alpha1"
+	pcv1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/config/v1beta1"
 )
 
 const (
@@ -52,7 +52,7 @@ func NewClient(ctx context.Context, crClient client.Client, mg xpresource.Modern
 		return nil, err
 	}
 
-	t := xpresource.NewProviderConfigUsageTracker(crClient, &pcv1alpha1.ProviderConfigUsage{})
+	t := xpresource.NewProviderConfigUsageTracker(crClient, &pcv1beta1.ProviderConfigUsage{})
 	if err := t.Track(ctx, mg); err != nil {
 		return nil, xperrors.Wrap(err, errTrackUsage)
 	}
@@ -60,27 +60,9 @@ func NewClient(ctx context.Context, crClient client.Client, mg xpresource.Modern
 	return buildClientFromSpec(ctx, crClient, pcSpec)
 }
 
-// NewClientFromProviderConfig returns an Anthropic SDK client authenticated
-// with the credentials referenced by the supplied ProviderConfig reference.
-// It is intended for callers that are not Crossplane managed resources (such
-// as the Observed<R>Collection reconcilers) and therefore cannot use the
-// ProviderConfigUsage tracker.
-func NewClientFromProviderConfig(
-	ctx context.Context,
-	crClient client.Client,
-	configRef *xpcommon.ProviderConfigReference,
-	namespace string,
-) (*anthropic.Client, error) {
-	pcSpec, err := resolveProviderConfig(ctx, crClient, configRef, namespace)
-	if err != nil {
-		return nil, err
-	}
-	return buildClientFromSpec(ctx, crClient, pcSpec)
-}
-
 // buildClientFromSpec extracts credentials from the resolved ProviderConfig
 // spec and constructs an authenticated Anthropic SDK client.
-func buildClientFromSpec(ctx context.Context, crClient client.Client, pcSpec *pcv1alpha1.ProviderConfigSpec) (*anthropic.Client, error) {
+func buildClientFromSpec(ctx context.Context, crClient client.Client, pcSpec *pcv1beta1.ProviderConfigSpec) (*anthropic.Client, error) {
 	if pcSpec.Identity == nil {
 		return nil, xperrors.New(errNoIdentity)
 	}
@@ -107,14 +89,14 @@ func buildClientFromSpec(ctx context.Context, crClient client.Client, pcSpec *pc
 // apiKeyFromCredentials parses the JSON credentials payload and extracts the
 // Anthropic API key according to the configured identity type. The payload is
 // a JSON object, e.g. {"api_key": "sk-ant-..."}.
-func apiKeyFromCredentials(data []byte, identityType pcv1alpha1.IdentityType) (string, error) {
+func apiKeyFromCredentials(data []byte, identityType pcv1beta1.IdentityType) (string, error) {
 	creds := map[string]string{}
 	if err := json.Unmarshal(data, &creds); err != nil {
 		return "", xperrors.Wrap(err, errUnmarshalCredentials)
 	}
 
 	switch identityType {
-	case pcv1alpha1.IdentityTypeAPIKey:
+	case pcv1beta1.IdentityTypeAPIKey:
 		apiKey := creds["api_key"]
 		if apiKey == "" {
 			return "", xperrors.New(errMissingAPIKey)
@@ -130,12 +112,12 @@ func resolveProviderConfig(
 	crClient client.Client,
 	configRef *xpcommon.ProviderConfigReference,
 	namespace string,
-) (*pcv1alpha1.ProviderConfigSpec, error) {
+) (*pcv1beta1.ProviderConfigSpec, error) {
 	if configRef == nil {
 		return nil, xperrors.New(errNoProviderConfig)
 	}
 
-	pcRuntimeObj, err := crClient.Scheme().New(pcv1alpha1.SchemeGroupVersion.WithKind(configRef.Kind))
+	pcRuntimeObj, err := crClient.Scheme().New(pcv1beta1.SchemeGroupVersion.WithKind(configRef.Kind))
 	if err != nil {
 		return nil, xperrors.Wrapf(err, "referenced provider config kind %q is invalid", configRef.Kind)
 	}
@@ -150,14 +132,14 @@ func resolveProviderConfig(
 	}
 
 	switch pc := pcObj.(type) {
-	case *pcv1alpha1.ProviderConfig:
+	case *pcv1beta1.ProviderConfig:
 		// Patch the in-memory PC so local SecretRefs resolve in the caller's
 		// namespace. The fetched object is not cached, so in-place mutation is safe.
 		if pc.Spec.Credentials.SecretRef != nil {
 			pc.Spec.Credentials.SecretRef.Namespace = namespace
 		}
 		return &pc.Spec, nil
-	case *pcv1alpha1.ClusterProviderConfig:
+	case *pcv1beta1.ClusterProviderConfig:
 		return &pc.Spec, nil
 	default:
 		return nil, xperrors.New("unknown ProviderConfig type")

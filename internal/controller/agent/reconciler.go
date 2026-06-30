@@ -36,7 +36,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
-	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
+	v1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 	"github.com/jonasz-lasut/provider-anthropic/internal/clients"
 	"github.com/jonasz-lasut/provider-anthropic/internal/initializer"
 )
@@ -52,7 +52,7 @@ const (
 
 // Setup adds a controller for Agent to the supplied manager.
 func Setup(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) error {
-	name := managed.ControllerName(betav1alpha1.AgentKind)
+	name := managed.ControllerName(v1beta1.AgentKind)
 
 	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnector(&connector{kube: mgr.GetClient()}),
@@ -67,9 +67,9 @@ func Setup(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) err
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
-		For(&betav1alpha1.Agent{}).
+		For(&v1beta1.Agent{}).
 		Complete(managed.NewReconciler(mgr,
-			resource.ManagedKind(betav1alpha1.AgentGroupVersionKind),
+			resource.ManagedKind(v1beta1.AgentGroupVersionKind),
 			opts...,
 		))
 }
@@ -80,7 +80,7 @@ func SetupGated(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool
 		if err := Setup(mgr, o, skipDefaultMetadata); err != nil {
 			panic(err)
 		}
-	}, betav1alpha1.AgentGroupVersionKind)
+	}, v1beta1.AgentGroupVersionKind)
 	return nil
 }
 
@@ -90,7 +90,7 @@ type connector struct {
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	ag, ok := mg.(*betav1alpha1.Agent)
+	ag, ok := mg.(*v1beta1.Agent)
 	if !ok {
 		return nil, xperrors.New(errNotAgent)
 	}
@@ -110,7 +110,7 @@ type external struct {
 }
 
 func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	ag, ok := mg.(*betav1alpha1.Agent)
+	ag, ok := mg.(*v1beta1.Agent)
 	if !ok {
 		return managed.ExternalObservation{}, xperrors.New(errNotAgent)
 	}
@@ -145,7 +145,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	if err != nil {
 		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
 	}
-	convCtx := &betav1alpha1.AgentConversionContext{System: system}
+	convCtx := &v1beta1.AgentConversionContext{System: system}
 	return managed.ExternalObservation{
 		ResourceExists:    true,
 		ResourceUpToDate:  isUpToDate(ag, system),
@@ -154,7 +154,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	ag, ok := mg.(*betav1alpha1.Agent)
+	ag, ok := mg.(*v1beta1.Agent)
 	if !ok {
 		return managed.ExternalCreation{}, xperrors.New(errNotAgent)
 	}
@@ -163,7 +163,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
 	}
-	convCtx := &betav1alpha1.AgentConversionContext{System: system}
+	convCtx := &v1beta1.AgentConversionContext{System: system}
 	params := ag.ToAnthropicNew(convCtx)
 	resp, err := e.client.Beta.Agents.New(ctx, params)
 	if err != nil {
@@ -180,7 +180,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	ag, ok := mg.(*betav1alpha1.Agent)
+	ag, ok := mg.(*v1beta1.Agent)
 	if !ok {
 		return managed.ExternalUpdate{}, xperrors.New(errNotAgent)
 	}
@@ -198,7 +198,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
-	convCtx := &betav1alpha1.AgentConversionContext{System: system}
+	convCtx := &v1beta1.AgentConversionContext{System: system}
 	params := ag.ToAnthropicUpdate(convCtx)
 	if _, err := e.client.Beta.Agents.Update(ctx, agentID, params); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
@@ -208,7 +208,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	ag, ok := mg.(*betav1alpha1.Agent)
+	ag, ok := mg.(*v1beta1.Agent)
 	if !ok {
 		return managed.ExternalDelete{}, xperrors.New(errNotAgent)
 	}
@@ -238,7 +238,7 @@ func (e *external) Disconnect(_ context.Context) error { return nil }
 // that have no AtProvider counterpart are also skipped automatically.
 // The system prompt is compared separately because its ForProvider
 // representation is a SecretRef, not a plain string.
-func isUpToDate(ag *betav1alpha1.Agent, system string) bool {
+func isUpToDate(ag *v1beta1.Agent, system string) bool {
 	fpRaw, err := json.Marshal(ag.Spec.ForProvider)
 	if err != nil {
 		return true

@@ -31,7 +31,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
-	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
+	v1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 	"github.com/jonasz-lasut/provider-anthropic/internal/capabilities"
 	"github.com/jonasz-lasut/provider-anthropic/internal/clients"
 )
@@ -49,7 +49,7 @@ const (
 // Setup adds a controller for Skill to the supplied manager.
 // Note: no skipDefaultMetadata parameter — SkillParameters has no Metadata field.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
-	name := managed.ControllerName(betav1alpha1.SkillKind)
+	name := managed.ControllerName(v1beta1.SkillKind)
 
 	sfs, err := newSkillFS()
 	if err != nil {
@@ -59,9 +59,9 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
-		For(&betav1alpha1.Skill{}).
+		For(&v1beta1.Skill{}).
 		Complete(managed.NewReconciler(mgr,
-			resource.ManagedKind(betav1alpha1.SkillGroupVersionKind),
+			resource.ManagedKind(v1beta1.SkillGroupVersionKind),
 			managed.WithExternalConnector(&connector{kube: mgr.GetClient(), fs: sfs}),
 			managed.WithLogger(o.Logger.WithValues("controller", name)),
 			managed.WithPollInterval(o.PollInterval),
@@ -76,7 +76,7 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 		if err := Setup(mgr, o); err != nil {
 			panic(err)
 		}
-	}, betav1alpha1.SkillGroupVersionKind)
+	}, v1beta1.SkillGroupVersionKind)
 	return nil
 }
 
@@ -86,7 +86,7 @@ type connector struct {
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	sk, ok := mg.(*betav1alpha1.Skill)
+	sk, ok := mg.(*v1beta1.Skill)
 	if !ok {
 		return nil, xperrors.New(errNotSkill)
 	}
@@ -104,7 +104,7 @@ type external struct {
 }
 
 func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	sk, ok := mg.(*betav1alpha1.Skill)
+	sk, ok := mg.(*v1beta1.Skill)
 	if !ok {
 		return managed.ExternalObservation{}, xperrors.New(errNotSkill)
 	}
@@ -164,7 +164,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	sk, ok := mg.(*betav1alpha1.Skill)
+	sk, ok := mg.(*v1beta1.Skill)
 	if !ok {
 		return managed.ExternalCreation{}, xperrors.New(errNotSkill)
 	}
@@ -211,7 +211,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	sk, ok := mg.(*betav1alpha1.Skill)
+	sk, ok := mg.(*v1beta1.Skill)
 	if !ok {
 		return managed.ExternalUpdate{}, xperrors.New(errNotSkill)
 	}
@@ -254,7 +254,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	sk, ok := mg.(*betav1alpha1.Skill)
+	sk, ok := mg.(*v1beta1.Skill)
 	if !ok {
 		return managed.ExternalDelete{}, xperrors.New(errNotSkill)
 	}
@@ -300,7 +300,7 @@ func (e *external) Disconnect(_ context.Context) error { return nil }
 // populateVersionStatus copies fields from a BetaSkillVersionNewResponse into
 // the Skill's AtProvider status. It mirrors FromAnthropicVersionObservation but
 // accepts the New-variant response type (which has identical exported fields).
-func populateVersionStatus(sk *betav1alpha1.Skill, resp *anthropic.BetaSkillVersionNewResponse) {
+func populateVersionStatus(sk *v1beta1.Skill, resp *anthropic.BetaSkillVersionNewResponse) {
 	sk.Status.AtProvider.LatestVersion = &resp.Version
 	sk.Status.AtProvider.LatestVersionID = &resp.ID
 	sk.Status.AtProvider.LatestVersionName = &resp.Name
@@ -324,7 +324,7 @@ func prefixKeys(name string, data map[string][]byte) map[string][]byte {
 // isUpToDate returns true if the skill's observed file hash matches fullHex.
 // There is no JSON subset diff — ForProvider and AtProvider share no comparable
 // keys (displayTitle is immutable and its drift is not detected).
-func isUpToDate(sk *betav1alpha1.Skill, fullHex string) bool {
+func isUpToDate(sk *v1beta1.Skill, fullHex string) bool {
 	return sk.Status.AtProvider.FilesSha256 != nil &&
 		*sk.Status.AtProvider.FilesSha256 == fullHex
 }

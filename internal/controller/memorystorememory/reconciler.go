@@ -36,7 +36,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
-	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
+	v1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 	"github.com/jonasz-lasut/provider-anthropic/internal/clients"
 )
 
@@ -52,13 +52,13 @@ const (
 
 // Setup adds a controller for MemoryStoreMemory to the supplied manager.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
-	name := managed.ControllerName(betav1alpha1.MemoryStoreMemoryKind)
+	name := managed.ControllerName(v1beta1.MemoryStoreMemoryKind)
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
-		For(&betav1alpha1.MemoryStoreMemory{}).
+		For(&v1beta1.MemoryStoreMemory{}).
 		Complete(managed.NewReconciler(mgr,
-			resource.ManagedKind(betav1alpha1.MemoryStoreMemoryGroupVersionKind),
+			resource.ManagedKind(v1beta1.MemoryStoreMemoryGroupVersionKind),
 			managed.WithExternalConnector(&connector{kube: mgr.GetClient()}),
 			managed.WithLogger(o.Logger.WithValues("controller", name)),
 			managed.WithPollInterval(o.PollInterval),
@@ -73,7 +73,7 @@ func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 		if err := Setup(mgr, o); err != nil {
 			panic(err)
 		}
-	}, betav1alpha1.MemoryStoreMemoryGroupVersionKind)
+	}, v1beta1.MemoryStoreMemoryGroupVersionKind)
 	return nil
 }
 
@@ -83,7 +83,7 @@ type connector struct {
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	m, ok := mg.(*betav1alpha1.MemoryStoreMemory)
+	m, ok := mg.(*v1beta1.MemoryStoreMemory)
 	if !ok {
 		return nil, xperrors.New(errNotMemoryStoreMemory)
 	}
@@ -103,7 +103,7 @@ type external struct {
 }
 
 func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	m, ok := mg.(*betav1alpha1.MemoryStoreMemory)
+	m, ok := mg.(*v1beta1.MemoryStoreMemory)
 	if !ok {
 		return managed.ExternalObservation{}, xperrors.New(errNotMemoryStoreMemory)
 	}
@@ -141,7 +141,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	if err != nil {
 		return managed.ExternalObservation{}, xperrors.Wrap(err, errObserve)
 	}
-	convCtx := &betav1alpha1.MemoryStoreMemoryConversionContext{Content: desired}
+	convCtx := &v1beta1.MemoryStoreMemoryConversionContext{Content: desired}
 	return managed.ExternalObservation{
 		ResourceExists:    true,
 		ResourceUpToDate:  isUpToDate(m, desired),
@@ -150,7 +150,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	m, ok := mg.(*betav1alpha1.MemoryStoreMemory)
+	m, ok := mg.(*v1beta1.MemoryStoreMemory)
 	if !ok {
 		return managed.ExternalCreation{}, xperrors.New(errNotMemoryStoreMemory)
 	}
@@ -163,7 +163,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
 	}
-	convCtx := &betav1alpha1.MemoryStoreMemoryConversionContext{Content: content}
+	convCtx := &v1beta1.MemoryStoreMemoryConversionContext{Content: content}
 	params := m.ToAnthropicNew(convCtx)
 	resp, err := e.client.Beta.MemoryStores.Memories.New(ctx, *m.Spec.ForProvider.MemoryStoreID, params)
 	if err != nil {
@@ -178,7 +178,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	m, ok := mg.(*betav1alpha1.MemoryStoreMemory)
+	m, ok := mg.(*v1beta1.MemoryStoreMemory)
 	if !ok {
 		return managed.ExternalUpdate{}, xperrors.New(errNotMemoryStoreMemory)
 	}
@@ -196,7 +196,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
-	convCtx := &betav1alpha1.MemoryStoreMemoryConversionContext{Content: content}
+	convCtx := &v1beta1.MemoryStoreMemoryConversionContext{Content: content}
 	params := m.ToAnthropicUpdate(convCtx)
 	if _, err := e.client.Beta.MemoryStores.Memories.Update(ctx, memID, params); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
@@ -206,7 +206,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	m, ok := mg.(*betav1alpha1.MemoryStoreMemory)
+	m, ok := mg.(*v1beta1.MemoryStoreMemory)
 	if !ok {
 		return managed.ExternalDelete{}, xperrors.New(errNotMemoryStoreMemory)
 	}
@@ -240,7 +240,7 @@ func (e *external) Disconnect(_ context.Context) error { return nil }
 // isUpToDate performs a structured diff between spec.forProvider and
 // status.atProvider for non-secret fields, then separately checks content
 // drift by comparing the resolved secret's SHA-256 against the observed hash.
-func isUpToDate(m *betav1alpha1.MemoryStoreMemory, resolvedContent string) bool {
+func isUpToDate(m *v1beta1.MemoryStoreMemory, resolvedContent string) bool {
 	fpRaw, err := json.Marshal(m.Spec.ForProvider)
 	if err != nil {
 		return true

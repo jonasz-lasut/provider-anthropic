@@ -34,7 +34,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
-	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
+	v1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 	"github.com/jonasz-lasut/provider-anthropic/internal/clients"
 	"github.com/jonasz-lasut/provider-anthropic/internal/initializer"
 )
@@ -51,7 +51,7 @@ const (
 
 // Setup adds a controller for VaultCredential to the supplied manager.
 func Setup(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) error {
-	name := managed.ControllerName(betav1alpha1.VaultCredentialKind)
+	name := managed.ControllerName(v1beta1.VaultCredentialKind)
 
 	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnector(&connector{kube: mgr.GetClient()}),
@@ -66,9 +66,9 @@ func Setup(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) err
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
-		For(&betav1alpha1.VaultCredential{}).
+		For(&v1beta1.VaultCredential{}).
 		Complete(managed.NewReconciler(mgr,
-			resource.ManagedKind(betav1alpha1.VaultCredentialGroupVersionKind),
+			resource.ManagedKind(v1beta1.VaultCredentialGroupVersionKind),
 			opts...,
 		))
 }
@@ -80,7 +80,7 @@ func SetupGated(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool
 		if err := Setup(mgr, o, skipDefaultMetadata); err != nil {
 			panic(err)
 		}
-	}, betav1alpha1.VaultCredentialGroupVersionKind)
+	}, v1beta1.VaultCredentialGroupVersionKind)
 	return nil
 }
 
@@ -90,7 +90,7 @@ type connector struct {
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	vc, ok := mg.(*betav1alpha1.VaultCredential)
+	vc, ok := mg.(*v1beta1.VaultCredential)
 	if !ok {
 		return nil, xperrors.New(errNotVaultCredential)
 	}
@@ -110,7 +110,7 @@ type external struct {
 }
 
 func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	vc, ok := mg.(*betav1alpha1.VaultCredential)
+	vc, ok := mg.(*v1beta1.VaultCredential)
 	if !ok {
 		return managed.ExternalObservation{}, xperrors.New(errNotVaultCredential)
 	}
@@ -159,7 +159,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	vc, ok := mg.(*betav1alpha1.VaultCredential)
+	vc, ok := mg.(*v1beta1.VaultCredential)
 	if !ok {
 		return managed.ExternalCreation{}, xperrors.New(errNotVaultCredential)
 	}
@@ -189,7 +189,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	vc, ok := mg.(*betav1alpha1.VaultCredential)
+	vc, ok := mg.(*v1beta1.VaultCredential)
 	if !ok {
 		return managed.ExternalUpdate{}, xperrors.New(errNotVaultCredential)
 	}
@@ -219,7 +219,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	vc, ok := mg.(*betav1alpha1.VaultCredential)
+	vc, ok := mg.(*v1beta1.VaultCredential)
 	if !ok {
 		return managed.ExternalDelete{}, xperrors.New(errNotVaultCredential)
 	}
@@ -234,13 +234,13 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalDelete{}, nil
 	}
 
-	policy := betav1alpha1.DeletionPolicyArchive
+	policy := v1beta1.DeletionPolicyArchive
 	if vc.Spec.ForProvider.AnthropicDeletionPolicy != nil {
 		policy = *vc.Spec.ForProvider.AnthropicDeletionPolicy
 	}
 
 	var err error
-	if policy == betav1alpha1.DeletionPolicyDelete {
+	if policy == v1beta1.DeletionPolicyDelete {
 		_, err = e.client.Beta.Vaults.Credentials.Delete(ctx, credID, anthropic.BetaVaultCredentialDeleteParams{
 			VaultID: *vc.Spec.ForProvider.VaultID,
 		})
@@ -264,8 +264,8 @@ func (e *external) Disconnect(_ context.Context) error { return nil }
 
 // resolveVCContext pre-resolves all Kubernetes secrets referenced by a
 // VaultCredential auth spec into a flat context struct ready for conversion.
-func resolveVCContext(ctx context.Context, kube client.Client, a betav1alpha1.VaultCredentialAuth, namespace string) (*betav1alpha1.VaultCredentialConversionContext, error) {
-	convCtx := &betav1alpha1.VaultCredentialConversionContext{}
+func resolveVCContext(ctx context.Context, kube client.Client, a v1beta1.VaultCredentialAuth, namespace string) (*v1beta1.VaultCredentialConversionContext, error) {
+	convCtx := &v1beta1.VaultCredentialConversionContext{}
 	bearerToken, err := clients.ResolveLocalSecretKey(ctx, kube, a.TokenSecretRef, namespace)
 	if err != nil {
 		return nil, err
@@ -304,7 +304,7 @@ func resolveVCContext(ctx context.Context, kube client.Client, a betav1alpha1.Va
 // status.atProvider. Token-bearing ForProvider auth sub-fields (tokenSecretRef,
 // accessTokenSecretRef, refresh) are absent from AtProvider and therefore
 // skipped automatically — credential values are write-only.
-func isUpToDate(vc *betav1alpha1.VaultCredential) bool {
+func isUpToDate(vc *v1beta1.VaultCredential) bool {
 	fpRaw, err := json.Marshal(vc.Spec.ForProvider)
 	if err != nil {
 		return true

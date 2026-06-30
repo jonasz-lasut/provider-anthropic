@@ -25,7 +25,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/providerconfig"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
-	pcv1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/config/v1alpha1"
+	pcv1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/config/v1beta1"
 )
 
 // Setup adds a controller that reconciles ProviderConfigs and
@@ -39,38 +39,38 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 }
 
 func setupNamespacedProviderConfig(mgr ctrl.Manager, o controller.Options) error {
-	name := providerconfig.ControllerName(pcv1alpha1.ProviderConfigGroupKind)
+	name := providerconfig.ControllerName(pcv1beta1.ProviderConfigGroupKind)
 	of := resource.ProviderConfigKinds{
-		Config:    pcv1alpha1.ProviderConfigGroupVersionKind,
-		Usage:     pcv1alpha1.ProviderConfigUsageGroupVersionKind,
-		UsageList: pcv1alpha1.ProviderConfigUsageListGroupVersionKind,
+		Config:    pcv1beta1.ProviderConfigGroupVersionKind,
+		Usage:     pcv1beta1.ProviderConfigUsageGroupVersionKind,
+		UsageList: pcv1beta1.ProviderConfigUsageListGroupVersionKind,
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
-		For(&pcv1alpha1.ProviderConfig{}).
-		Watches(&pcv1alpha1.ProviderConfigUsage{}, &resource.EnqueueRequestForProviderConfig{Kind: "ProviderConfig"}).
+		For(&pcv1beta1.ProviderConfig{}).
+		Watches(&pcv1beta1.ProviderConfigUsage{}, &resource.EnqueueRequestForProviderConfig{Kind: "ProviderConfig"}).
 		Complete(providerconfig.NewReconciler(mgr, of,
 			providerconfig.WithLogger(o.Logger.WithValues("controller", name)),
 			providerconfig.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))) //nolint:staticcheck // crossplane-runtime does not support new events API yet (crossplane/crossplane#7152)
 }
 
 func setupClusterProviderConfig(mgr ctrl.Manager, o controller.Options) error {
-	name := providerconfig.ControllerName(pcv1alpha1.ClusterProviderConfigGroupKind)
+	name := providerconfig.ControllerName(pcv1beta1.ClusterProviderConfigGroupKind)
 	of := resource.ProviderConfigKinds{
-		Config: pcv1alpha1.ClusterProviderConfigGroupVersionKind,
+		Config: pcv1beta1.ClusterProviderConfigGroupVersionKind,
 		// Usage types are shared
-		Usage:     pcv1alpha1.ProviderConfigUsageGroupVersionKind,
-		UsageList: pcv1alpha1.ProviderConfigUsageListGroupVersionKind,
+		Usage:     pcv1beta1.ProviderConfigUsageGroupVersionKind,
+		UsageList: pcv1beta1.ProviderConfigUsageListGroupVersionKind,
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
-		For(&pcv1alpha1.ClusterProviderConfig{}).
+		For(&pcv1beta1.ClusterProviderConfig{}).
 		// Usage types are shared
-		Watches(&pcv1alpha1.ProviderConfigUsage{}, &resource.EnqueueRequestForProviderConfig{Kind: "ClusterProviderConfig"}).
+		Watches(&pcv1beta1.ProviderConfigUsage{}, &resource.EnqueueRequestForProviderConfig{Kind: "ClusterProviderConfig"}).
 		Complete(providerconfig.NewReconciler(mgr, of,
 			providerconfig.WithLogger(o.Logger.WithValues("controller", name)),
 			providerconfig.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))) //nolint:staticcheck // crossplane-runtime does not support new events API yet (crossplane/crossplane#7152)
@@ -81,8 +81,8 @@ func setupClusterProviderConfig(mgr ctrl.Manager, o controller.Options) error {
 func SetupGated(mgr ctrl.Manager, o controller.Options) error {
 	o.Gate.Register(func() {
 		if err := Setup(mgr, o); err != nil {
-			mgr.GetLogger().Error(err, "unable to setup reconcilers", "gvk", pcv1alpha1.ClusterProviderConfigGroupVersionKind.String(), "gvk", pcv1alpha1.ProviderConfigGroupVersionKind.String())
+			mgr.GetLogger().Error(err, "unable to setup reconcilers", "gvk", pcv1beta1.ClusterProviderConfigGroupVersionKind.String(), "gvk", pcv1beta1.ProviderConfigGroupVersionKind.String())
 		}
-	}, pcv1alpha1.ClusterProviderConfigGroupVersionKind, pcv1alpha1.ProviderConfigGroupVersionKind, pcv1alpha1.ProviderConfigUsageGroupVersionKind)
+	}, pcv1beta1.ClusterProviderConfigGroupVersionKind, pcv1beta1.ProviderConfigGroupVersionKind, pcv1beta1.ProviderConfigUsageGroupVersionKind)
 	return nil
 }
