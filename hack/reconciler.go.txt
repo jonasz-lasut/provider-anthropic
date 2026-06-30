@@ -34,7 +34,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
-	betav1alpha1 "github.com/jonasz-lasut/provider-anthropic/apis/beta/v1alpha1"
+	v1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 	"github.com/jonasz-lasut/provider-anthropic/internal/clients"
 	"github.com/jonasz-lasut/provider-anthropic/internal/initializer"
 )
@@ -56,7 +56,7 @@ const (
 // If this resource has no such field, drop the skipDefaultMetadata
 // parameter (and the conditional below) from both Setup and SetupGated.
 func Setup(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) error {
-	name := managed.ControllerName(betav1alpha1.<Resource>Kind)
+	name := managed.ControllerName(v1beta1.<Resource>Kind)
 
 	opts := []managed.ReconcilerOption{
 		managed.WithExternalConnector(&connector{kube: mgr.GetClient()}),
@@ -71,9 +71,9 @@ func Setup(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) err
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
-		For(&betav1alpha1.<Resource>{}).
+		For(&v1beta1.<Resource>{}).
 		Complete(managed.NewReconciler(mgr,
-			resource.ManagedKind(betav1alpha1.<Resource>GroupVersionKind),
+			resource.ManagedKind(v1beta1.<Resource>GroupVersionKind),
 			opts...,
 		))
 }
@@ -85,7 +85,7 @@ func SetupGated(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool
 		if err := Setup(mgr, o, skipDefaultMetadata); err != nil {
 			panic(err)
 		}
-	}, betav1alpha1.<Resource>GroupVersionKind)
+	}, v1beta1.<Resource>GroupVersionKind)
 	return nil
 }
 
@@ -95,7 +95,7 @@ type connector struct {
 }
 
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	res, ok := mg.(*betav1alpha1.<Resource>)
+	res, ok := mg.(*v1beta1.<Resource>)
 	if !ok {
 		return nil, xperrors.New(errNot<Resource>)
 	}
@@ -116,7 +116,7 @@ type external struct {
 }
 
 func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	res, ok := mg.(*betav1alpha1.<Resource>)
+	res, ok := mg.(*v1beta1.<Resource>)
 	if !ok {
 		return managed.ExternalObservation{}, xperrors.New(errNot<Resource>)
 	}
@@ -168,7 +168,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 }
 
 func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	res, ok := mg.(*betav1alpha1.<Resource>)
+	res, ok := mg.(*v1beta1.<Resource>)
 	if !ok {
 		return managed.ExternalCreation{}, xperrors.New(errNot<Resource>)
 	}
@@ -186,7 +186,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	res, ok := mg.(*betav1alpha1.<Resource>)
+	res, ok := mg.(*v1beta1.<Resource>)
 	if !ok {
 		return managed.ExternalUpdate{}, xperrors.New(errNot<Resource>)
 	}
@@ -205,7 +205,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	res, ok := mg.(*betav1alpha1.<Resource>)
+	res, ok := mg.(*v1beta1.<Resource>)
 	if !ok {
 		return managed.ExternalDelete{}, xperrors.New(errNot<Resource>)
 	}
@@ -221,11 +221,11 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	// Delete only:
 	//   _, err = e.client.Beta.<Resource>s.Delete(ctx, resID, anthropic.Beta<Resource>DeleteParams{})
 	// Both (read AnthropicDeletionPolicy):
-	//   policy := betav1alpha1.DeletionPolicyArchive
+	//   policy := v1beta1.DeletionPolicyArchive
 	//   if res.Spec.ForProvider.AnthropicDeletionPolicy != nil {
 	//       policy = *res.Spec.ForProvider.AnthropicDeletionPolicy
 	//   }
-	//   if policy == betav1alpha1.DeletionPolicyDelete {
+	//   if policy == v1beta1.DeletionPolicyDelete {
 	//       _, err = e.client.Beta.<Resource>s.Delete(...)
 	//   } else {
 	//       _, err = e.client.Beta.<Resource>s.Archive(...)
@@ -245,7 +245,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 
 func (e *external) Disconnect(_ context.Context) error { return nil }
 
-func buildNewParams(p betav1alpha1.<Resource>Parameters) anthropic.Beta<Resource>NewParams {
+func buildNewParams(p v1beta1.<Resource>Parameters) anthropic.Beta<Resource>NewParams {
 	// TODO: map ForProvider fields to SDK params.
 	//
 	// SecretRef-backed fields are resolved by the CALLER (Create/Update),
@@ -266,7 +266,7 @@ func buildNewParams(p betav1alpha1.<Resource>Parameters) anthropic.Beta<Resource
 	return anthropic.Beta<Resource>NewParams{}
 }
 
-func buildUpdateParams(p betav1alpha1.<Resource>Parameters) anthropic.Beta<Resource>UpdateParams {
+func buildUpdateParams(p v1beta1.<Resource>Parameters) anthropic.Beta<Resource>UpdateParams {
 	// TODO: map mutable ForProvider fields to SDK update params
 	return anthropic.Beta<Resource>UpdateParams{}
 }
@@ -281,7 +281,7 @@ func buildUpdateParams(p betav1alpha1.<Resource>Parameters) anthropic.Beta<Resou
 // For SecretRef-backed fields, add an explicit drift check after this function
 // returns true — see the system-prompt pattern in agent/reconciler.go and the
 // SHA-256 pattern in memorystorememory/reconciler.go.
-func isUpToDate(res *betav1alpha1.<Resource>) bool {
+func isUpToDate(res *v1beta1.<Resource>) bool {
 	fpRaw, err := json.Marshal(res.Spec.ForProvider)
 	if err != nil {
 		return true

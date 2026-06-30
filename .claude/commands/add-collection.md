@@ -16,7 +16,7 @@ SDK_DIR="$MODCACHE/github.com/anthropics/anthropic-sdk-go@${SDK_VERSION}"
 From `$SDK_DIR/beta<lowercase-resource>.go` extract:
 - **Service method**: confirm `Beta<Resource>Service.List(ctx, params, opts...)` exists. If it doesn't, this resource is not eligible for a collection — abort and report.
 - **ListAutoPaging**: confirm `ListAutoPaging` is present (it should be wherever `List` is).
-- **ListParams struct**: `Beta<Resource>ListParams` — list every field. The user-facing predicate surface is fixed: `apis/beta/v1alpha1/predicates_types.go` defines a single `Predicates` struct (`CreatedAtGte`, `CreatedAtLte`) shared by every collection kind. For this resource, classify each `Predicates` field as either:
+- **ListParams struct**: `Beta<Resource>ListParams` — list every field. The user-facing predicate surface is fixed: `apis/managedagents/v1beta1/predicates_types.go` defines a single `Predicates` struct (`CreatedAtGte`, `CreatedAtLte`) shared by every collection kind. For this resource, classify each `Predicates` field as either:
   - **Server-side supported**: the SDK's `Beta<Resource>ListParams` has an equivalent field — map it in `buildListParams`.
   - **Server-side unsupported**: the SDK has no equivalent — apply it client-side in `clientSideFilter`.
   Pagination (`Limit`, `Page`) and header (`Betas`) are not exposed; we always use `ListAutoPaging` and the SDK-default beta header. Archived resources are intentionally excluded from the predicate surface: the Anthropic API cannot return archived items in GET calls, so a collection's children cannot observe them — never add an `IncludeArchived` predicate.
@@ -24,11 +24,11 @@ From `$SDK_DIR/beta<lowercase-resource>.go` extract:
 
 ## Step 2 — Create the types file
 
-Create `apis/beta/v1alpha1/observed<lowercase-resource>collection_types.go`.
+Create `apis/managedagents/v1beta1/observed<lowercase-resource>collection_types.go`.
 
 **Start from the template**: read `hack/collection_resource_types.go.txt` and substitute every `<Resource>` with the resource name and every `<short>` with a short name (e.g. `obscoll-agent`).
 
-The generic `Predicates` type (`CreatedAtGte`, `CreatedAtLte`) lives in `apis/beta/v1alpha1/predicates_types.go` and is referenced directly by `spec.Predicates`. Do **not** declare a per-resource `<Resource>Predicates` struct — the template already references the shared `Predicates` type.
+The generic `Predicates` type (`CreatedAtGte`, `CreatedAtLte`) lives in `apis/managedagents/v1beta1/predicates_types.go` and is referenced directly by `spec.Predicates`. Do **not** declare a per-resource `<Resource>Predicates` struct — the template already references the shared `Predicates` type.
 
 **Project convention reminder:** `,omitempty` is only allowed on types with a nil representation (pointers, slices, maps). Non-pointer scalar types like `string` must be declared as `*string` before adding `,omitempty`. The template's `ObservedCollectionMember.Name` and `.ID` are non-pointer strings without `,omitempty` — keep them that way.
 
@@ -83,10 +83,10 @@ if err := observed<lowercase-resource>collection.SetupGated(mgr, o); err != nil 
 
 ## Step 5 — Generate an example manifest
 
-Create `examples-generated/beta/v1alpha1/observed<lowercase-resource>collection.yaml`:
+Create `examples-generated/managedagents/v1beta1/observed<lowercase-resource>collection.yaml`:
 ```yaml
 ---
-apiVersion: beta.anthropic.crossplane.io/v1alpha1
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
 kind: Observed<Resource>Collection
 metadata:
   name: example-observed-<lowercase-resource>s
@@ -94,7 +94,7 @@ metadata:
   labels:
     testing.upbound.io/example-name: example
   annotations:
-    meta.upbound.io/example-id: beta/v1alpha1/observed<lowercase-resource>collection
+    meta.upbound.io/example-id: managedagents/v1beta1/observed<lowercase-resource>collection
 spec:
   predicates: {}
 ```
@@ -111,4 +111,4 @@ make generate
 make local-deploy
 ```
 
-Fix any compilation errors. Verify the generated CRD YAML in `package/crds/` has `scope: Namespaced` for each new `observed<lowercase-resource>collections.beta.anthropic.crossplane.io`.
+Fix any compilation errors. Verify the generated CRD YAML in `package/crds/` has `scope: Namespaced` for each new `observed<lowercase-resource>collections.managedagents.anthropic.crossplane.io`.

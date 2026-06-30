@@ -156,7 +156,7 @@ calls `clients.IsSubsetEqual`.
 (`displayTitle` drift is not detected). Use a single hash comparison:
 
 ```go
-func isUpToDate(sk *betav1alpha1.Skill, fullHex string) bool {
+func isUpToDate(sk *v1beta1.Skill, fullHex string) bool {
     return sk.Status.AtProvider.FilesSha256 != nil &&
         *sk.Status.AtProvider.FilesSha256 == fullHex
 }
@@ -199,8 +199,8 @@ identical to the `MemoryStoreMemory` pattern.
 
 ## Checklist for implementers
 
-- [ ] `apis/beta/v1alpha1/skill_types.go` — `FilesSecretRef xpv1.LocalSecretReference`, no `Metadata` field
-- [ ] `apis/beta/v1alpha1/skill_conversion.go` — four methods; no `ConversionContext`
+- [ ] `apis/managedagents/v1beta1/skill_types.go` — `FilesSecretRef xpv1.LocalSecretReference`, no `Metadata` field
+- [ ] `apis/managedagents/v1beta1/skill_conversion.go` — four methods; no `ConversionContext`
 - [ ] `internal/controller/skill/fs.go` — `skillFS` struct, `newSkillFS()`, `stageFiles()`, `collectReaders()`
 - [ ] `internal/controller/skill/reconciler.go` — `connector` and `external` hold `*skillFS`; no `skipDefaultMetadata`
 - [ ] `internal/controller/setup.go` — `skill.SetupGated(mgr, o)` (no bool arg)

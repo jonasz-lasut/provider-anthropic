@@ -32,7 +32,7 @@ echo "New version: $NEW_VERSION"
 
 SDK types are now split across two locations per resource:
 
-- **`apis/beta/v1alpha1/<resource>_conversion.go`** — holds `ToAnthropicNew`, `ToAnthropicUpdate`, `FromAnthropicObservation` and uses `Beta<Resource>NewParams`, `Beta<Resource>UpdateParams`, and the response struct (e.g. `BetaManagedAgents<Resource>` or `Beta<Resource>`)
+- **`apis/managedagents/v1beta1/<resource>_conversion.go`** — holds `ToAnthropicNew`, `ToAnthropicUpdate`, `FromAnthropicObservation` and uses `Beta<Resource>NewParams`, `Beta<Resource>UpdateParams`, and the response struct (e.g. `BetaManagedAgents<Resource>` or `Beta<Resource>`)
 - **`internal/controller/<resource>/reconciler.go`** — holds `Observe`, `Create`, `Update`, `Delete` and uses `Beta<Resource>GetParams`, `Beta<Resource>ArchiveParams`, `Beta<Resource>DeleteParams`, and the `*anthropic.Client` service method signatures
 
 Read both files for each resource to get the full picture of which SDK types are referenced. Typically:
@@ -59,7 +59,7 @@ Build a diff for each type: **added fields**, **removed fields**, **renamed fiel
 
 ## Step 4 — Update API types
 
-For each managed resource where the SDK types changed, update `apis/beta.anthropic.crossplane.io/v1alpha1/<resource>_types.go`:
+For each managed resource where the SDK types changed, update `apis/managedagents.anthropic.crossplane.io/v1beta1/<resource>_types.go`:
 
 **Added SDK param field** → add the corresponding field to `<Resource>Parameters` (ForProvider):
 - Required string → `string`
@@ -67,7 +67,7 @@ For each managed resource where the SDK types changed, update `apis/beta.anthrop
 - `map[string]string` → `map[string]string` with `+optional`
 - Nested struct → define a new Go struct in the same file
 
-**Removed SDK param field** → remove the field from `<Resource>Parameters` and from `ToAnthropicNew`/`ToAnthropicUpdate` in `apis/beta/v1alpha1/<resource>_conversion.go`.
+**Removed SDK param field** → remove the field from `<Resource>Parameters` and from `ToAnthropicNew`/`ToAnthropicUpdate` in `apis/managedagents/v1beta1/<resource>_conversion.go`.
 
 **Added SDK response field** → add to `<Resource>Observation` (AtProvider) and add the corresponding assignment in `FromAnthropicObservation` in `_conversion.go`.
 
@@ -86,7 +86,7 @@ Update the reconciler `Delete()` accordingly.
 
 ## Step 5 — Update conversion and reconciler logic
 
-### Conversion file (`apis/beta/v1alpha1/<resource>_conversion.go`)
+### Conversion file (`apis/managedagents/v1beta1/<resource>_conversion.go`)
 
 This file owns all SDK param building and observation population. Make changes here first, then update the tests.
 
@@ -101,7 +101,7 @@ This file owns all SDK param building and observation population. Make changes h
 - Remove assignments for removed response fields
 - Update any field type conversions if the SDK response type changed (e.g. `time.Time` → `string`)
 
-Update `apis/beta/v1alpha1/<resource>_conversion_test.go` to cover the added/changed fields.
+Update `apis/managedagents/v1beta1/<resource>_conversion_test.go` to cover the added/changed fields.
 
 ### Reconciler (`internal/controller/<resource>/reconciler.go`)
 

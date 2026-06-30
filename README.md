@@ -13,14 +13,14 @@ and management of resources on the [Anthropic platform](https://docs.anthropic.c
 
 | Kind | API group | Description |
 |---|---|---|
-| `Agent` | `beta.anthropic.crossplane.io/v1alpha1` | Create and update [Managed Agents](https://docs.anthropic.com/en/docs/managed-agents) |
-| `Session` | `beta.anthropic.crossplane.io/v1alpha1` | Agent sessions with environments and vaults |
-| `Vault` | `beta.anthropic.crossplane.io/v1alpha1` | Credential containers for agents |
-| `VaultCredential` | `beta.anthropic.crossplane.io/v1alpha1` | OAuth and static bearer tokens in a vault |
-| `Environment` | `beta.anthropic.crossplane.io/v1alpha1` | Cloud container configuration for sessions |
-| `MemoryStore` | `beta.anthropic.crossplane.io/v1alpha1` | Named stores for agent memories |
-| `MemoryStoreMemory` | `beta.anthropic.crossplane.io/v1alpha1` | Individual text memories in a store |
-| `ObservedAgentCollection` | `beta.anthropic.crossplane.io/v1alpha1` | Observe-only collection of remote agents |
+| `Agent` | `managedagents.anthropic.crossplane.io/v1beta1` | Create and update [Managed Agents](https://docs.anthropic.com/en/docs/managed-agents) |
+| `Session` | `managedagents.anthropic.crossplane.io/v1beta1` | Agent sessions with environments and vaults |
+| `Vault` | `managedagents.anthropic.crossplane.io/v1beta1` | Credential containers for agents |
+| `VaultCredential` | `managedagents.anthropic.crossplane.io/v1beta1` | OAuth and static bearer tokens in a vault |
+| `Environment` | `managedagents.anthropic.crossplane.io/v1beta1` | Cloud container configuration for sessions |
+| `MemoryStore` | `managedagents.anthropic.crossplane.io/v1beta1` | Named stores for agent memories |
+| `MemoryStoreMemory` | `managedagents.anthropic.crossplane.io/v1beta1` | Individual text memories in a store |
+| `ObservedAgentCollection` | `managedagents.anthropic.crossplane.io/v1beta1` | Observe-only collection of remote agents |
 
 ## Filtering collections with predicates
 
@@ -161,7 +161,7 @@ See [Required configuration](#required-configuration) for how to set up credenti
     Or use a cluster-scoped `ClusterProviderConfig` if your managed resources span multiple namespaces:
 
     ```yaml
-    apiVersion: anthropic.crossplane.io/v1alpha1
+    apiVersion: anthropic.crossplane.io/v1beta1
     kind: ClusterProviderConfig
     metadata:
       name: default
@@ -206,12 +206,12 @@ See [Required configuration](#required-configuration) for how to set up credenti
     metadata:
       name: provider-anthropic:observed-collection-manager
     rules:
-    - apiGroups: ["beta.anthropic.crossplane.io"]
+    - apiGroups: ["managedagents.anthropic.crossplane.io"]
       resources:
         - agents
         - agents/status
       verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-    - apiGroups: ["beta.anthropic.crossplane.io"]
+    - apiGroups: ["managedagents.anthropic.crossplane.io"]
       resources:
         - observedagentcollections
         - observedagentcollections/status
@@ -233,7 +233,7 @@ See [Required configuration](#required-configuration) for how to set up credenti
    under [`examples-generated/`](./examples-generated/):
 
     ```console
-    kubectl create -f examples-generated/beta/v1alpha1/agent.yaml
+    kubectl create -f examples-generated/managedagents/v1beta1/agent.yaml
     ```
 
 ### Running end-to-end tests
@@ -245,7 +245,7 @@ See [Required configuration](#required-configuration) for how to set up credenti
 
 ```console
 UPTEST_CLOUD_CREDENTIALS='{"api_key":"YOUR_ANTHROPIC_API_KEY"}' \
-UPTEST_EXAMPLE_LIST="examples-generated/beta/v1alpha1/agent.yaml" \
+UPTEST_EXAMPLE_LIST="examples-generated/managedagents/v1beta1/agent.yaml" \
 make e2e
 ```
 

@@ -144,11 +144,11 @@ parent ID must be carried in the Archive/Delete params:
 
 ## Checklist for implementers
 
-- [ ] `apis/beta/v1alpha1/vaultcredential_types.go` — `VaultID` value field +
+- [ ] `apis/managedagents/v1beta1/vaultcredential_types.go` — `VaultID` value field +
       `VaultIDRef`/`VaultIDSelector` (reference to `Vault`); discriminated `Auth`
       union types (networking, refresh, token-endpoint-auth); five `*SecretRef`
       fields; `AnthropicDeletionPolicy`; partial `VaultCredentialAuthObservation`
-- [ ] `apis/beta/v1alpha1/vaultcredential_conversion.go` — `ToAnthropicNew`/
+- [ ] `apis/managedagents/v1beta1/vaultcredential_conversion.go` — `ToAnthropicNew`/
       `ToAnthropicUpdate` return `(params, error)`; parent ID positional in New,
       in-params in Update; union helpers (`vcNewAuthUnion`, `vcNetworkingUnion`,
       `vcNewRefreshParams`, `vcNewTEPUnion`, + Update variants);
