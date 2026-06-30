@@ -41,7 +41,7 @@ After **any** change to `apis/` types, run `make generate` and commit the regene
 ```
 apis/<group>/<version>/        CRD Go types + handwritten conversion + generated zz_* files
   config/v1beta1/             ProviderConfig / ClusterProviderConfig (credential plumbing)
-  managedagents/v1beta1/               every managed resource + ObservedAgentCollection + Predicates
+  managedagents/v1beta1/               every managed resource
 internal/clients/              Anthropic SDK client builder, secret resolution, drift diffing
 internal/controller/<kind>/    one package per resource: reconciler.go implements ExternalClient
 internal/controller/setup.go   SetupProviders wires every controller (gated on CRD readiness)
@@ -110,11 +110,6 @@ scaffolding, so always read the overlay before touching the resource.
   every reconciler method guards on it. `VaultCredential` additionally maps a discriminated `Auth`
   union with five SecretRefs across its variants. See **`docs/overlays/memorystorememory.md`** and
   **`docs/overlays/vaultcredential.md`**.
-- **`ObservedAgentCollection`** is *not* a managed resource. It lists agents from the API and
-  materializes one Observe-only `Agent` child per match via Server-Side Apply, deleting stale
-  children. It uses `NewClientFromProviderConfig` (no usage tracker) and filters results with
-  `internal/predicates/` (`MetadataMatch`, `CELFilter` client-side; `CreatedAtGte/Lte` server-side).
-  See the README "Filtering collections with predicates" section for the user-facing surface.
 
 ## Slash commands (`.claude/commands/`)
 
@@ -125,11 +120,10 @@ reproducing the steps by hand.
 | Command | When to use it |
 |---|---|
 | `/add-resource ResourceName[,…]` | Adding a brand-new managed resource backed by a `Beta<Resource>` SDK service. Scaffolds the types file, conversion, reconciler, controller wiring, and `setup.go` entry, then generates. |
-| `/add-collection ResourceName[,…]` | Adding an `Observed<Resource>Collection` for a resource whose SDK service exposes `List`/`ListAutoPaging`. Wires the materializing reconciler + predicate plumbing. |
 | `/generate-examples` | Regenerating `examples-generated/` manifests for every CRD (feasible defaults, used as the E2E corpus). |
 | `/update-anthropic-sdk` | Bumping the `anthropic-sdk-go` dependency and syncing all reconciler/conversion logic to upstream API changes, then re-stamping the version into the CRDs. |
 
-When asked to "add a resource", "support kind X", "add a collection", "regenerate examples", or
+When asked to "add a resource", "support kind X", "regenerate examples", or
 "update the SDK", reach for the matching command first — these encode this repo's exact conventions
 (external-name handling, gated setup, conversion + drift patterns) that are easy to get subtly wrong.
 

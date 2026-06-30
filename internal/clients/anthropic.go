@@ -60,24 +60,6 @@ func NewClient(ctx context.Context, crClient client.Client, mg xpresource.Modern
 	return buildClientFromSpec(ctx, crClient, pcSpec)
 }
 
-// NewClientFromProviderConfig returns an Anthropic SDK client authenticated
-// with the credentials referenced by the supplied ProviderConfig reference.
-// It is intended for callers that are not Crossplane managed resources (such
-// as the Observed<R>Collection reconcilers) and therefore cannot use the
-// ProviderConfigUsage tracker.
-func NewClientFromProviderConfig(
-	ctx context.Context,
-	crClient client.Client,
-	configRef *xpcommon.ProviderConfigReference,
-	namespace string,
-) (*anthropic.Client, error) {
-	pcSpec, err := resolveProviderConfig(ctx, crClient, configRef, namespace)
-	if err != nil {
-		return nil, err
-	}
-	return buildClientFromSpec(ctx, crClient, pcSpec)
-}
-
 // buildClientFromSpec extracts credentials from the resolved ProviderConfig
 // spec and constructs an authenticated Anthropic SDK client.
 func buildClientFromSpec(ctx context.Context, crClient client.Client, pcSpec *pcv1beta1.ProviderConfigSpec) (*anthropic.Client, error) {
