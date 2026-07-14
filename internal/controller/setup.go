@@ -24,6 +24,7 @@ import (
 
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/agent"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/deployment"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/dream"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/environment"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/memorystore"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/memorystorememory"
@@ -69,6 +70,9 @@ func SetupProviders(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata 
 		return err
 	}
 	if err := skill.SetupGated(mgr, o); err != nil {
+		return err
+	}
+	if err := dream.SetupGated(mgr, o); err != nil {
 		return err
 	}
 	return nil

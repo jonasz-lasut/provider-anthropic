@@ -38,6 +38,15 @@ func (l *DeploymentList) GetItems() []resource.Managed {
 	return items
 }
 
+// GetItems of this DreamList.
+func (l *DreamList) GetItems() []resource.Managed {
+	items := make([]resource.Managed, len(l.Items))
+	for i := range l.Items {
+		items[i] = &l.Items[i]
+	}
+	return items
+}
+
 // GetItems of this EnvironmentList.
 func (l *EnvironmentList) GetItems() []resource.Managed {
 	items := make([]resource.Managed, len(l.Items))
