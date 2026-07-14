@@ -107,6 +107,56 @@ func (mg *Deployment) ResolveReferences(ctx context.Context, c client.Reader) er
 	return nil
 }
 
+// ResolveReferences of this Dream.
+func (mg *Dream) ResolveReferences(ctx context.Context, c client.Reader) error {
+	r := reference.NewAPINamespacedResolver(c, mg)
+
+	var rsp reference.NamespacedResolutionResponse
+	var mrsp reference.MultiNamespacedResolutionResponse
+	var err error
+
+	for i3 := 0; i3 < len(mg.Spec.ForProvider.Inputs); i3++ {
+		rsp, err = r.Resolve(ctx, reference.NamespacedResolutionRequest{
+			CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.Inputs[i3].MemoryStoreID),
+			Extract:      extractors.ComputedFieldExtractor("id"),
+			Namespace:    mg.GetNamespace(),
+			Reference:    mg.Spec.ForProvider.Inputs[i3].MemoryStoreIDRef,
+			Selector:     mg.Spec.ForProvider.Inputs[i3].MemoryStoreIDSelector,
+			To: reference.To{
+				List:    &MemoryStoreList{},
+				Managed: &MemoryStore{},
+			},
+		})
+		if err != nil {
+			return errors.Wrap(err, "mg.Spec.ForProvider.Inputs[i3].MemoryStoreID")
+		}
+		mg.Spec.ForProvider.Inputs[i3].MemoryStoreID = reference.ToPtrValue(rsp.ResolvedValue)
+		mg.Spec.ForProvider.Inputs[i3].MemoryStoreIDRef = rsp.ResolvedReference
+
+	}
+	for i3 := 0; i3 < len(mg.Spec.ForProvider.Inputs); i3++ {
+		mrsp, err = r.ResolveMultiple(ctx, reference.MultiNamespacedResolutionRequest{
+			CurrentValues: mg.Spec.ForProvider.Inputs[i3].SessionIDs,
+			Extract:       extractors.ComputedFieldExtractor("id"),
+			Namespace:     mg.GetNamespace(),
+			References:    mg.Spec.ForProvider.Inputs[i3].SessionIDsRefs,
+			Selector:      mg.Spec.ForProvider.Inputs[i3].SessionIDsSelector,
+			To: reference.To{
+				List:    &SessionList{},
+				Managed: &Session{},
+			},
+		})
+		if err != nil {
+			return errors.Wrap(err, "mg.Spec.ForProvider.Inputs[i3].SessionIDs")
+		}
+		mg.Spec.ForProvider.Inputs[i3].SessionIDs = mrsp.ResolvedValues
+		mg.Spec.ForProvider.Inputs[i3].SessionIDsRefs = mrsp.ResolvedReferences
+
+	}
+
+	return nil
+}
+
 // ResolveReferences of this MemoryStoreMemory.
 func (mg *MemoryStoreMemory) ResolveReferences(ctx context.Context, c client.Reader) error {
 	r := reference.NewAPINamespacedResolver(c, mg)

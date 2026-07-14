@@ -1,0 +1,104 @@
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Dream
+metadata:
+  name: example-dream
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: managedagents/v1beta1/dream
+spec:
+  forProvider:
+    instructions: Consolidate the example session transcripts into the memory store.
+    model:
+      id: claude-opus-4-8
+      speed: standard
+    inputs:
+      - type: memory_store
+        memoryStoreIdSelector:
+          matchLabels:
+            testing.upbound.io/example-name: example
+      - type: sessions
+        sessionIdsSelector:
+          matchLabels:
+            testing.upbound.io/example-name: example
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: MemoryStore
+metadata:
+  name: example-memorystore
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: managedagents/v1beta1/dream
+spec:
+  forProvider:
+    name: example-memorystore
+    description: Example memory store for E2E testing.
+    anthropicDeletionPolicy: Delete
+    metadata:
+      example: "true"
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Session
+metadata:
+  name: example-session
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: managedagents/v1beta1/dream
+spec:
+  forProvider:
+    title: Example session
+    metadata:
+      example: "true"
+    agentIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: example
+    environmentIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: example
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Agent
+metadata:
+  name: example-agent
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: managedagents/v1beta1/dream
+spec:
+  forProvider:
+    model: claude-opus-4-8
+    name: example-agent
+    description: Example agent for E2E testing.
+    metadata:
+      example: "true"
+    tools:
+      - type: agent_toolset_20260401
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Environment
+metadata:
+  name: example-environment
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: managedagents/v1beta1/dream
+spec:
+  forProvider:
+    name: example-environment
+    description: Example environment for E2E testing.
+    metadata:
+      example: "true"
+    config:
+      networking:
+        type: unrestricted
+      packages:
+        pip:
+          - requests
