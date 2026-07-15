@@ -88,6 +88,29 @@ type AgentSkillConfig struct {
 	Type *string `json:"type,omitempty"`
 
 	// Required: SkillID is the identifier of the skill to attach.
+	// Populate directly or via SkillIDRef / SkillIDSelector.
+	// +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1.Skill
+	// +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic/internal/extractors.ComputedFieldExtractor("id")
+	// +optional
+	SkillID *string `json:"skillId,omitempty"`
+
+	// Reference to a Skill to populate skillId.
+	// +kubebuilder:validation:Optional
+	SkillIDRef *xpv1.NamespacedReference `json:"skillIdRef,omitempty"`
+
+	// Selector for a Skill to populate skillId.
+	// +kubebuilder:validation:Optional
+	SkillIDSelector *xpv1.NamespacedSelector `json:"skillIdSelector,omitempty"`
+}
+
+// AgentSkillObservation is the observed configuration of a single skill
+// attached to an agent.
+type AgentSkillObservation struct {
+	// Type is either "anthropic" or "custom".
+	// +optional
+	Type *string `json:"type,omitempty"`
+
+	// SkillID is the identifier of the attached skill.
 	// +optional
 	SkillID *string `json:"skillId,omitempty"`
 }
@@ -171,7 +194,7 @@ type AgentObservation struct {
 
 	// Skills is the observed list of skill configurations.
 	// +optional
-	Skills []AgentSkillConfig `json:"skills,omitempty"`
+	Skills []AgentSkillObservation `json:"skills,omitempty"`
 
 	// Tools is the observed list of tool configurations.
 	// +optional

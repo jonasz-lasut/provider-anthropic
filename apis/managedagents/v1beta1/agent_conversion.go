@@ -155,7 +155,7 @@ func (r *Agent) FromAnthropicObservation(resp anthropic.BetaManagedAgentsAgent) 
 	r.Status.AtProvider.Skills = nil
 	for _, sk := range resp.Skills {
 		skillID, skillType := sk.SkillID, sk.Type
-		r.Status.AtProvider.Skills = append(r.Status.AtProvider.Skills, AgentSkillConfig{
+		r.Status.AtProvider.Skills = append(r.Status.AtProvider.Skills, AgentSkillObservation{
 			SkillID: &skillID,
 			Type:    &skillType,
 		})
