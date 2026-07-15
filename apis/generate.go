@@ -14,8 +14,9 @@
 // Generate deepcopy methodsets and CRD manifests
 //go:generate go run -tags generate sigs.k8s.io/controller-tools/cmd/controller-gen object:headerFile=../hack/boilerplate.go.txt paths=./... crd:allowDangerousTypes=true,crdVersions=v1 output:artifacts:config=../package/crds
 
-// Stamp every CRD with the Anthropic SDK version currently pinned in go.mod.
-//go:generate bash ../hack/stamp-sdk-version.sh
+// Post-process CRDs: stamp the pinned Anthropic SDK version and strip controller-gen's
+// controller-gen.kubebuilder.io/version attribution annotation.
+//go:generate bash ../hack/postprocess-crds.sh
 
 // Generate crossplane-runtime methodsets (resource.Claim, etc)
 //go:generate go run -tags generate github.com/crossplane/crossplane-tools/cmd/angryjet generate-methodsets --header-file=../hack/boilerplate.go.txt ./...
