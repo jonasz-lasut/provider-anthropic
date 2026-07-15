@@ -275,5 +275,8 @@ var (
 )
 
 func init() {
-	SchemeBuilder.Register(&Agent{}, &AgentList{})
+	SchemeBuilder.Register(func(s *runtime.Scheme) error {
+		s.AddKnownTypes(GroupVersion, &Agent{}, &AgentList{})
+		return nil
+	})
 }

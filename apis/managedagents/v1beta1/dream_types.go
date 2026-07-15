@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 	v2 "github.com/crossplane/crossplane-runtime/v2/apis/common/v2"
@@ -280,5 +281,8 @@ var (
 )
 
 func init() {
-	SchemeBuilder.Register(&Dream{}, &DreamList{})
+	SchemeBuilder.Register(func(s *runtime.Scheme) error {
+		s.AddKnownTypes(GroupVersion, &Dream{}, &DreamList{})
+		return nil
+	})
 }
