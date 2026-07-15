@@ -17,6 +17,8 @@
         'k8s.io/client-go',
         'k8s.io/code-generator',
         'k8s.io/component-base',
+        'sigs.k8s.io/controller-runtime',
+        'sigs.k8s.io/controller-tools',
       ],
       groupName: 'kubernetes',
     },
@@ -33,16 +35,6 @@
       matchManagers: ['gomod'],
       matchDepNames: ['github.com/crossplane/crossplane-tools'],
       groupName: 'crossplane-tools',
-    },
-
-    // controller-runtime and controller-tools tracked together.
-    {
-      matchManagers: ['gomod'],
-      matchDepNames: [
-        'sigs.k8s.io/controller-runtime',
-        'sigs.k8s.io/controller-tools',
-      ],
-      groupName: 'controller-runtime',
     },
 
     // GitHub Actions bumps grouped into their own PR.
