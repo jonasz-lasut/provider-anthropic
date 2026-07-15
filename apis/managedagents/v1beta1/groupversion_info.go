@@ -21,8 +21,9 @@ limitations under the License.
 package v1beta1
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
 // DeletionPolicy constants are used by resources that support both Archive and
@@ -42,7 +43,14 @@ var (
 	}
 
 	// SchemeBuilder is used to register types with a Kubernetes runtime scheme.
-	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}
+	// The meta v1 types (ListOptions, WatchEvent, ...) are registered once for
+	// the group version here; without them the cache reflector cannot convert
+	// v1.ListOptions and every List/Watch fails. Individual resources add their
+	// own known types via SchemeBuilder.Register in their _types.go init().
+	SchemeBuilder = runtime.NewSchemeBuilder(func(s *runtime.Scheme) error {
+		metav1.AddToGroupVersion(s, GroupVersion)
+		return nil
+	})
 
 	// AddToScheme adds all registered types to the supplied scheme.
 	AddToScheme = SchemeBuilder.AddToScheme
