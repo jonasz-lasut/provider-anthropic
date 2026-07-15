@@ -26,6 +26,36 @@ import (
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// ResolveReferences of this Agent.
+func (mg *Agent) ResolveReferences(ctx context.Context, c client.Reader) error {
+	r := reference.NewAPINamespacedResolver(c, mg)
+
+	var rsp reference.NamespacedResolutionResponse
+	var err error
+
+	for i3 := 0; i3 < len(mg.Spec.ForProvider.Skills); i3++ {
+		rsp, err = r.Resolve(ctx, reference.NamespacedResolutionRequest{
+			CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.Skills[i3].SkillID),
+			Extract:      extractors.ComputedFieldExtractor("id"),
+			Namespace:    mg.GetNamespace(),
+			Reference:    mg.Spec.ForProvider.Skills[i3].SkillIDRef,
+			Selector:     mg.Spec.ForProvider.Skills[i3].SkillIDSelector,
+			To: reference.To{
+				List:    &SkillList{},
+				Managed: &Skill{},
+			},
+		})
+		if err != nil {
+			return errors.Wrap(err, "mg.Spec.ForProvider.Skills[i3].SkillID")
+		}
+		mg.Spec.ForProvider.Skills[i3].SkillID = reference.ToPtrValue(rsp.ResolvedValue)
+		mg.Spec.ForProvider.Skills[i3].SkillIDRef = rsp.ResolvedReference
+
+	}
+
+	return nil
+}
+
 // ResolveReferences of this Deployment.
 func (mg *Deployment) ResolveReferences(ctx context.Context, c client.Reader) error {
 	r := reference.NewAPINamespacedResolver(c, mg)

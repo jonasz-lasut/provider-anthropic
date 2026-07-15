@@ -1,0 +1,204 @@
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Session
+metadata:
+  name: full-e2e-session
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+spec:
+  forProvider:
+    title: Example session
+    metadata:
+      example: "true"
+    agentIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: full-e2e
+    environmentIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: full-e2e
+    resources:
+      - type: memory_store
+        memoryStoreIdSelector:
+          matchLabels:
+            testing.upbound.io/example-name: full-e2e
+    vaultIdsSelector:
+      matchLabels:
+        testing.upbound.io/example-name: full-e2e
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Agent
+metadata:
+  name: full-e2e-agent
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+spec:
+  forProvider:
+    model: claude-opus-4-8
+    name: full-e2e-agent
+    description: Example agent for E2E testing.
+    metadata:
+      example: "true"
+    skills:
+      - type: custom
+        skillIdSelector:
+          matchLabels:
+            testing.upbound.io/example-name: full-e2e
+    tools:
+      - type: agent_toolset_20260401
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Environment
+metadata:
+  name: full-e2e-environment
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+spec:
+  forProvider:
+    name: full-e2e-environment
+    description: Example environment for E2E testing.
+    metadata:
+      example: "true"
+    config:
+      networking:
+        type: unrestricted
+      packages:
+        pip:
+          - requests
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Skill
+metadata:
+  name: full-e2e-pdf-processing
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+spec:
+  forProvider:
+    displayTitle: Example E2E PDF Processing Skill
+    filesSecretRef:
+      name: full-e2e-skill
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: MemoryStoreMemory
+metadata:
+  name: full-e2e-memorystorememory
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+spec:
+  forProvider:
+    path: /projects/example/notes.md
+    contentSecretRef:
+      name: full-e2e-memorystorememory-content
+      key: content
+    memoryStoreIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: full-e2e
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: MemoryStore
+metadata:
+  name: full-e2e-memorystore
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+spec:
+  forProvider:
+    name: full-e2e-memorystore
+    description: Example memory store for E2E testing.
+    anthropicDeletionPolicy: Delete
+    metadata:
+      example: "true"
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: VaultCredential
+metadata:
+  name: full-e2e-vaultcredential
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+spec:
+  forProvider:
+    displayName: full-e2e-vaultcredential
+    anthropicDeletionPolicy: Delete
+    metadata:
+      example: "true"
+    auth:
+      type: static_bearer
+      mcpServerUrl: https://mcp.example.com
+      tokenSecretRef:
+        name: full-e2e-vaultcredential-token
+        key: token
+    vaultIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: full-e2e
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Vault
+metadata:
+  name: full-e2e-vault
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+spec:
+  forProvider:
+    displayName: full-e2e
+    anthropicDeletionPolicy: Delete
+    metadata:
+      example: "true"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: full-e2e-vaultcredential-token
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+type: Opaque
+stringData:
+  token: REPLACE_WITH_MCP_BEARER_TOKEN
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: full-e2e-memorystorememory-content
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+type: Opaque
+stringData:
+  content: |
+    Example memory content for E2E testing.
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: full-e2e-skill
+  namespace: crossplane-system
+type: Opaque
+stringData:
+  "SKILL.md": |
+    ---
+    name: full-e2e-pdf-processing
+    description: Extracts text and tables from PDF files, fills forms, and merges documents. Use when working with PDF files or when the user mentions PDFs, forms, or document extraction.
+    ---
+
+    # PDF Processing
+
+    ## Quick start
+
+    Extract text with pdfplumber:
+    ```python
+    import pdfplumber
+    with pdfplumber.open("file.pdf") as pdf:
+        text = pdf.pages[0].extract_text()
+    ```
+
+    ## Advanced features
+
+    **Form filling**: See [FORMS.md](FORMS.md) for complete guide
+    **API reference**: See [REFERENCE.md](REFERENCE.md) for all methods
+    **Examples**: See [EXAMPLES.md](EXAMPLES.md) for common patterns
