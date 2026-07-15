@@ -1,8 +1,35 @@
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: ['config:recommended'],
-  enabledManagers: ['gomod', 'github-actions'],
+  enabledManagers: ['gomod', 'github-actions', 'custom.regex'],
   postUpdateOptions: ['gomodTidy', 'gomodUpdateImportPaths'],
+  customManagers: [
+    // golangci-lint version, kept in lockstep between the Makefile and the CI workflow.
+    // The Makefile stores it bare (2.x.y); ci.yaml keeps a leading 'v' that is preserved on bump.
+    {
+      customType: 'regex',
+      fileMatch: ['^Makefile$', '^\\.github/workflows/ci\\.yaml$'],
+      matchStrings: [
+        'GOLANGCILINT_VERSION \\?= (?<currentValue>\\S+)',
+        "GOLANGCI_VERSION: 'v(?<currentValue>[^']+)'",
+      ],
+      depNameTemplate: 'golangci/golangci-lint',
+      datasourceTemplate: 'github-releases',
+      extractVersionTemplate: '^v(?<version>.+)$',
+    },
+
+    // Go toolchain version, kept in lockstep between go.mod and the publish workflow input default.
+    {
+      customType: 'regex',
+      fileMatch: ['^go\\.mod$', '^\\.github/workflows/publish-pkg\\.yaml$'],
+      matchStrings: [
+        '\\ngo (?<currentValue>\\d+\\.\\d+\\.\\d+)',
+        "go-version:[\\s\\S]*?default: '(?<currentValue>[^']+)'",
+      ],
+      depNameTemplate: 'go',
+      datasourceTemplate: 'golang-version',
+    },
+  ],
   packageRules: [
     // Catch-all: every remaining Go module lands in one "go modules" PR.
     { matchManagers: ['gomod'], groupName: 'go modules' },
@@ -39,6 +66,27 @@
 
     // GitHub Actions bumps grouped into their own PR.
     { matchManagers: ['github-actions'], groupName: 'github-actions' },
+
+    // golangci-lint (Makefile + ci.yaml) tracked in its own PR.
+    {
+      matchManagers: ['custom.regex'],
+      matchDepNames: ['golangci/golangci-lint'],
+      groupName: 'golangci-lint',
+    },
+
+    // Go toolchain (go.mod + publish-pkg.yaml) tracked in its own PR.
+    // The go directive is owned by the custom manager above, so silence gomod's own
+    // golang/toolchain update to avoid a competing PR.
+    {
+      matchManagers: ['custom.regex'],
+      matchDepNames: ['go'],
+      groupName: 'go',
+    },
+    {
+      matchManagers: ['gomod'],
+      matchDepTypes: ['golang', 'toolchain'],
+      enabled: false,
+    },
 
     // Never touch the Anthropic SDK — bumped manually via /update-anthropic-sdk.
     {
