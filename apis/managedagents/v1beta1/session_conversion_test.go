@@ -5,7 +5,7 @@ import (
 	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
 	. "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 )
@@ -35,8 +35,8 @@ func TestSessionToAnthropicNew_GitHubRepositoryUsesResolvedToken(t *testing.T) {
 			Resources: []SessionResource{{
 				Type: ptr("github_repository"),
 				URL:  ptr("https://github.com/org/repo"),
-				AuthorizationTokenSecretRef: &xpv1.LocalSecretKeySelector{
-					LocalSecretReference: xpv1.LocalSecretReference{Name: "tok"},
+				AuthorizationTokenSecretRef: &xpv2.LocalSecretKeySelector{
+					LocalSecretReference: xpv2.LocalSecretReference{Name: "tok"},
 					Key:                  "token",
 				},
 			}},

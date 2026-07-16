@@ -20,8 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
-	v2 "github.com/crossplane/crossplane-runtime/v2/apis/common/v2"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 )
 
 // AgentParameters defines the desired state of an Anthropic Managed Agent.
@@ -46,7 +45,7 @@ type AgentParameters struct {
 	// system prompt at the given key. Up to 100,000 characters; the API
 	// rejects larger payloads. Omit to send no system prompt.
 	// +optional
-	SystemSecretRef *xpv1.LocalSecretKeySelector `json:"systemSecretRef,omitempty"`
+	SystemSecretRef *xpv2.LocalSecretKeySelector `json:"systemSecretRef,omitempty"`
 
 	// MCPServers this agent connects to. Maximum 20. Names must be unique.
 	// +optional
@@ -96,11 +95,11 @@ type AgentSkillConfig struct {
 
 	// Reference to a Skill to populate skillId.
 	// +kubebuilder:validation:Optional
-	SkillIDRef *xpv1.NamespacedReference `json:"skillIdRef,omitempty"`
+	SkillIDRef *xpv2.NamespacedReference `json:"skillIdRef,omitempty"`
 
 	// Selector for a Skill to populate skillId.
 	// +kubebuilder:validation:Optional
-	SkillIDSelector *xpv1.NamespacedSelector `json:"skillIdSelector,omitempty"`
+	SkillIDSelector *xpv2.NamespacedSelector `json:"skillIdSelector,omitempty"`
 }
 
 // AgentSkillObservation is the observed configuration of a single skill
@@ -224,7 +223,7 @@ type AgentObservation struct {
 
 // AgentSpec defines the desired state of Agent.
 type AgentSpec struct {
-	v2.ManagedResourceSpec `json:",inline"`
+	xpv2.ManagedResourceSpec `json:",inline"`
 
 	// ForProvider holds the configuration the provider reconciles against the
 	// Anthropic API on every loop.
@@ -233,7 +232,7 @@ type AgentSpec struct {
 
 // AgentStatus defines the observed state of Agent.
 type AgentStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv2.ManagedResourceStatus `json:",inline"`
 
 	// AtProvider holds the observed state as returned by the Anthropic API.
 	// +optional

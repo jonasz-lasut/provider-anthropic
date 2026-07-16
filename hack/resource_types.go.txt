@@ -19,8 +19,7 @@ package v1beta1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
-	v2 "github.com/crossplane/crossplane-runtime/v2/apis/common/v2"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 )
 
 // <Resource>Parameters defines the desired state of an Anthropic <Resource>.
@@ -31,13 +30,13 @@ type <Resource>Parameters struct {
 	//
 	// SecretRef-backed fields (see [[feedback-secret-ref-shape]]): when a
 	// field holds sensitive data or very long content, declare it as an
-	// xpv1.LocalSecretKeySelector VALUE — not a pointer — with NO omitempty.
+	// xpv2.LocalSecretKeySelector VALUE — not a pointer — with NO omitempty.
 	// Drop MaxLength/Pattern markers; constraints go in the godoc prose
 	// (see [[feedback-no-client-side-validation]]). Example:
 	//
 	//     // Required: TokenSecretRef references a Secret in the MR's
 	//     // namespace holding the bearer token at the given key.
-	//     TokenSecretRef xpv1.LocalSecretKeySelector `json:"tokenSecretRef"`
+	//     TokenSecretRef xpv2.LocalSecretKeySelector `json:"tokenSecretRef"`
 }
 
 // <Resource>Observation holds the observed state of an Anthropic <Resource>
@@ -88,7 +87,7 @@ type <Resource>Observation struct {
 
 // <Resource>Spec defines the desired state of <Resource>.
 type <Resource>Spec struct {
-	v2.ManagedResourceSpec `json:",inline"`
+	xpv2.ManagedResourceSpec `json:",inline"`
 
 	// ForProvider holds the configuration the provider reconciles against the
 	// Anthropic API on every loop.
@@ -97,7 +96,7 @@ type <Resource>Spec struct {
 
 // <Resource>Status defines the observed state of <Resource>.
 type <Resource>Status struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv2.ManagedResourceStatus `json:",inline"`
 
 	// AtProvider holds the observed state as returned by the Anthropic API.
 	// +optional

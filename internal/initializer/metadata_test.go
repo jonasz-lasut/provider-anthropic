@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -46,7 +46,7 @@ func newMemoryStore(name, namespace string, meta map[string]string, pcName, pcKi
 	}
 	ms.SetGroupVersionKind(v1beta1.MemoryStoreGroupVersionKind)
 	if pcName != "" || pcKind != "" {
-		ms.Spec.ProviderConfigReference = &xpv1.ProviderConfigReference{
+		ms.Spec.ProviderConfigReference = &xpv2.ProviderConfigReference{
 			Name: pcName,
 			Kind: pcKind,
 		}
@@ -139,7 +139,7 @@ func TestInitialize_CollisionDefaultWins(t *testing.T) {
 
 func TestInitialize_ObserveOnly_NoMutation(t *testing.T) {
 	ms := newMemoryStore("ms", "ns", nil, "pc", "ProviderConfig")
-	ms.Spec.ManagementPolicies = []xpv1.ManagementAction{xpv1.ManagementActionObserve}
+	ms.Spec.ManagementPolicies = []xpv2.ManagementAction{xpv2.ManagementActionObserve}
 	kube := fake.NewClientBuilder().WithScheme(newScheme(t)).WithObjects(ms).Build()
 
 	if err := New(kube, "metadata").Initialize(context.Background(), ms); err != nil {

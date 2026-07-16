@@ -20,8 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
-	v2 "github.com/crossplane/crossplane-runtime/v2/apis/common/v2"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 )
 
 // DeploymentBlockSource is the source for an image or document content block
@@ -164,11 +163,11 @@ type DeploymentParameters struct {
 
 	// Reference to an Agent to populate agentId.
 	// +kubebuilder:validation:Optional
-	AgentIDRef *xpv1.NamespacedReference `json:"agentIdRef,omitempty"`
+	AgentIDRef *xpv2.NamespacedReference `json:"agentIdRef,omitempty"`
 
 	// Selector for an Agent to populate agentId.
 	// +kubebuilder:validation:Optional
-	AgentIDSelector *xpv1.NamespacedSelector `json:"agentIdSelector,omitempty"`
+	AgentIDSelector *xpv2.NamespacedSelector `json:"agentIdSelector,omitempty"`
 
 	// AgentVersion pins a specific agent version. When nil, the latest version
 	// of the referenced agent is used.
@@ -185,11 +184,11 @@ type DeploymentParameters struct {
 
 	// Reference to an Environment to populate environmentId.
 	// +kubebuilder:validation:Optional
-	EnvironmentIDRef *xpv1.NamespacedReference `json:"environmentIdRef,omitempty"`
+	EnvironmentIDRef *xpv2.NamespacedReference `json:"environmentIdRef,omitempty"`
 
 	// Selector for an Environment to populate environmentId.
 	// +kubebuilder:validation:Optional
-	EnvironmentIDSelector *xpv1.NamespacedSelector `json:"environmentIdSelector,omitempty"`
+	EnvironmentIDSelector *xpv2.NamespacedSelector `json:"environmentIdSelector,omitempty"`
 
 	// Required: InitialEvents are sent to each session immediately after
 	// creation. At least 1, maximum 50.
@@ -218,11 +217,11 @@ type DeploymentParameters struct {
 
 	// References to Vaults used to populate vaultIds.
 	// +kubebuilder:validation:Optional
-	VaultIDsRefs []xpv1.NamespacedReference `json:"vaultIdsRefs,omitempty"`
+	VaultIDsRefs []xpv2.NamespacedReference `json:"vaultIdsRefs,omitempty"`
 
 	// Selector for Vaults used to populate vaultIds.
 	// +kubebuilder:validation:Optional
-	VaultIDsSelector *xpv1.NamespacedSelector `json:"vaultIdsSelector,omitempty"`
+	VaultIDsSelector *xpv2.NamespacedSelector `json:"vaultIdsSelector,omitempty"`
 
 	// Metadata is arbitrary key-value data attached to the deployment.
 	// Maximum 16 pairs; keys up to 64 chars, values up to 512 chars.
@@ -325,7 +324,7 @@ type DeploymentObservation struct {
 
 // DeploymentSpec defines the desired state of Deployment.
 type DeploymentSpec struct {
-	v2.ManagedResourceSpec `json:",inline"`
+	xpv2.ManagedResourceSpec `json:",inline"`
 
 	// ForProvider holds the configuration the provider reconciles against the
 	// Anthropic API on every loop.
@@ -334,7 +333,7 @@ type DeploymentSpec struct {
 
 // DeploymentStatus defines the observed state of Deployment.
 type DeploymentStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv2.ManagedResourceStatus `json:",inline"`
 
 	// AtProvider holds the observed state as returned by the Anthropic API.
 	// +optional
