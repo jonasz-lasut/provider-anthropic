@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -52,7 +52,7 @@ func TestResolveLocalSecretKey_Nil_ReturnsEmpty(t *testing.T) {
 func TestResolveLocalSecretKey_EmptyName_ReturnsEmpty(t *testing.T) {
 	kube := fake.NewClientBuilder().WithScheme(newScheme(t)).Build()
 
-	got, err := ResolveLocalSecretKey(context.Background(), kube, &xpv1.LocalSecretKeySelector{}, "ns")
+	got, err := ResolveLocalSecretKey(context.Background(), kube, &xpv2.LocalSecretKeySelector{}, "ns")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -68,8 +68,8 @@ func TestResolveLocalSecretKey_Found(t *testing.T) {
 	}
 	kube := fake.NewClientBuilder().WithScheme(newScheme(t)).WithObjects(secret).Build()
 
-	ref := &xpv1.LocalSecretKeySelector{
-		LocalSecretReference: xpv1.LocalSecretReference{Name: "creds"},
+	ref := &xpv2.LocalSecretKeySelector{
+		LocalSecretReference: xpv2.LocalSecretReference{Name: "creds"},
 		Key:                  "token",
 	}
 	got, err := ResolveLocalSecretKey(context.Background(), kube, ref, "ns")
@@ -84,8 +84,8 @@ func TestResolveLocalSecretKey_Found(t *testing.T) {
 func TestResolveLocalSecretKey_SecretMissing(t *testing.T) {
 	kube := fake.NewClientBuilder().WithScheme(newScheme(t)).Build()
 
-	ref := &xpv1.LocalSecretKeySelector{
-		LocalSecretReference: xpv1.LocalSecretReference{Name: "creds"},
+	ref := &xpv2.LocalSecretKeySelector{
+		LocalSecretReference: xpv2.LocalSecretReference{Name: "creds"},
 		Key:                  "token",
 	}
 	_, err := ResolveLocalSecretKey(context.Background(), kube, ref, "ns")
@@ -104,8 +104,8 @@ func TestResolveLocalSecretKey_KeyMissing(t *testing.T) {
 	}
 	kube := fake.NewClientBuilder().WithScheme(newScheme(t)).WithObjects(secret).Build()
 
-	ref := &xpv1.LocalSecretKeySelector{
-		LocalSecretReference: xpv1.LocalSecretReference{Name: "creds"},
+	ref := &xpv2.LocalSecretKeySelector{
+		LocalSecretReference: xpv2.LocalSecretReference{Name: "creds"},
 		Key:                  "token",
 	}
 	_, err := ResolveLocalSecretKey(context.Background(), kube, ref, "ns")

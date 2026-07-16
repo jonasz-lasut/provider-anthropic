@@ -20,8 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
-	v2 "github.com/crossplane/crossplane-runtime/v2/apis/common/v2"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 )
 
 // SkillParameters defines the desired state of an Anthropic Skill.
@@ -39,7 +38,7 @@ type SkillParameters struct {
 	// top-level directory named after the Skill resource (e.g. the Skill named
 	// "my-skill" uploads files as "my-skill/SKILL.md"). Content changes trigger
 	// a new SkillVersion.
-	FilesSecretRef xpv1.LocalSecretReference `json:"filesSecretRef"`
+	FilesSecretRef xpv2.LocalSecretReference `json:"filesSecretRef"`
 }
 
 // SkillObservation holds the observed state of an Anthropic Skill.
@@ -101,7 +100,7 @@ type SkillObservation struct {
 
 // SkillSpec defines the desired state of Skill.
 type SkillSpec struct {
-	v2.ManagedResourceSpec `json:",inline"`
+	xpv2.ManagedResourceSpec `json:",inline"`
 
 	// ForProvider holds the configuration the provider reconciles against the
 	// Anthropic API on every loop.
@@ -110,7 +109,7 @@ type SkillSpec struct {
 
 // SkillStatus defines the observed state of Skill.
 type SkillStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv2.ManagedResourceStatus `json:",inline"`
 
 	// AtProvider holds the observed state as returned by the Anthropic API.
 	// +optional

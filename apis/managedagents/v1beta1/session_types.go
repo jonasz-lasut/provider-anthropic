@@ -20,8 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
-	v2 "github.com/crossplane/crossplane-runtime/v2/apis/common/v2"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 )
 
 // SessionResourceCheckout specifies which branch or commit to check out in a
@@ -59,7 +58,7 @@ type SessionResource struct {
 	// (github_repository type). The token is resolved at reconcile time and
 	// never stored in status.atProvider.
 	// +optional
-	AuthorizationTokenSecretRef *xpv1.LocalSecretKeySelector `json:"authorizationTokenSecretRef,omitempty"`
+	AuthorizationTokenSecretRef *xpv2.LocalSecretKeySelector `json:"authorizationTokenSecretRef,omitempty"`
 
 	// MountPath is where to mount the resource in the container.
 	// Defaults to /workspace/<repo-name> for github_repository and
@@ -85,11 +84,11 @@ type SessionResource struct {
 
 	// Reference to a MemoryStore to populate memoryStoreId.
 	// +kubebuilder:validation:Optional
-	MemoryStoreIDRef *xpv1.NamespacedReference `json:"memoryStoreIdRef,omitempty"`
+	MemoryStoreIDRef *xpv2.NamespacedReference `json:"memoryStoreIdRef,omitempty"`
 
 	// Selector for a MemoryStore to populate memoryStoreId.
 	// +kubebuilder:validation:Optional
-	MemoryStoreIDSelector *xpv1.NamespacedSelector `json:"memoryStoreIdSelector,omitempty"`
+	MemoryStoreIDSelector *xpv2.NamespacedSelector `json:"memoryStoreIdSelector,omitempty"`
 
 	// Instructions guide the agent on how to use this memory store (memory_store type).
 	// Maximum 4096 characters.
@@ -118,11 +117,11 @@ type SessionParameters struct {
 
 	// Reference to an Agent to populate agentId.
 	// +kubebuilder:validation:Optional
-	AgentIDRef *xpv1.NamespacedReference `json:"agentIdRef,omitempty"`
+	AgentIDRef *xpv2.NamespacedReference `json:"agentIdRef,omitempty"`
 
 	// Selector for an Agent to populate agentId.
 	// +kubebuilder:validation:Optional
-	AgentIDSelector *xpv1.NamespacedSelector `json:"agentIdSelector,omitempty"`
+	AgentIDSelector *xpv2.NamespacedSelector `json:"agentIdSelector,omitempty"`
 
 	// AgentVersion pins a specific agent version. When nil, the latest version
 	// of the referenced agent is used.
@@ -139,11 +138,11 @@ type SessionParameters struct {
 
 	// Reference to an Environment to populate environmentId.
 	// +kubebuilder:validation:Optional
-	EnvironmentIDRef *xpv1.NamespacedReference `json:"environmentIdRef,omitempty"`
+	EnvironmentIDRef *xpv2.NamespacedReference `json:"environmentIdRef,omitempty"`
 
 	// Selector for an Environment to populate environmentId.
 	// +kubebuilder:validation:Optional
-	EnvironmentIDSelector *xpv1.NamespacedSelector `json:"environmentIdSelector,omitempty"`
+	EnvironmentIDSelector *xpv2.NamespacedSelector `json:"environmentIdSelector,omitempty"`
 
 	// Title is a human-readable session title.
 	// +optional
@@ -169,11 +168,11 @@ type SessionParameters struct {
 
 	// References to Vaults used to populate vaultIds.
 	// +kubebuilder:validation:Optional
-	VaultIDsRefs []xpv1.NamespacedReference `json:"vaultIdsRefs,omitempty"`
+	VaultIDsRefs []xpv2.NamespacedReference `json:"vaultIdsRefs,omitempty"`
 
 	// Selector for Vaults used to populate vaultIds.
 	// +kubebuilder:validation:Optional
-	VaultIDsSelector *xpv1.NamespacedSelector `json:"vaultIdsSelector,omitempty"`
+	VaultIDsSelector *xpv2.NamespacedSelector `json:"vaultIdsSelector,omitempty"`
 
 	// AnthropicDeletionPolicy controls whether Crossplane calls Archive or
 	// Delete on the Anthropic API when the resource is deleted in Kubernetes.
@@ -235,7 +234,7 @@ type SessionObservation struct {
 
 // SessionSpec defines the desired state of Session.
 type SessionSpec struct {
-	v2.ManagedResourceSpec `json:",inline"`
+	xpv2.ManagedResourceSpec `json:",inline"`
 
 	// ForProvider holds the configuration the provider reconciles against the
 	// Anthropic API on every loop.
@@ -244,7 +243,7 @@ type SessionSpec struct {
 
 // SessionStatus defines the observed state of Session.
 type SessionStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv2.ManagedResourceStatus `json:",inline"`
 
 	// AtProvider holds the observed state as returned by the Anthropic API.
 	// +optional

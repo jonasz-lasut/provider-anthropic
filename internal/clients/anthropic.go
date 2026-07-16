@@ -23,7 +23,7 @@ import (
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
-	xpcommon "github.com/crossplane/crossplane-runtime/v2/apis/common"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	xperrors "github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 	xpresource "github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"k8s.io/apimachinery/pkg/types"
@@ -110,7 +110,7 @@ func apiKeyFromCredentials(data []byte, identityType pcv1beta1.IdentityType) (st
 func resolveProviderConfig(
 	ctx context.Context,
 	crClient client.Client,
-	configRef *xpcommon.ProviderConfigReference,
+	configRef *xpv2.ProviderConfigReference,
 	namespace string,
 ) (*pcv1beta1.ProviderConfigSpec, error) {
 	if configRef == nil {

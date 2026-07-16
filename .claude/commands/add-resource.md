@@ -72,8 +72,8 @@ Create `apis/managedagents.anthropic.crossplane.io/v1beta1/<lowercase-resource>_
 
 Then fill in `<Resource>Parameters` (ForProvider) and `<Resource>Observation` (AtProvider) from the SDK surface found in Step 1. Key rules:
 - All resources are **namespace-scoped**: `+kubebuilder:resource:scope=Namespaced`
-- `<Resource>Spec` embeds `v2.ManagedResourceSpec \`json:",inline"\`` from `v2 "github.com/crossplane/crossplane-runtime/v2/apis/common/v2"`. Do NOT embed `xpv1.ResourceSpec` and do NOT manually declare the three spec fields. angryjet recognises the `v2.ManagedResourceSpec` embedding and auto-generates all `resource.ModernManaged` methods, `GetItems()`, and reference resolvers — **do not write these by hand**.
-- `<Resource>Status` embeds `xpv1.ResourceStatus` (keep this — it provides status conditions).
+- `<Resource>Spec` embeds `xpv2.ManagedResourceSpec \`json:",inline"\`` from `xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"`. Do NOT embed `xpv2.ClusterManagedResourceSpec` and do NOT manually declare the three spec fields. angryjet recognises the `xpv2.ManagedResourceSpec` embedding and auto-generates all `resource.ModernManaged` methods, `GetItems()`, and reference resolvers — **do not write these by hand**.
+- `<Resource>Status` embeds `xpv2.ManagedResourceStatus` (keep this — it provides status conditions).
 
 ### ForProvider (`<Resource>Parameters`)
 Map each SDK NewParams/UpdateParams field:
@@ -92,15 +92,15 @@ Map each SDK NewParams/UpdateParams field:
 
   // Reference to a <Other> to populate <lowerOther>Id.
   // +kubebuilder:validation:Optional
-  <Other>IDRef *xpv1.NamespacedReference `json:"<lowerOther>IdRef,omitempty"`
+  <Other>IDRef *xpv2.NamespacedReference `json:"<lowerOther>IdRef,omitempty"`
 
   // Selector for a <Other> to populate <lowerOther>Id.
   // +kubebuilder:validation:Optional
-  <Other>IDSelector *xpv1.NamespacedSelector `json:"<lowerOther>IdSelector,omitempty"`
+  <Other>IDSelector *xpv2.NamespacedSelector `json:"<lowerOther>IdSelector,omitempty"`
   ```
   - `reference:type` — the Go type of the Kubernetes object being pointed to.
   - `reference:extractor` — `internal/extractors.ComputedFieldExtractor("id")` reads `status.atProvider.id` of the referenced object via `fieldpath.PaveObject`. Do NOT use upjet's `resource.ExtractParamPath("id", true)` — it only works on upjet-generated Terraform-state resources and silently returns an empty string for handwritten managed resources, causing the resolver to fail with `referenced field was empty (referenced resource may not yet be ready)` even when the referenced resource is fully Ready. `ComputedFieldExtractor` works for any Go struct because it JSON-marshals the resource and walks the resulting map by path.
-  - Use `xpv1.NamespacedReference` / `xpv1.NamespacedSelector` because all managed resources here are namespace-scoped. angryjet generates `ResolveReferences` in `zz_generated.resolvers.go` that uses these fields.
+  - Use `xpv2.NamespacedReference` / `xpv2.NamespacedSelector` because all managed resources here are namespace-scoped. angryjet generates `ResolveReferences` in `zz_generated.resolvers.go` that uses these fields.
 
 **Required-marker convention:** Mark every `ForProvider` field `// +optional`
 regardless of whether the Anthropic API treats it as required. Anthropic
@@ -214,7 +214,7 @@ for SecretRef conversion (reason: <which rule matched>). Convert?
 
 For each confirmed candidate, REWRITE the field in the types file:
 
-- Type becomes `xpv1.LocalSecretKeySelector` — VALUE, not a pointer
+- Type becomes `xpv2.LocalSecretKeySelector` — VALUE, not a pointer
   (see [[feedback-secret-ref-shape]]).
 - JSON tag becomes `<lowerCamelName>SecretRef` with NO `omitempty`.
 - Drop any `+kubebuilder:validation:MaxLength` / `+kubebuilder:validation:Pattern`
@@ -236,7 +236,7 @@ Content *string `json:"content,omitempty"`
 // after
 // Required: ContentSecretRef references a Secret in the MR's namespace
 // holding the UTF-8 memory content at the given key. Maximum 100 kB.
-ContentSecretRef xpv1.LocalSecretKeySelector `json:"contentSecretRef"`
+ContentSecretRef xpv2.LocalSecretKeySelector `json:"contentSecretRef"`
 ```
 
 ## Step 3b — Create the conversion file
@@ -315,7 +315,7 @@ Then fill in each method using the SDK surface found in Step 1. Key rules:
    ```
    `FromAnthropicObservation` (defined in the conversion file) performs explicit field-by-field assignment. `ArchivedAt` is always omitted there.
 
-5. `res.SetConditions(xpv1.Available())`
+5. `res.SetConditions(xpv2.Available())`
 6. If the resource has SecretRef fields, resolve them into a `convCtx` and return connection details:
    ```go
    convCtx := &managedagentsv1beta1.<Resource>ConversionContext{<Field>: resolved}

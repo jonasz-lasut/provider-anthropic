@@ -98,7 +98,7 @@ but **every** reconciler method nil-checks it explicitly:
 This follows the standard SecretRef pattern (Steps 3a / 4) and is noted here only
 for completeness:
 
-- `ContentSecretRef xpv1.LocalSecretKeySelector` (value, not pointer); resolved in
+- `ContentSecretRef xpv2.LocalSecretKeySelector` (value, not pointer); resolved in
   both `Observe` and `Create`/`Update` via `clients.ResolveLocalSecretKey`.
 - `MemoryStoreMemoryConversionContext{Content string}` carries the resolved value
   and publishes it as the `content` connection detail.

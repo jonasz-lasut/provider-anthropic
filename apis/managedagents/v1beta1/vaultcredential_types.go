@@ -20,8 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
-	v2 "github.com/crossplane/crossplane-runtime/v2/apis/common/v2"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 )
 
 // VaultCredentialTokenEndpointAuth selects the token-endpoint authentication
@@ -36,7 +35,7 @@ type VaultCredentialTokenEndpointAuth struct {
 	// holding the OAuth client secret at the given key. Required for
 	// client_secret_basic and client_secret_post; omit for the none variant.
 	// +optional
-	ClientSecretSecretRef *xpv1.LocalSecretKeySelector `json:"clientSecretSecretRef,omitempty"`
+	ClientSecretSecretRef *xpv2.LocalSecretKeySelector `json:"clientSecretSecretRef,omitempty"`
 }
 
 // VaultCredentialRefresh configures OAuth refresh-token support for an
@@ -49,7 +48,7 @@ type VaultCredentialRefresh struct {
 	// Required: RefreshTokenSecretRef references a Secret in the MR's
 	// namespace holding the OAuth refresh token at the given key.
 	// +optional
-	RefreshTokenSecretRef *xpv1.LocalSecretKeySelector `json:"refreshTokenSecretRef,omitempty"`
+	RefreshTokenSecretRef *xpv2.LocalSecretKeySelector `json:"refreshTokenSecretRef,omitempty"`
 
 	// Required: TokenEndpoint is the URL used to refresh the access token.
 	// +optional
@@ -122,7 +121,7 @@ type VaultCredentialAuth struct {
 	// environment variable's value at the given key (environment_variable
 	// variant). Write-only; never returned by the API.
 	// +optional
-	SecretValueSecretRef *xpv1.LocalSecretKeySelector `json:"secretValueSecretRef,omitempty"`
+	SecretValueSecretRef *xpv2.LocalSecretKeySelector `json:"secretValueSecretRef,omitempty"`
 
 	// Networking scopes the outbound hosts the secret value is substituted on
 	// (environment_variable variant). Required for that variant.
@@ -139,13 +138,13 @@ type VaultCredentialAuth struct {
 	// static bearer token at the given key (static_bearer variant). Omit
 	// for the mcp_oauth variant.
 	// +optional
-	TokenSecretRef *xpv1.LocalSecretKeySelector `json:"tokenSecretRef,omitempty"`
+	TokenSecretRef *xpv2.LocalSecretKeySelector `json:"tokenSecretRef,omitempty"`
 
 	// AccessTokenSecretRef references a Secret in the MR's namespace
 	// holding the OAuth access token at the given key (mcp_oauth variant).
 	// Omit for the static_bearer variant.
 	// +optional
-	AccessTokenSecretRef *xpv1.LocalSecretKeySelector `json:"accessTokenSecretRef,omitempty"`
+	AccessTokenSecretRef *xpv2.LocalSecretKeySelector `json:"accessTokenSecretRef,omitempty"`
 
 	// ExpiresAt is the RFC 3339 timestamp at which the access token expires
 	// (mcp_oauth variant).
@@ -171,11 +170,11 @@ type VaultCredentialParameters struct {
 
 	// Reference to a Vault to populate vaultId.
 	// +kubebuilder:validation:Optional
-	VaultIDRef *xpv1.NamespacedReference `json:"vaultIdRef,omitempty"`
+	VaultIDRef *xpv2.NamespacedReference `json:"vaultIdRef,omitempty"`
 
 	// Selector for a Vault to populate vaultId.
 	// +kubebuilder:validation:Optional
-	VaultIDSelector *xpv1.NamespacedSelector `json:"vaultIdSelector,omitempty"`
+	VaultIDSelector *xpv2.NamespacedSelector `json:"vaultIdSelector,omitempty"`
 
 	// Auth describes the credential payload (mcp_oauth or static_bearer).
 	Auth VaultCredentialAuth `json:"auth"`
@@ -293,7 +292,7 @@ type VaultCredentialObservation struct {
 
 // VaultCredentialSpec defines the desired state of VaultCredential.
 type VaultCredentialSpec struct {
-	v2.ManagedResourceSpec `json:",inline"`
+	xpv2.ManagedResourceSpec `json:",inline"`
 
 	// ForProvider holds the configuration the provider reconciles against the
 	// Anthropic API on every loop.
@@ -302,7 +301,7 @@ type VaultCredentialSpec struct {
 
 // VaultCredentialStatus defines the observed state of VaultCredential.
 type VaultCredentialStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv2.ManagedResourceStatus `json:",inline"`
 
 	// AtProvider holds the observed state as returned by the Anthropic API.
 	// +optional

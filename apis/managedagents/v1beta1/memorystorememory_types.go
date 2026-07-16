@@ -20,8 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
-	v2 "github.com/crossplane/crossplane-runtime/v2/apis/common/v2"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 )
 
 // MemoryStoreMemoryParameters defines the desired state of an Anthropic
@@ -38,11 +37,11 @@ type MemoryStoreMemoryParameters struct {
 
 	// Reference to a MemoryStore to populate memoryStoreId.
 	// +kubebuilder:validation:Optional
-	MemoryStoreIDRef *xpv1.NamespacedReference `json:"memoryStoreIdRef,omitempty"`
+	MemoryStoreIDRef *xpv2.NamespacedReference `json:"memoryStoreIdRef,omitempty"`
 
 	// Selector for a MemoryStore to populate memoryStoreId.
 	// +kubebuilder:validation:Optional
-	MemoryStoreIDSelector *xpv1.NamespacedSelector `json:"memoryStoreIdSelector,omitempty"`
+	MemoryStoreIDSelector *xpv2.NamespacedSelector `json:"memoryStoreIdSelector,omitempty"`
 
 	// Required: Path is the hierarchical path of the memory within the store, e.g.
 	// "/projects/foo/notes.md". Must start with "/", be at most 1,024 bytes,
@@ -56,7 +55,7 @@ type MemoryStoreMemoryParameters struct {
 	// holding the UTF-8 text content of the memory at the given key. Maximum
 	// 100 kB (102,400 bytes); the API rejects larger payloads.
 	// +optional
-	ContentSecretRef *xpv1.LocalSecretKeySelector `json:"contentSecretRef,omitempty"`
+	ContentSecretRef *xpv2.LocalSecretKeySelector `json:"contentSecretRef,omitempty"`
 }
 
 // MemoryStoreMemoryObservation holds the observed state of an Anthropic
@@ -100,7 +99,7 @@ type MemoryStoreMemoryObservation struct {
 
 // MemoryStoreMemorySpec defines the desired state of MemoryStoreMemory.
 type MemoryStoreMemorySpec struct {
-	v2.ManagedResourceSpec `json:",inline"`
+	xpv2.ManagedResourceSpec `json:",inline"`
 
 	// ForProvider holds the configuration the provider reconciles against the
 	// Anthropic API on every loop.
@@ -109,7 +108,7 @@ type MemoryStoreMemorySpec struct {
 
 // MemoryStoreMemoryStatus defines the observed state of MemoryStoreMemory.
 type MemoryStoreMemoryStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv2.ManagedResourceStatus `json:",inline"`
 
 	// AtProvider holds the observed state as returned by the Anthropic API.
 	// +optional

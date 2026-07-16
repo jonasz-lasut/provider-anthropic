@@ -20,8 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
-	v2 "github.com/crossplane/crossplane-runtime/v2/apis/common/v2"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 )
 
 // DreamModelConfig selects the model and inference speed applied to every
@@ -60,11 +59,11 @@ type DreamInput struct {
 
 	// Reference to a MemoryStore to populate memoryStoreId.
 	// +kubebuilder:validation:Optional
-	MemoryStoreIDRef *xpv1.NamespacedReference `json:"memoryStoreIdRef,omitempty"`
+	MemoryStoreIDRef *xpv2.NamespacedReference `json:"memoryStoreIdRef,omitempty"`
 
 	// Selector for a MemoryStore to populate memoryStoreId.
 	// +kubebuilder:validation:Optional
-	MemoryStoreIDSelector *xpv1.NamespacedSelector `json:"memoryStoreIdSelector,omitempty"`
+	MemoryStoreIDSelector *xpv2.NamespacedSelector `json:"memoryStoreIdSelector,omitempty"`
 
 	// SessionIDs lists the session transcript IDs to read from (sessions type).
 	// Populate directly or via SessionIDsRefs / SessionIDsSelector.
@@ -76,11 +75,11 @@ type DreamInput struct {
 
 	// References to Sessions used to populate sessionIds.
 	// +kubebuilder:validation:Optional
-	SessionIDsRefs []xpv1.NamespacedReference `json:"sessionIdsRefs,omitempty"`
+	SessionIDsRefs []xpv2.NamespacedReference `json:"sessionIdsRefs,omitempty"`
 
 	// Selector for Sessions used to populate sessionIds.
 	// +kubebuilder:validation:Optional
-	SessionIDsSelector *xpv1.NamespacedSelector `json:"sessionIdsSelector,omitempty"`
+	SessionIDsSelector *xpv2.NamespacedSelector `json:"sessionIdsSelector,omitempty"`
 }
 
 // DreamParameters defines the desired state of an Anthropic Dream.
@@ -228,7 +227,7 @@ type DreamObservation struct {
 
 // DreamSpec defines the desired state of Dream.
 type DreamSpec struct {
-	v2.ManagedResourceSpec `json:",inline"`
+	xpv2.ManagedResourceSpec `json:",inline"`
 
 	// ForProvider holds the configuration the provider reconciles against the
 	// Anthropic API on every loop.
@@ -237,7 +236,7 @@ type DreamSpec struct {
 
 // DreamStatus defines the observed state of Dream.
 type DreamStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv2.ManagedResourceStatus `json:",inline"`
 
 	// AtProvider holds the observed state as returned by the Anthropic API.
 	// +optional

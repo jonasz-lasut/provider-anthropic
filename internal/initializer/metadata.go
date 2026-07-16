@@ -23,7 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	xperrors "github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/fieldpath"
 	xpresource "github.com/crossplane/crossplane-runtime/v2/pkg/resource"
@@ -52,7 +52,7 @@ func New(kube client.Client, fieldName string) *Initializer {
 // visible via kubectl and survives controller restarts.
 func (i *Initializer) Initialize(ctx context.Context, mg xpresource.Managed) error {
 	if sets.New(mg.GetManagementPolicies()...).
-		Equal(sets.New(xpv1.ManagementActionObserve)) {
+		Equal(sets.New(xpv2.ManagementActionObserve)) {
 		return nil
 	}
 

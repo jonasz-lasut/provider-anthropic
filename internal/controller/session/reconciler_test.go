@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
 	v1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 )
@@ -39,8 +39,8 @@ func TestResolveSessionContext_ResolvesPerResourceTokens(t *testing.T) {
 			Resources: []v1beta1.SessionResource{
 				{
 					Type: ptr("github_repository"),
-					AuthorizationTokenSecretRef: &xpv1.LocalSecretKeySelector{
-						LocalSecretReference: xpv1.LocalSecretReference{Name: "ghtok"},
+					AuthorizationTokenSecretRef: &xpv2.LocalSecretKeySelector{
+						LocalSecretReference: xpv2.LocalSecretReference{Name: "ghtok"},
 						Key:                  "token",
 					},
 				},
@@ -71,8 +71,8 @@ func TestResolveSessionContext_MissingSecretReturnsError(t *testing.T) {
 		Spec: v1beta1.SessionSpec{ForProvider: v1beta1.SessionParameters{
 			Resources: []v1beta1.SessionResource{{
 				Type: ptr("github_repository"),
-				AuthorizationTokenSecretRef: &xpv1.LocalSecretKeySelector{
-					LocalSecretReference: xpv1.LocalSecretReference{Name: "missing"},
+				AuthorizationTokenSecretRef: &xpv2.LocalSecretKeySelector{
+					LocalSecretReference: xpv2.LocalSecretReference{Name: "missing"},
 					Key:                  "token",
 				},
 			}},

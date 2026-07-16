@@ -166,12 +166,12 @@ func isUpToDate(sk *v1beta1.Skill, fullHex string) bool {
 
 ## 8. Secret reference type
 
-**Standard:** `xpv1.LocalSecretKeySelector` — references one specific key in a Secret.
+**Standard:** `xpv2.LocalSecretKeySelector` — references one specific key in a Secret.
 
-**Skill:** `xpv1.LocalSecretReference` — references a whole Secret by name.
+**Skill:** `xpv2.LocalSecretReference` — references a whole Secret by name.
 All keys are consumed; keys become file paths, values become file content.
-`xpv1.LocalSecretReference` is already available via the existing
-`xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"` import —
+`xpv2.LocalSecretReference` is already available via the existing
+`xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"` import —
 no new import required.
 
 ---
@@ -199,7 +199,7 @@ identical to the `MemoryStoreMemory` pattern.
 
 ## Checklist for implementers
 
-- [ ] `apis/managedagents/v1beta1/skill_types.go` — `FilesSecretRef xpv1.LocalSecretReference`, no `Metadata` field
+- [ ] `apis/managedagents/v1beta1/skill_types.go` — `FilesSecretRef xpv2.LocalSecretReference`, no `Metadata` field
 - [ ] `apis/managedagents/v1beta1/skill_conversion.go` — four methods; no `ConversionContext`
 - [ ] `internal/controller/skill/fs.go` — `skillFS` struct, `newSkillFS()`, `stageFiles()`, `collectReaders()`
 - [ ] `internal/controller/skill/reconciler.go` — `connector` and `external` hold `*skillFS`; no `skipDefaultMetadata`
