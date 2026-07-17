@@ -4,7 +4,7 @@ go 1.26.5
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
-	github.com/anthropics/anthropic-sdk-go v1.58.1
+	github.com/anthropics/anthropic-sdk-go v1.58.0
 	github.com/crossplane/crossplane-runtime/v2 v2.3.3
 	github.com/crossplane/crossplane-tools v0.0.0-20260719180100-659f1dc036c5
 	github.com/crossplane/crossplane/apis/v2 v2.3.3
