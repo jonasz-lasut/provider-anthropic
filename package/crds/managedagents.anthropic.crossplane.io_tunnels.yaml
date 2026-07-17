@@ -4,7 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     anthropic.crossplane.io/sdk-version: v1.58.1
-  name: memorystores.managedagents.anthropic.crossplane.io
+  name: tunnels.managedagents.anthropic.crossplane.io
 spec:
   group: managedagents.anthropic.crossplane.io
   names:
@@ -12,12 +12,12 @@ spec:
       - crossplane
       - managed
       - anthropic
-    kind: MemoryStore
-    listKind: MemoryStoreList
-    plural: memorystores
+    kind: Tunnel
+    listKind: TunnelList
+    plural: tunnels
     shortNames:
-      - memstore
-    singular: memorystore
+      - tnl
+    singular: tunnel
   scope: Namespaced
   versions:
     - additionalPrinterColumns:
@@ -26,6 +26,9 @@ spec:
           type: string
         - jsonPath: .status.conditions[?(@.type=='Synced')].status
           name: SYNCED
+          type: string
+        - jsonPath: .status.atProvider.domain
+          name: DOMAIN
           type: string
         - jsonPath: .metadata.annotations.crossplane\.io/external-name
           name: EXTERNAL-NAME
@@ -37,8 +40,9 @@ spec:
       schema:
         openAPIV3Schema:
           description: |-
-            MemoryStore is a managed resource representing an Anthropic memory store
-            (beta API): a named container for agent memories, scoped to a workspace.
+            Tunnel is a managed resource representing an Anthropic MCP tunnel
+            (research-preview beta API). A Tunnel is immutable after creation; its
+            connector token is published as a connection detail.
           properties:
             apiVersion:
               description: |-
@@ -58,39 +62,17 @@ spec:
             metadata:
               type: object
             spec:
-              description: MemoryStoreSpec defines the desired state of MemoryStore.
+              description: TunnelSpec defines the desired state of Tunnel.
               properties:
                 forProvider:
                   description: |-
                     ForProvider holds the configuration the provider reconciles against the
                     Anthropic API on every loop.
                   properties:
-                    anthropicDeletionPolicy:
-                      default: Archive
+                    displayName:
                       description: |-
-                        AnthropicDeletionPolicy controls whether Crossplane calls Archive or
-                        Delete on the Anthropic API when the resource is deleted in Kubernetes.
-                      enum:
-                        - Archive
-                        - Delete
-                      type: string
-                    description:
-                      description: |-
-                        Description is a free-text description of what the store contains,
-                        up to 1024 characters. Included in the agent's system prompt when
-                        the store is attached, so word it to be useful to the agent.
-                      type: string
-                    metadata:
-                      additionalProperties:
-                        type: string
-                      description: |-
-                        Metadata is arbitrary key-value tags for your own bookkeeping.
-                        Up to 16 pairs; keys 1–64 characters; values up to 512 characters.
-                      type: object
-                    name:
-                      description: |-
-                        Required: Name is the human-readable name for the store. Up to 255 characters.
-                        The mount-path slug under /mnt/memory/ is derived from this name.
+                        DisplayName is an optional human-readable name for the tunnel (1-255
+                        characters). Immutable after creation.
                       maxLength: 255
                       type: string
                   type: object
@@ -153,36 +135,28 @@ spec:
                 - forProvider
               type: object
             status:
-              description: MemoryStoreStatus defines the observed state of MemoryStore.
+              description: TunnelStatus defines the observed state of Tunnel.
               properties:
                 atProvider:
                   description: AtProvider holds the observed state as returned by the Anthropic API.
                   properties:
-                    archivedAt:
-                      description: ArchivedAt is set when the memory store has been archived.
-                      type: string
                     createdAt:
-                      description: CreatedAt is the RFC 3339 timestamp when the memory store was created.
+                      description: CreatedAt is the RFC 3339 timestamp when the tunnel was created.
                       type: string
-                    description:
-                      description: Description is the observed free-text description.
+                    displayName:
+                      description: DisplayName is the observed human-readable name of the tunnel.
+                      type: string
+                    domain:
+                      description: |-
+                        Domain is the Anthropic-assigned hostname for the tunnel. MCP server URLs
+                        whose host is a subdomain of this value are routed through the tunnel.
+                        Globally unique and never reused, even after the tunnel is archived.
                       type: string
                     id:
                       description: |-
-                        ID is the Anthropic-assigned identifier (a memstore_... tagged ID).
-                        Also stored in the external-name annotation, which the reconciler uses
-                        as the primary key.
-                      type: string
-                    metadata:
-                      additionalProperties:
-                        type: string
-                      description: Metadata is the observed key-value metadata map.
-                      type: object
-                    name:
-                      description: Name is the observed human-readable name.
-                      type: string
-                    updatedAt:
-                      description: UpdatedAt is the RFC 3339 timestamp of the last modification.
+                        ID is the Anthropic-assigned identifier (a tnl_... tagged ID). Also stored
+                        in the external-name annotation, which the reconciler uses as the primary
+                        key.
                       type: string
                   type: object
                 conditions:

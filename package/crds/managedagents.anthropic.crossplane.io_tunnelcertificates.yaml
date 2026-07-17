@@ -4,7 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     anthropic.crossplane.io/sdk-version: v1.58.1
-  name: memorystores.managedagents.anthropic.crossplane.io
+  name: tunnelcertificates.managedagents.anthropic.crossplane.io
 spec:
   group: managedagents.anthropic.crossplane.io
   names:
@@ -12,12 +12,12 @@ spec:
       - crossplane
       - managed
       - anthropic
-    kind: MemoryStore
-    listKind: MemoryStoreList
-    plural: memorystores
+    kind: TunnelCertificate
+    listKind: TunnelCertificateList
+    plural: tunnelcertificates
     shortNames:
-      - memstore
-    singular: memorystore
+      - tnlcert
+    singular: tunnelcertificate
   scope: Namespaced
   versions:
     - additionalPrinterColumns:
@@ -26,6 +26,12 @@ spec:
           type: string
         - jsonPath: .status.conditions[?(@.type=='Synced')].status
           name: SYNCED
+          type: string
+        - jsonPath: .status.atProvider.tunnelId
+          name: TUNNEL
+          type: string
+        - jsonPath: .status.atProvider.expiresAt
+          name: EXPIRES
           type: string
         - jsonPath: .metadata.annotations.crossplane\.io/external-name
           name: EXTERNAL-NAME
@@ -37,8 +43,9 @@ spec:
       schema:
         openAPIV3Schema:
           description: |-
-            MemoryStore is a managed resource representing an Anthropic memory store
-            (beta API): a named container for agent memories, scoped to a workspace.
+            TunnelCertificate is a managed resource representing a public CA certificate
+            registered on an Anthropic MCP tunnel (research-preview beta API). It is
+            immutable after creation.
           properties:
             apiVersion:
               description: |-
@@ -58,41 +65,114 @@ spec:
             metadata:
               type: object
             spec:
-              description: MemoryStoreSpec defines the desired state of MemoryStore.
+              description: TunnelCertificateSpec defines the desired state of TunnelCertificate.
               properties:
                 forProvider:
                   description: |-
                     ForProvider holds the configuration the provider reconciles against the
                     Anthropic API on every loop.
                   properties:
-                    anthropicDeletionPolicy:
-                      default: Archive
+                    caCertificatePemSecretRef:
                       description: |-
-                        AnthropicDeletionPolicy controls whether Crossplane calls Archive or
-                        Delete on the Anthropic API when the resource is deleted in Kubernetes.
-                      enum:
-                        - Archive
-                        - Delete
-                      type: string
-                    description:
-                      description: |-
-                        Description is a free-text description of what the store contains,
-                        up to 1024 characters. Included in the agent's system prompt when
-                        the store is attached, so word it to be useful to the agent.
-                      type: string
-                    metadata:
-                      additionalProperties:
-                        type: string
-                      description: |-
-                        Metadata is arbitrary key-value tags for your own bookkeeping.
-                        Up to 16 pairs; keys 1–64 characters; values up to 512 characters.
+                        Required: CaCertificatePemSecretRef references a Secret in the MR's
+                        namespace holding a PEM-encoded X.509 CA certificate at the given key.
+                        The referenced value must contain exactly one certificate and no
+                        private-key material, and be at most 8 kB. Immutable after creation.
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          description: Name of the secret.
+                          type: string
+                      required:
+                        - key
+                        - name
                       type: object
-                    name:
+                    tunnelId:
                       description: |-
-                        Required: Name is the human-readable name for the store. Up to 255 characters.
-                        The mount-path slug under /mnt/memory/ is derived from this name.
-                      maxLength: 255
+                        TunnelID is the ID of the parent Tunnel this certificate is registered on.
+                        Populate directly or via TunnelIDRef / TunnelIDSelector. Immutable after
+                        creation.
                       type: string
+                    tunnelIdRef:
+                      description: Reference to a Tunnel to populate tunnelId.
+                      properties:
+                        name:
+                          description: Name of the referenced object.
+                          type: string
+                        namespace:
+                          description: Namespace of the referenced object
+                          type: string
+                        policy:
+                          description: Policies for referencing.
+                          properties:
+                            resolution:
+                              default: Required
+                              description: |-
+                                Resolution specifies whether resolution of this reference is required.
+                                The default is 'Required', which means the reconcile will fail if the
+                                reference cannot be resolved. 'Optional' means this reference will be
+                                a no-op if it cannot be resolved.
+                              enum:
+                                - Required
+                                - Optional
+                              type: string
+                            resolve:
+                              description: |-
+                                Resolve specifies when this reference should be resolved. The default
+                                is 'IfNotPresent', which will attempt to resolve the reference only when
+                                the corresponding field is not present. Use 'Always' to resolve the
+                                reference on every reconcile.
+                              enum:
+                                - Always
+                                - IfNotPresent
+                              type: string
+                          type: object
+                      required:
+                        - name
+                      type: object
+                    tunnelIdSelector:
+                      description: Selector for a Tunnel to populate tunnelId.
+                      properties:
+                        matchControllerRef:
+                          description: |-
+                            MatchControllerRef ensures an object with the same controller reference
+                            as the selecting object is selected.
+                          type: boolean
+                        matchLabels:
+                          additionalProperties:
+                            type: string
+                          description: MatchLabels ensures an object with matching labels is selected.
+                          type: object
+                        namespace:
+                          description: Namespace for the selector
+                          type: string
+                        policy:
+                          description: Policies for selection.
+                          properties:
+                            resolution:
+                              default: Required
+                              description: |-
+                                Resolution specifies whether resolution of this reference is required.
+                                The default is 'Required', which means the reconcile will fail if the
+                                reference cannot be resolved. 'Optional' means this reference will be
+                                a no-op if it cannot be resolved.
+                              enum:
+                                - Required
+                                - Optional
+                              type: string
+                            resolve:
+                              description: |-
+                                Resolve specifies when this reference should be resolved. The default
+                                is 'IfNotPresent', which will attempt to resolve the reference only when
+                                the corresponding field is not present. Use 'Always' to resolve the
+                                reference on every reconcile.
+                              enum:
+                                - Always
+                                - IfNotPresent
+                              type: string
+                          type: object
+                      type: object
                   type: object
                 managementPolicies:
                   default:
@@ -153,36 +233,30 @@ spec:
                 - forProvider
               type: object
             status:
-              description: MemoryStoreStatus defines the observed state of MemoryStore.
+              description: TunnelCertificateStatus defines the observed state of TunnelCertificate.
               properties:
                 atProvider:
                   description: AtProvider holds the observed state as returned by the Anthropic API.
                   properties:
-                    archivedAt:
-                      description: ArchivedAt is set when the memory store has been archived.
-                      type: string
                     createdAt:
-                      description: CreatedAt is the RFC 3339 timestamp when the memory store was created.
+                      description: CreatedAt is the RFC 3339 timestamp when the certificate was registered.
                       type: string
-                    description:
-                      description: Description is the observed free-text description.
+                    expiresAt:
+                      description: ExpiresAt is the RFC 3339 timestamp when the certificate expires.
+                      type: string
+                    fingerprint:
+                      description: |-
+                        Fingerprint is the lowercase hex SHA-256 fingerprint of the certificate's
+                        DER encoding.
                       type: string
                     id:
                       description: |-
-                        ID is the Anthropic-assigned identifier (a memstore_... tagged ID).
-                        Also stored in the external-name annotation, which the reconciler uses
-                        as the primary key.
+                        ID is the Anthropic-assigned identifier (a tcrt_... tagged ID). Also
+                        stored in the external-name annotation, which the reconciler uses as the
+                        primary key.
                       type: string
-                    metadata:
-                      additionalProperties:
-                        type: string
-                      description: Metadata is the observed key-value metadata map.
-                      type: object
-                    name:
-                      description: Name is the observed human-readable name.
-                      type: string
-                    updatedAt:
-                      description: UpdatedAt is the RFC 3339 timestamp of the last modification.
+                    tunnelId:
+                      description: TunnelID is the parent tunnel ID returned by the API.
                       type: string
                   type: object
                 conditions:
