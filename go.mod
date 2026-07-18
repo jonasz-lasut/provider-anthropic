@@ -6,7 +6,7 @@ require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/anthropics/anthropic-sdk-go v1.57.0
 	github.com/crossplane/crossplane-runtime/v2 v2.3.3
-	github.com/crossplane/crossplane-tools v0.0.0-20260715161912-60e57f817ad1
+	github.com/crossplane/crossplane-tools v0.0.0-20260717185341-b866a170bb36
 	github.com/crossplane/crossplane/apis/v2 v2.3.3
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/afero v1.15.0
