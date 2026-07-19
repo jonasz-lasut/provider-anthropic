@@ -6,7 +6,7 @@ require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
 	github.com/anthropics/anthropic-sdk-go v1.57.0
 	github.com/crossplane/crossplane-runtime/v2 v2.3.3
-	github.com/crossplane/crossplane-tools v0.0.0-20260717185341-b866a170bb36
+	github.com/crossplane/crossplane-tools v0.0.0-20260719180100-659f1dc036c5
 	github.com/crossplane/crossplane/apis/v2 v2.3.3
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/afero v1.15.0
@@ -110,7 +110,7 @@ require (
 	k8s.io/gengo/v2 v2.0.0-20260408192533-25e2208e0dc3 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20260624041617-8f3fa4921821 // indirect
-	k8s.io/utils v0.0.0-20260626114624-be93311217bd // indirect
+	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.0 // indirect
