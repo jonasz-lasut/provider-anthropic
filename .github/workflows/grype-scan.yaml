@@ -36,7 +36,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG=$(gh release view --repo ${{ github.repository }} --json tagName -q .tagName)
+          SHA=$(gh api repos/${{ github.repository }}/commits/"${TAG}" --jq .sha)
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Install Grype
         uses: anchore/scan-action/download-grype@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
@@ -52,3 +54,5 @@ jobs:
         uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a # v4.37.1
         with:
           sarif_file: grype-results.sarif
+          ref: refs/tags/${{ steps.release.outputs.tag }}
+          sha: ${{ steps.release.outputs.sha }}
