@@ -1,0 +1,54 @@
+# Copyright 2026 The provider-anthropic Authors.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Grype Vulnerability Scan
+
+on:
+  schedule:
+    # Monday 05:00 UTC (6:00 AM CET / 7:00 AM CEST). GitHub Actions cron is
+    # always UTC, so this drifts an hour during CEST.
+    - cron: '0 5 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get Latest Release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=$(gh release view --repo ${{ github.repository }} --json tagName -q .tagName)
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Grype
+        uses: anchore/scan-action/download-grype@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        id: grype-install
+
+      - name: Scan Latest Release Image
+        run: |
+          ${{ steps.grype-install.outputs.cmd }} ghcr.io/jonasz-lasut/provider-anthropic:${{ steps.release.outputs.tag }} \
+            -o table \
+            -o sarif=grype-results.sarif
+
+      - name: Upload SARIF Report
+        uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a # v4.37.1
+        with:
+          sarif_file: grype-results.sarif
