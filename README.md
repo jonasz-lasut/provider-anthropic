@@ -41,6 +41,12 @@ spec:
   package: ghcr.io/jonasz-lasut/provider-anthropic:latest
 ```
 
+## Supply Chain Security
+
+Released images are signed and attested (SBOM, SLSA provenance) via keyless
+cosign signing. See [docs/signature-verification.md](docs/signature-verification.md) for
+verification instructions.
+
 ## Developing locally
 
 See the header of [`go.mod`](./go.mod) for the minimum supported version of Go.

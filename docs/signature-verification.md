@@ -1,7 +1,7 @@
 # Signature Verification
 
 Every release of `provider-anthropic` is signed with [cosign](https://github.com/sigstore/cosign)
-using keyless signing: `.github/workflows/publish-pkg.yaml`'s `sign-artifacts` job requests a
+using keyless signing: `.github/workflows/supplychain.yaml`'s `sign-artifacts` job requests a
 GitHub Actions OIDC token, exchanges it with Fulcio for a short-lived certificate bound to that
 exact workflow, and publishes the signature and certificate to the public Rekor transparency log.
 There is no private key to manage or leak — trust is anchored to the GitHub Actions identity of
@@ -34,7 +34,7 @@ run doesn't pass:
 
 ```console
 cosign verify \
-  --certificate-identity https://github.com/jonasz-lasut/provider-anthropic/.github/workflows/publish-pkg.yaml@refs/heads/main \
+  --certificate-identity https://github.com/jonasz-lasut/provider-anthropic/.github/workflows/supplychain.yaml@refs/heads/main \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   ghcr.io/jonasz-lasut/provider-anthropic:<version>
 ```
@@ -43,13 +43,13 @@ Verify each attestation the same way, adding `--type`:
 
 ```console
 cosign verify-attestation \
-  --certificate-identity https://github.com/jonasz-lasut/provider-anthropic/.github/workflows/publish-pkg.yaml@refs/heads/main \
+  --certificate-identity https://github.com/jonasz-lasut/provider-anthropic/.github/workflows/supplychain.yaml@refs/heads/main \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --type spdxjson \
   ghcr.io/jonasz-lasut/provider-anthropic:<version>
 
 cosign verify-attestation \
-  --certificate-identity https://github.com/jonasz-lasut/provider-anthropic/.github/workflows/publish-pkg.yaml@refs/heads/main \
+  --certificate-identity https://github.com/jonasz-lasut/provider-anthropic/.github/workflows/supplychain.yaml@refs/heads/main \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --type slsaprovenance1 \
   ghcr.io/jonasz-lasut/provider-anthropic:<version>
@@ -89,7 +89,7 @@ spec:
           keyless:
             identities:
               - issuer: https://token.actions.githubusercontent.com
-                subject: https://github.com/jonasz-lasut/provider-anthropic/.github/workflows/publish-pkg.yaml@refs/heads/main
+                subject: https://github.com/jonasz-lasut/provider-anthropic/.github/workflows/supplychain.yaml@refs/heads/main
           attestations:
             - name: sbom
               predicateType: spdxjson
