@@ -295,6 +295,33 @@ func (mg *Session) ResolveReferences(ctx context.Context, c client.Reader) error
 	return nil
 }
 
+// ResolveReferences of this TunnelCertificate.
+func (mg *TunnelCertificate) ResolveReferences(ctx context.Context, c client.Reader) error {
+	r := reference.NewAPINamespacedResolver(c, mg)
+
+	var rsp reference.NamespacedResolutionResponse
+	var err error
+
+	rsp, err = r.Resolve(ctx, reference.NamespacedResolutionRequest{
+		CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.TunnelID),
+		Extract:      extractors.ComputedFieldExtractor("id"),
+		Namespace:    mg.GetNamespace(),
+		Reference:    mg.Spec.ForProvider.TunnelIDRef,
+		Selector:     mg.Spec.ForProvider.TunnelIDSelector,
+		To: reference.To{
+			List:    &TunnelList{},
+			Managed: &Tunnel{},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "mg.Spec.ForProvider.TunnelID")
+	}
+	mg.Spec.ForProvider.TunnelID = reference.ToPtrValue(rsp.ResolvedValue)
+	mg.Spec.ForProvider.TunnelIDRef = rsp.ResolvedReference
+
+	return nil
+}
+
 // ResolveReferences of this VaultCredential.
 func (mg *VaultCredential) ResolveReferences(ctx context.Context, c client.Reader) error {
 	r := reference.NewAPINamespacedResolver(c, mg)
