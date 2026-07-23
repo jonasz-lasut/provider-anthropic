@@ -50,8 +50,8 @@ func (r *Agent) ToAnthropicNew(ctx *AgentConversionContext) anthropic.BetaAgentN
 	if p.Name != nil {
 		params.Name = *p.Name
 	}
-	if p.Model != nil {
-		params.Model = anthropic.BetaManagedAgentsModelConfigParams{ID: *p.Model}
+	if p.Model != nil || p.ModelEffort != nil {
+		params.Model = agentModelConfigToParam(p.Model, p.ModelEffort)
 	}
 	if p.Description != nil {
 		params.Description = anthropic.String(*p.Description)
@@ -83,17 +83,30 @@ func (r *Agent) ToAnthropicNew(ctx *AgentConversionContext) anthropic.BetaAgentN
 	return params
 }
 
+func agentModelConfigToParam(model, effort *string) anthropic.BetaManagedAgentsModelConfigParams {
+	mc := anthropic.BetaManagedAgentsModelConfigParams{}
+	if model != nil {
+		mc.ID = *model
+	}
+	if effort != nil {
+		mc.Effort = anthropic.BetaManagedAgentsModelConfigParamsEffortUnion{
+			OfBetaManagedAgentsModelConfigsEffortBetaManagedAgentsEffortLevel: anthropic.String(*effort),
+		}
+	}
+	return mc
+}
+
 func (r *Agent) ToAnthropicUpdate(ctx *AgentConversionContext) anthropic.BetaAgentUpdateParams {
 	p := r.Spec.ForProvider
 	params := anthropic.BetaAgentUpdateParams{}
 	if r.Status.AtProvider.Version != nil {
-		params.Version = *r.Status.AtProvider.Version
+		params.Version = anthropic.Int(*r.Status.AtProvider.Version)
 	}
 	if p.Name != nil {
 		params.Name = anthropic.String(*p.Name)
 	}
-	if p.Model != nil {
-		params.Model = anthropic.BetaManagedAgentsModelConfigParams{ID: *p.Model}
+	if p.Model != nil || p.ModelEffort != nil {
+		params.Model = agentModelConfigToParam(p.Model, p.ModelEffort)
 	}
 	if p.Description != nil {
 		params.Description = anthropic.String(*p.Description)
@@ -142,6 +155,12 @@ func (r *Agent) FromAnthropicObservation(resp anthropic.BetaManagedAgentsAgent) 
 
 	modelID := string(resp.Model.ID)
 	r.Status.AtProvider.Model = &AgentModelObservation{ID: &modelID}
+	if resp.Model.Effort.Type != "" {
+		effort := resp.Model.Effort.Type
+		r.Status.AtProvider.ModelEffort = &effort
+	} else {
+		r.Status.AtProvider.ModelEffort = nil
+	}
 
 	r.Status.AtProvider.MCPServers = nil
 	for _, s := range resp.MCPServers {

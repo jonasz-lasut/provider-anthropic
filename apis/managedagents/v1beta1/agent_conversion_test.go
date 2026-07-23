@@ -61,11 +61,40 @@ func TestAgentToAnthropicUpdate(t *testing.T) {
 		Status: AgentStatus{AtProvider: AgentObservation{Version: &ver}},
 	}
 	p := r.ToAnthropicUpdate(&AgentConversionContext{System: "sys"})
-	if p.Version != 3 {
-		t.Errorf("Version = %d, want 3", p.Version)
+	if p.Version.Value != 3 {
+		t.Errorf("Version = %d, want 3", p.Version.Value)
 	}
 	if p.Name.Value != "updated" {
 		t.Errorf("Name = %q, want %q", p.Name.Value, "updated")
+	}
+}
+
+func TestAgentToAnthropicNew_ModelEffort(t *testing.T) {
+	r := &Agent{
+		Spec: AgentSpec{ForProvider: AgentParameters{
+			Name:        ptr("a"),
+			Model:       ptr("claude-opus-4-7"),
+			ModelEffort: ptr("high"),
+		}},
+	}
+	p := r.ToAnthropicNew(nil)
+	if p.Model.ID != "claude-opus-4-7" {
+		t.Errorf("Model.ID = %q, want %q", p.Model.ID, "claude-opus-4-7")
+	}
+	if p.Model.Effort.OfBetaManagedAgentsModelConfigsEffortBetaManagedAgentsEffortLevel.Value != "high" {
+		t.Errorf("Model.Effort = %q, want %q", p.Model.Effort.OfBetaManagedAgentsModelConfigsEffortBetaManagedAgentsEffortLevel.Value, "high")
+	}
+}
+
+func TestAgentToAnthropicUpdate_ModelEffort(t *testing.T) {
+	ver := int64(1)
+	r := &Agent{
+		Spec:   AgentSpec{ForProvider: AgentParameters{Name: ptr("a"), ModelEffort: ptr("low")}},
+		Status: AgentStatus{AtProvider: AgentObservation{Version: &ver}},
+	}
+	p := r.ToAnthropicUpdate(nil)
+	if p.Model.Effort.OfBetaManagedAgentsModelConfigsEffortBetaManagedAgentsEffortLevel.Value != "low" {
+		t.Errorf("Model.Effort = %q, want %q", p.Model.Effort.OfBetaManagedAgentsModelConfigsEffortBetaManagedAgentsEffortLevel.Value, "low")
 	}
 }
 
@@ -214,7 +243,10 @@ func TestAgentFromAnthropicObservation(t *testing.T) {
 		Metadata:    map[string]string{"k": "v"},
 		CreatedAt:   now,
 		UpdatedAt:   now,
-		Model:       anthropic.BetaManagedAgentsModelConfig{ID: "claude-opus-4-7"},
+		Model: anthropic.BetaManagedAgentsModelConfig{
+			ID:     "claude-opus-4-7",
+			Effort: anthropic.BetaManagedAgentsModelConfigEffortUnion{Type: "high"},
+		},
 		MCPServers: []anthropic.BetaManagedAgentsMCPServerURLDefinition{
 			{Name: "srv", URL: "https://mcp.example"},
 		},
@@ -240,6 +272,9 @@ func TestAgentFromAnthropicObservation(t *testing.T) {
 	}
 	if r.Status.AtProvider.Model == nil || r.Status.AtProvider.Model.ID == nil || *r.Status.AtProvider.Model.ID != "claude-opus-4-7" {
 		t.Errorf("Model = %v", r.Status.AtProvider.Model)
+	}
+	if r.Status.AtProvider.ModelEffort == nil || *r.Status.AtProvider.ModelEffort != "high" {
+		t.Errorf("ModelEffort = %v, want %q", r.Status.AtProvider.ModelEffort, "high")
 	}
 	if r.Status.AtProvider.ArchivedAt != nil {
 		t.Errorf("ArchivedAt should be nil, got %v", r.Status.AtProvider.ArchivedAt)

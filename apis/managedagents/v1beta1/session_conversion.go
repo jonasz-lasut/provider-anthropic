@@ -68,6 +68,9 @@ func (r *Session) ToAnthropicNew(ctx *SessionConversionContext) anthropic.BetaSe
 		}
 		params.Resources = append(params.Resources, sessionResourceToParam(res, token))
 	}
+	for _, ev := range p.InitialEvents {
+		params.InitialEvents = append(params.InitialEvents, sessionInitialEventToParam(ev))
+	}
 	return params
 }
 
@@ -99,6 +102,43 @@ func (r *Session) FromAnthropicObservation(resp anthropic.BetaManagedAgentsSessi
 	updatedAt := resp.UpdatedAt.Format(time.RFC3339)
 	r.Status.AtProvider.UpdatedAt = &updatedAt
 	// ArchivedAt intentionally omitted
+}
+
+// sessionInitialEventToParam converts a DeploymentInitialEvent into the union
+// Session's New endpoint accepts. Session supports only "user.message" and
+// "user.define_outcome" (Deployment additionally supports "system.message");
+// an unsupported Type yields a zero-value union, which the API rejects.
+func sessionInitialEventToParam(ev DeploymentInitialEvent) anthropic.BetaSessionNewParamsInitialEventUnion {
+	evType := ""
+	if ev.Type != nil {
+		evType = *ev.Type
+	}
+	switch evType {
+	case "user.message":
+		um := &anthropic.BetaManagedAgentsUserMessageEventParams{
+			Type: anthropic.BetaManagedAgentsUserMessageEventParamsTypeUserMessage,
+		}
+		for _, cb := range ev.Content {
+			um.Content = append(um.Content, deploymentContentBlockToParam(cb))
+		}
+		return anthropic.BetaSessionNewParamsInitialEventUnion{OfUserMessage: um}
+
+	case "user.define_outcome":
+		od := &anthropic.BetaManagedAgentsUserDefineOutcomeEventParams{
+			Type: anthropic.BetaManagedAgentsUserDefineOutcomeEventParamsTypeUserDefineOutcome,
+		}
+		if ev.Description != nil {
+			od.Description = *ev.Description
+		}
+		if ev.MaxIterations != nil {
+			od.MaxIterations = anthropic.Int(*ev.MaxIterations)
+		}
+		if ev.Rubric != nil {
+			od.Rubric = deploymentRubricToParam(*ev.Rubric)
+		}
+		return anthropic.BetaSessionNewParamsInitialEventUnion{OfUserDefineOutcome: od}
+	}
+	return anthropic.BetaSessionNewParamsInitialEventUnion{}
 }
 
 func sessionResourceToParam(res SessionResource, authToken string) anthropic.BetaSessionNewParamsResourceUnion {

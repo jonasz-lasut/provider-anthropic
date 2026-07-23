@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    anthropic.crossplane.io/sdk-version: v1.58.1
+    anthropic.crossplane.io/sdk-version: v1.59.0
   name: agents.managedagents.anthropic.crossplane.io
 spec:
   group: managedagents.anthropic.crossplane.io
@@ -92,6 +92,17 @@ spec:
                       type: object
                     model:
                       description: 'Required: Model is the model identifier for the agent, e.g. "claude-opus-4-7".'
+                      type: string
+                    modelEffort:
+                      description: |-
+                        ModelEffort controls how hard Claude works on each turn. Not all models
+                        accept every level; invalid combinations are rejected at create time.
+                      enum:
+                        - low
+                        - medium
+                        - high
+                        - xhigh
+                        - max
                       type: string
                     name:
                       description: 'Required: Name is the human-readable name for the agent (1–256 characters).'
@@ -358,6 +369,12 @@ spec:
                           description: ID is the model identifier, e.g. "claude-opus-4-7".
                           type: string
                       type: object
+                    modelEffort:
+                      description: |-
+                        ModelEffort is the observed effort level. Matches the top-level
+                        ModelEffort key in AgentParameters (rather than nesting under Model) so
+                        drift detection compares it directly against the desired value.
+                      type: string
                     name:
                       description: Name is the observed human-readable name.
                       type: string

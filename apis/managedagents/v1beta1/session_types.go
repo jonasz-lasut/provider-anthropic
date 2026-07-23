@@ -103,8 +103,8 @@ type SessionResource struct {
 }
 
 // SessionParameters defines the desired state of an Anthropic Session.
-// Agent, EnvironmentID, Resources, and VaultIDs are immutable after creation
-// — changes to these fields will not be reconciled.
+// Agent, EnvironmentID, Resources, VaultIDs, and InitialEvents are immutable
+// after creation — changes to these fields will not be reconciled.
 type SessionParameters struct {
 	// AgentID is the ID of the Agent that runs in this session.
 	// Accepts an agent ID string (pins the latest version) or use
@@ -173,6 +173,14 @@ type SessionParameters struct {
 	// Selector for Vaults used to populate vaultIds.
 	// +kubebuilder:validation:Optional
 	VaultIDsSelector *xpv2.NamespacedSelector `json:"vaultIdsSelector,omitempty"`
+
+	// InitialEvents are sent to the session in order immediately after
+	// creation. Supports "user.message" and "user.define_outcome" events
+	// only ("system.message" is a Deployment-only variant and is rejected by
+	// the API for sessions). Maximum 50 events. Immutable after creation.
+	// +optional
+	// +kubebuilder:validation:MaxItems=50
+	InitialEvents []DeploymentInitialEvent `json:"initialEvents,omitempty"`
 
 	// AnthropicDeletionPolicy controls whether Crossplane calls Archive or
 	// Delete on the Anthropic API when the resource is deleted in Kubernetes.
