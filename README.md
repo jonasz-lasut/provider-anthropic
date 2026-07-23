@@ -103,7 +103,7 @@ See [Required configuration](#required-configuration) for how to set up credenti
 1. Apply a `ProviderConfig` that references the secret and selects the `APIKey` identity:
 
     ```console
-    kubectl apply -f examples-generated/anthropic/v1beta1/providerconfig.yaml
+    kubectl apply -f examples/anthropic/v1beta1/providerconfig.yaml
     ```
 
     Or use a cluster-scoped `ClusterProviderConfig` if your managed resources span multiple namespaces:
@@ -140,10 +140,10 @@ See [Required configuration](#required-configuration) for how to set up credenti
     ```
 
 1. You can now create managed resources with a provider reference. See the generated examples
-   under [`examples-generated/`](./examples-generated/):
+   under [`examples/`](./examples/):
 
     ```console
-    kubectl create -f examples-generated/managedagents/v1beta1/agent.yaml
+    kubectl create -f examples/managedagents/v1beta1/agent.yaml
     ```
 
 ### Running end-to-end tests
@@ -155,7 +155,7 @@ See [Required configuration](#required-configuration) for how to set up credenti
 
 ```console
 UPTEST_CLOUD_CREDENTIALS='{"api_key":"YOUR_ANTHROPIC_API_KEY"}' \
-UPTEST_EXAMPLE_LIST="examples-generated/managedagents/v1beta1/agent.yaml" \
+UPTEST_EXAMPLE_LIST="examples/managedagents/v1beta1/agent.yaml" \
 make e2e
 ```
 
@@ -185,7 +185,7 @@ Open the repo in Claude Code and run any of the following:
 | Command | Argument | What it does |
 |---|---|---|
 | `/add-resource` | `ResourceName[,ResourceName…]` | Scaffolds a new Crossplane managed resource from the Anthropic SDK: types file, reconciler, controller wiring, and code generation |
-| `/generate-examples` | — | Regenerates the example manifests under `examples-generated/` |
+| `/generate-examples` | — | Regenerates the example manifests under `examples/` |
 | `/update-anthropic-sdk` | — | Bumps the `anthropic-sdk-go` dependency and stamps the new version through the codebase |
 
 Each command embeds step-by-step instructions and runs generation (`make generate`) and

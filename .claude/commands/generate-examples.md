@@ -1,4 +1,4 @@
-Iterate over every managed-resource CRD in `package/crds/` and write feasible example YAML manifests to `examples-generated/<short-group>/<version>/<kind>.yaml`, suitable for E2E testing.
+Iterate over every managed-resource CRD in `package/crds/` and write feasible example YAML manifests to `examples/<short-group>/<version>/<kind>.yaml`, suitable for E2E testing.
 
 `<short-group>` is the first DNS label of `spec.group` (everything before the first `.`), matching the layout of `apis/` in the repo. For example `managedagents.anthropic.crossplane.io` → `beta`, `config.anthropic.crossplane.io` → `config`.
 
@@ -23,23 +23,23 @@ For each remaining CRD, read it and record:
 
 ## Step 2 — Ensure the output tree exists
 
-Update `examples-generated/` in place. Do NOT wipe it.
+Update `examples/` in place. Do NOT wipe it.
 
 ```bash
-mkdir -p examples-generated
+mkdir -p examples
 ```
 
 For each `(short-group, version)` you'll write to in Step 3, create that subdirectory if it does not already exist:
 
 ```bash
-mkdir -p examples-generated/<short-group>/<version>
+mkdir -p examples/<short-group>/<version>
 ```
 
-If a file at the target path already exists, overwrite it. Leave unrelated files in `examples-generated/` alone — the operator may have hand-edited or added files there.
+If a file at the target path already exists, overwrite it. Leave unrelated files in `examples/` alone — the operator may have hand-edited or added files there.
 
 ## Step 3 — Generate one example YAML per (CRD, served version)
 
-For each `(group, version, kind)` from Step 1, write `examples-generated/<short-group>/<version>/<singular>.yaml`.
+For each `(group, version, kind)` from Step 1, write `examples/<short-group>/<version>/<singular>.yaml`.
 
 Read the CRD's `spec.versions[<version>].schema.openAPIV3Schema` directly with the Read tool. Walk the schema and emit a manifest that satisfies all `required:` constraints and respects every `enum`, `minLength`, `maxLength`, `minimum`, `maximum`, `pattern`, `minItems`, and `maxItems` rule.
 
@@ -167,7 +167,7 @@ field. The placeholder API key is the only field the operator must edit before a
 Confirm the directory layout looks like this:
 
 ```
-examples-generated/
+examples/
   anthropic/
     v1alpha1/
       clusterproviderconfig.yaml
@@ -182,7 +182,7 @@ examples-generated/
 Validate every generated file parses and matches its CRD:
 
 ```bash
-for f in $(find examples-generated -type f -name '*.yaml'); do
+for f in $(find examples -type f -name '*.yaml'); do
   echo "=== $f ==="
   kubectl --dry-run=client apply -f "$f" || echo "INVALID: $f"
 done
@@ -191,7 +191,7 @@ done
 If `kubectl` is unavailable or the cluster is not reachable, at minimum check every file parses as valid YAML:
 
 ```bash
-find examples-generated -name '*.yaml' -exec sh -c 'yq eval-all ".kind" "$1" > /dev/null || echo "INVALID: $1"' _ {} \;
+find examples -name '*.yaml' -exec sh -c 'yq eval-all ".kind" "$1" > /dev/null || echo "INVALID: $1"' _ {} \;
 ```
 
 ## Step 6 — Report
@@ -199,7 +199,7 @@ find examples-generated -name '*.yaml' -exec sh -c 'yq eval-all ".kind" "$1" > /
 Print a one-line summary per generated file: path, primary `kind`, and number of inlined documents. Example:
 
 ```
-examples-generated/managedagents/v1beta1/session.yaml  Session  (3 docs: Session, Agent, Environment)
+examples/managedagents/v1beta1/session.yaml  Session  (3 docs: Session, Agent, Environment)
 ```
 
 Note any CRD that was skipped and why.

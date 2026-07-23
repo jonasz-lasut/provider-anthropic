@@ -47,7 +47,7 @@ internal/controller/<kind>/    one package per resource: reconciler.go implement
 internal/controller/setup.go   SetupProviders wires every controller (gated on CRD readiness)
 cmd/provider/main.go           manager bootstrap, scheme registration, CRD gate
 package/crds/                  generated CRD manifests (do not hand-edit)
-examples-generated/            example manifests used as the E2E test corpus
+examples/                      example manifests used as the E2E test corpus
 ```
 
 `apis/generate.go` drives code generation via `//go:generate` (controller-gen for CRDs/deepcopy,
@@ -120,7 +120,7 @@ reproducing the steps by hand.
 | Command | When to use it |
 |---|---|
 | `/add-resource ResourceName[,…]` | Adding a brand-new managed resource backed by a `Beta<Resource>` SDK service. Scaffolds the types file, conversion, reconciler, controller wiring, and `setup.go` entry, then generates. |
-| `/generate-examples` | Regenerating `examples-generated/` manifests for every CRD (feasible defaults, used as the E2E corpus). |
+| `/generate-examples` | Regenerating `examples/` manifests for every CRD (feasible defaults, used as the E2E corpus). |
 | `/update-anthropic-sdk` | Bumping the `anthropic-sdk-go` dependency and syncing all reconciler/conversion logic to upstream API changes, then re-stamping the version into the CRDs. |
 
 When asked to "add a resource", "support kind X", "regenerate examples", or
@@ -136,11 +136,11 @@ When asked to "add a resource", "support kind X", "regenerate examples", or
 ## End-to-end testing the resources
 
 E2E tests run the real provider against the **real Anthropic API** using
-[Uptest](https://github.com/crossplane/uptest) over the manifests in `examples-generated/`.
+[Uptest](https://github.com/crossplane/uptest) over the manifests in `examples/`.
 
 ```console
 UPTEST_CLOUD_CREDENTIALS="YOUR_ANTHROPIC_API_KEY" \
-UPTEST_EXAMPLE_LIST="examples-generated/managedagents/v1beta1/agent.yaml" \
+UPTEST_EXAMPLE_LIST="examples/managedagents/v1beta1/agent.yaml" \
 make e2e
 ```
 
@@ -154,7 +154,7 @@ make e2e
   labels that Uptest relies on — keep them when editing examples.
 
 **In CI**, E2E is triggered by a maintainer commenting on a PR:
-`/test-examples="examples-generated/managedagents/v1beta1/agent.yaml"` (see `.github/workflows/e2e.yaml`).
+`/test-examples="examples/managedagents/v1beta1/agent.yaml"` (see `.github/workflows/e2e.yaml`).
 It runs only for users with write/admin permission and reports back as a commit status check.
 
 For changes that don't need the live API, prefer the per-resource conversion unit tests
@@ -162,7 +162,7 @@ For changes that don't need the live API, prefer the per-resource conversion uni
 
 ## Conventions
 
-- **Generated files** (`zz_generated.*.go`, `package/crds/*.yaml`, `examples-generated/`) are never
+- **Generated files** (`zz_generated.*.go`, `package/crds/*.yaml`, `examples/`) are never
   hand-edited — change the source types/conversion and run `make generate`.
 - **API groups:** credential/config types live under `anthropic.crossplane.io` (`apis/config`);
   every managed resource lives under `managedagents.anthropic.crossplane.io/v1beta1` (`apis/beta`).
