@@ -127,6 +127,12 @@ When asked to "add a resource", "support kind X", "regenerate examples", or
 "update the SDK", reach for the matching command first — these encode this repo's exact conventions
 (external-name handling, gated setup, conversion + drift patterns) that are easy to get subtly wrong.
 
+## Skills (`.claude/skills/`)
+
+| Skill | When to use it |
+|---|---|
+| `remediating-cves` | Asked to remediate CVEs/vulnerabilities from Grype or GitHub code scanning against a release. Walks the full security-patch pipeline: cut the release branch, fix, tag, GitHub release, publish, sign/attest. |
+
 ## End-to-end testing the resources
 
 E2E tests run the real provider against the **real Anthropic API** using
