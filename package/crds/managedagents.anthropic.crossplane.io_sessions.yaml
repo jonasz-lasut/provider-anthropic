@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    anthropic.crossplane.io/sdk-version: v1.58.1
+    anthropic.crossplane.io/sdk-version: v1.59.0
   name: sessions.managedagents.anthropic.crossplane.io
 spec:
   group: managedagents.anthropic.crossplane.io
@@ -251,6 +251,118 @@ spec:
                               type: string
                           type: object
                       type: object
+                    initialEvents:
+                      description: |-
+                        InitialEvents are sent to the session in order immediately after
+                        creation. Supports "user.message" and "user.define_outcome" events
+                        only ("system.message" is a Deployment-only variant and is rejected by
+                        the API for sessions). Maximum 50 events. Immutable after creation.
+                      items:
+                        description: |-
+                          DeploymentInitialEvent is one event sent to each session immediately after
+                          creation. The Type field selects the variant; only set the fields relevant
+                          to that variant.
+                        properties:
+                          content:
+                            description: |-
+                              Content holds the message content blocks for "user.message" (text, image,
+                              document) and "system.message" (text only) events.
+                            items:
+                              description: |-
+                                DeploymentContentBlock is a single content block in a user.message (text,
+                                image, or document) or system.message (text only) initial event.
+                              properties:
+                                context:
+                                  description: |-
+                                    Context is additional context about the document for the model
+                                    (document block).
+                                  type: string
+                                source:
+                                  description: Source is the image or document source (image and document blocks).
+                                  properties:
+                                    data:
+                                      description: |-
+                                        Data is the inline content (base64-encoded for base64 sources, plain text
+                                        for text sources).
+                                      type: string
+                                    fileId:
+                                      description: FileID is the ID of a previously uploaded file (file source).
+                                      type: string
+                                    mediaType:
+                                      description: |-
+                                        MediaType is the MIME type of the inline data (base64 and text sources),
+                                        e.g. "image/png", "application/pdf", "text/plain".
+                                      type: string
+                                    type:
+                                      description: |-
+                                        Required: Type identifies the source variant: "base64", "url", "file",
+                                        or "text" (text is document-only, media type text/plain).
+                                      enum:
+                                        - base64
+                                        - url
+                                        - file
+                                        - text
+                                      type: string
+                                    url:
+                                      description: URL is the location to fetch the content from (url source).
+                                      type: string
+                                  type: object
+                                text:
+                                  description: Text is the block content (text block).
+                                  type: string
+                                title:
+                                  description: Title is the title of the document (document block).
+                                  type: string
+                                type:
+                                  description: |-
+                                    Required: Type identifies the block variant: "text", "image", or
+                                    "document". system.message events accept only "text".
+                                  enum:
+                                    - text
+                                    - image
+                                    - document
+                                  type: string
+                              type: object
+                            type: array
+                          description:
+                            description: Description is the task specification for a "user.define_outcome" event.
+                            type: string
+                          maxIterations:
+                            description: |-
+                              MaxIterations is the number of eval/revision cycles before giving up for a
+                              "user.define_outcome" event. Default 3, maximum 20.
+                            format: int64
+                            type: integer
+                          rubric:
+                            description: Rubric grades the quality of the outcome for a "user.define_outcome" event.
+                            properties:
+                              content:
+                                description: |-
+                                  Content is the rubric content as plain text or markdown (text variant).
+                                  Maximum 262144 characters.
+                                type: string
+                              fileId:
+                                description: FileID is the ID of the rubric file (file variant).
+                                type: string
+                              type:
+                                description: 'Required: Type identifies the rubric variant: "text" or "file".'
+                                enum:
+                                  - text
+                                  - file
+                                type: string
+                            type: object
+                          type:
+                            description: |-
+                              Required: Type identifies the event variant: "user.message",
+                              "user.define_outcome", or "system.message".
+                            enum:
+                              - user.message
+                              - user.define_outcome
+                              - system.message
+                            type: string
+                        type: object
+                      maxItems: 50
+                      type: array
                     metadata:
                       additionalProperties:
                         type: string

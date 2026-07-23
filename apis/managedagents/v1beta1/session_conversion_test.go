@@ -78,6 +78,46 @@ func TestSessionToAnthropicNew_NoTokenWhenContextEmpty(t *testing.T) {
 	}
 }
 
+func TestSessionToAnthropicNew_InitialEvents(t *testing.T) {
+	userType := "user.message"
+	outcomeType := "user.define_outcome"
+	textType := "text"
+	fileRubric := "file"
+	userText := "Do the thing."
+	desc := "Produce the report."
+	rubricFileID := "file_rubric"
+	var maxIter int64 = 5
+	r := &Session{Spec: SessionSpec{ForProvider: SessionParameters{
+		InitialEvents: []DeploymentInitialEvent{
+			{
+				Type:    &userType,
+				Content: []DeploymentContentBlock{{Type: &textType, Text: &userText}},
+			},
+			{
+				Type:          &outcomeType,
+				Description:   &desc,
+				MaxIterations: &maxIter,
+				Rubric:        &DeploymentRubric{Type: &fileRubric, FileID: &rubricFileID},
+			},
+		},
+	}}}
+	p := r.ToAnthropicNew(&SessionConversionContext{})
+	if len(p.InitialEvents) != 2 {
+		t.Fatalf("InitialEvents len = %d, want 2", len(p.InitialEvents))
+	}
+	um := p.InitialEvents[0].OfUserMessage
+	if um == nil || len(um.Content) != 1 || um.Content[0].OfText == nil || um.Content[0].OfText.Text != "Do the thing." {
+		t.Fatalf("event[0] user message = %+v", p.InitialEvents[0])
+	}
+	od := p.InitialEvents[1].OfUserDefineOutcome
+	if od == nil || od.Description != "Produce the report." || od.MaxIterations.Value != 5 {
+		t.Fatalf("event[1] define outcome = %+v", p.InitialEvents[1])
+	}
+	if od.Rubric.OfFile == nil || od.Rubric.OfFile.FileID != "file_rubric" {
+		t.Errorf("rubric = %+v", od.Rubric)
+	}
+}
+
 func TestSessionToAnthropicUpdate(t *testing.T) {
 	r := &Session{
 		Spec: SessionSpec{ForProvider: SessionParameters{

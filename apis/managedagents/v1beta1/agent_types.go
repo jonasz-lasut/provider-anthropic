@@ -31,6 +31,12 @@ type AgentParameters struct {
 	// +optional
 	Model *string `json:"model,omitempty"`
 
+	// ModelEffort controls how hard Claude works on each turn. Not all models
+	// accept every level; invalid combinations are rejected at create time.
+	// +optional
+	// +kubebuilder:validation:Enum=low;medium;high;xhigh;max
+	ModelEffort *string `json:"modelEffort,omitempty"`
+
 	// Required: Name is the human-readable name for the agent (1–256 characters).
 	// +optional
 	// +kubebuilder:validation:MaxLength=256
@@ -180,6 +186,12 @@ type AgentObservation struct {
 	// Model is the observed model configuration.
 	// +optional
 	Model *AgentModelObservation `json:"model,omitempty"`
+
+	// ModelEffort is the observed effort level. Matches the top-level
+	// ModelEffort key in AgentParameters (rather than nesting under Model) so
+	// drift detection compares it directly against the desired value.
+	// +optional
+	ModelEffort *string `json:"modelEffort,omitempty"`
 
 	// SystemSha256 is the lowercase hex SHA-256 digest of the system prompt
 	// stored on the API. Used for drift detection; the raw value is never

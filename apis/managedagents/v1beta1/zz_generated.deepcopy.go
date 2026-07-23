@@ -163,6 +163,11 @@ func (in *AgentObservation) DeepCopyInto(out *AgentObservation) {
 		*out = new(AgentModelObservation)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ModelEffort != nil {
+		in, out := &in.ModelEffort, &out.ModelEffort
+		*out = new(string)
+		**out = **in
+	}
 	if in.SystemSha256 != nil {
 		in, out := &in.SystemSha256, &out.SystemSha256
 		*out = new(string)
@@ -233,6 +238,11 @@ func (in *AgentParameters) DeepCopyInto(out *AgentParameters) {
 	*out = *in
 	if in.Model != nil {
 		in, out := &in.Model, &out.Model
+		*out = new(string)
+		**out = **in
+	}
+	if in.ModelEffort != nil {
+		in, out := &in.ModelEffort, &out.ModelEffort
 		*out = new(string)
 		**out = **in
 	}
@@ -2302,6 +2312,13 @@ func (in *SessionParameters) DeepCopyInto(out *SessionParameters) {
 		in, out := &in.VaultIDsSelector, &out.VaultIDsSelector
 		*out = new(v2.NamespacedSelector)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.InitialEvents != nil {
+		in, out := &in.InitialEvents, &out.InitialEvents
+		*out = make([]DeploymentInitialEvent, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	if in.AnthropicDeletionPolicy != nil {
 		in, out := &in.AnthropicDeletionPolicy, &out.AnthropicDeletionPolicy
