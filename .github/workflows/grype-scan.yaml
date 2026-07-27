@@ -16,9 +16,10 @@ name: Grype Vulnerability Scan
 
 on:
   schedule:
-    # Monday 05:00 UTC (6:00 AM CET / 7:00 AM CEST). GitHub Actions cron is
-    # always UTC, so this drifts an hour during CEST.
-    - cron: '0 5 * * 1'
+    # Monday 05:23 UTC (6:23 AM CET / 7:23 AM CEST). GitHub Actions cron is
+    # always UTC, so this drifts an hour during CEST. Offset off the top of the
+    # hour because GitHub drops scheduled runs during the high-load :00 window.
+    - cron: '23 5 * * 1'
   workflow_dispatch: {}
 
 permissions:
