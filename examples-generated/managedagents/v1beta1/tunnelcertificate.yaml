@@ -1,0 +1,63 @@
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: TunnelCertificate
+metadata:
+  name: example-tunnelcertificate
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: managedagents/v1beta1/tunnelcertificate
+spec:
+  forProvider:
+    caCertificatePemSecretRef:
+      name: example-tunnelcertificate-ca
+      key: caCertificatePem
+    tunnelIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: example
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: example-tunnelcertificate-ca
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+type: Opaque
+stringData:
+  caCertificatePem: |
+    -----BEGIN CERTIFICATE-----
+    MIIDcjCCAlqgAwIBAgIURaNmca5Gt3LhRpzb2P36GVme+PQwDQYJKoZIhvcNAQEL
+    BQAwGDEWMBQGA1UEAwwNbWNwLXR1bm5lbC1jYTAeFw0yNjA3MTcwNjU5MzVaFw0y
+    NjEwMTUwNjU5MzVaMCgxJjAkBgNVBAMMHWFiY2QxMjM0LnR1bm5lbC5hbnRocm9w
+    aWMuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuZqUCzO/Cb3j
+    uA7a6FMomEyNhecte8KlRz6v407MSNuEoDQk8gpWE6rkwGIEIq3ojzou9kt/hTXM
+    Q5F7KTBKtBNQONGtPSacNMPH/N/fHTVTK5SHQ8riS/UVtjFRYCk8FW5T973TpuSw
+    ay7X/U32tlKrWhI+T+VJ+GCHiam0qUbPKVgP3C2083+4ABEv7HRwdEqHgtE2KFvI
+    +Z5fbvQM6Ddf+SPCzEOeCy4hSje/Um31HVHPbAuAw+pcrzeZsZgCcviY63TolOV5
+    pNTdgJV/p3BEm5Rs5fGCKROBGpTkg/hWnY1UrO7fECuGxiXTiF4MBof0fa4yRtZr
+    gTnhSMQDsQIDAQABo4GjMIGgMEkGA1UdEQRCMECCHWFiY2QxMjM0LnR1bm5lbC5h
+    bnRocm9waWMuY29tgh8qLmFiY2QxMjM0LnR1bm5lbC5hbnRocm9waWMuY29tMB8G
+    A1UdIwQYMBaAFBtIlIJzgniSCwRvJcwuf9OpDzrHMBMGA1UdJQQMMAoGCCsGAQUF
+    BwMBMB0GA1UdDgQWBBTwA852Fl40KDMiFIkJcks6XH2cOzANBgkqhkiG9w0BAQsF
+    AAOCAQEAhfBvMZ0u5fB2bi15oTeD2Tmwst/I0047uYr0X83ZeHxy9GHaS3qo+yKL
+    ooqJ4WrXxYt6POlzwDIuHPdhJ4ChuWlLLEfRX2JT9xwKtHTPGu5fYioaTIymRRV/
+    06AgLud9WpgnXzGg7HFwpzZBq3saNKhOnZxLps7D1zevB/JJJ/iE5KBUcUE4mRE1
+    SBIz5IguLcpXnEFAVbeDXEOz0slbYDTfwyBLVJv35xAUsDGoQM+QrM15N4T8v2bK
+    lch4XlVRh23Ai6d3myRODpCQw/xM7e6SmKPWgWJYyXIPQTdNOJh4w90fQ6c3S2aq
+    x6/vnrrgvbkz15Hc7djiebZpzf0ZVg==
+    -----END CERTIFICATE-----
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Tunnel
+metadata:
+  name: example-tunnel
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: managedagents/v1beta1/tunnelcertificate
+spec:
+  forProvider:
+    displayName: example-tunnel

@@ -31,6 +31,8 @@ import (
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/skill"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/providerconfig"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/session"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/tunnel"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/tunnelcertificate"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/vault"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/vaultcredential"
 )
@@ -73,6 +75,12 @@ func SetupProviders(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata 
 		return err
 	}
 	if err := dream.SetupGated(mgr, o); err != nil {
+		return err
+	}
+	if err := tunnel.SetupGated(mgr, o); err != nil {
+		return err
+	}
+	if err := tunnelcertificate.SetupGated(mgr, o); err != nil {
 		return err
 	}
 	return nil
