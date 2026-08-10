@@ -23,6 +23,30 @@ import (
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 )
 
+// MonetaryAmount is a monetary amount in a specific currency.
+type MonetaryAmount struct {
+	// Required: Amount in minor units of the currency, as an integer decimal
+	// string with no leading zeros: "2500" is $25.00 and "50" is fifty cents.
+	// A string rather than a number so no float rounding is ever applied.
+	// +optional
+	// +kubebuilder:validation:Pattern=`^(0|[1-9][0-9]*)$`
+	Amount *string `json:"amount,omitempty"`
+
+	// Required: Currency is the currency code.
+	// +optional
+	// +kubebuilder:validation:Enum=USD
+	Currency *string `json:"currency,omitempty"`
+}
+
+// BudgetLimit is a hard spend ceiling for a session. The session stops
+// issuing new model requests once its tracked list cost reaches MaxListCost.
+type BudgetLimit struct {
+	// Required: MaxListCost is the monetary ceiling on the session's tracked
+	// list cost.
+	// +optional
+	MaxListCost *MonetaryAmount `json:"maxListCost,omitempty"`
+}
+
 // SessionResourceCheckout specifies which branch or commit to check out in a
 // GitHub repository resource.
 type SessionResourceCheckout struct {
@@ -153,6 +177,11 @@ type SessionParameters struct {
 	// +optional
 	Metadata map[string]string `json:"metadata,omitempty"`
 
+	// Budget is a hard spend ceiling. The session stops issuing new model
+	// requests once its tracked list cost reaches budget.maxListCost.
+	// +optional
+	Budget *BudgetLimit `json:"budget,omitempty"`
+
 	// Resources to mount into the session's container. Immutable after creation.
 	// +optional
 	Resources []SessionResource `json:"resources,omitempty"`
@@ -205,6 +234,10 @@ type SessionObservation struct {
 	// Metadata is the observed key-value metadata map.
 	// +optional
 	Metadata map[string]string `json:"metadata,omitempty"`
+
+	// Budget is the observed hard spend ceiling.
+	// +optional
+	Budget *BudgetLimit `json:"budget,omitempty"`
 
 	// EnvironmentID is the observed environment ID returned by the API.
 	// +optional

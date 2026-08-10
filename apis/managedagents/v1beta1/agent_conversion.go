@@ -50,8 +50,8 @@ func (r *Agent) ToAnthropicNew(ctx *AgentConversionContext) anthropic.BetaAgentN
 	if p.Name != nil {
 		params.Name = *p.Name
 	}
-	if p.Model != nil || p.ModelEffort != nil {
-		params.Model = agentModelConfigToParam(p.Model, p.ModelEffort)
+	if p.Model != nil || p.ModelEffort != nil || p.ModelInferenceGeo != nil {
+		params.Model = agentModelConfigToParam(p.Model, p.ModelEffort, p.ModelInferenceGeo)
 	}
 	if p.Description != nil {
 		params.Description = anthropic.String(*p.Description)
@@ -61,6 +61,9 @@ func (r *Agent) ToAnthropicNew(ctx *AgentConversionContext) anthropic.BetaAgentN
 	}
 	if p.Metadata != nil {
 		params.Metadata = p.Metadata
+	}
+	if p.Multiagent != nil {
+		params.Multiagent = agentMultiagentToParam(p.Multiagent)
 	}
 	for _, s := range p.MCPServers {
 		srv := anthropic.BetaManagedAgentsURLMCPServerParams{
@@ -83,7 +86,7 @@ func (r *Agent) ToAnthropicNew(ctx *AgentConversionContext) anthropic.BetaAgentN
 	return params
 }
 
-func agentModelConfigToParam(model, effort *string) anthropic.BetaManagedAgentsModelConfigParams {
+func agentModelConfigToParam(model, effort, inferenceGeo *string) anthropic.BetaManagedAgentsModelConfigParams {
 	mc := anthropic.BetaManagedAgentsModelConfigParams{}
 	if model != nil {
 		mc.ID = *model
@@ -92,6 +95,9 @@ func agentModelConfigToParam(model, effort *string) anthropic.BetaManagedAgentsM
 		mc.Effort = anthropic.BetaManagedAgentsModelConfigParamsEffortUnion{
 			OfBetaManagedAgentsModelConfigsEffortBetaManagedAgentsEffortLevel: anthropic.String(*effort),
 		}
+	}
+	if inferenceGeo != nil {
+		mc.InferenceGeo = anthropic.String(*inferenceGeo)
 	}
 	return mc
 }
@@ -105,8 +111,8 @@ func (r *Agent) ToAnthropicUpdate(ctx *AgentConversionContext) anthropic.BetaAge
 	if p.Name != nil {
 		params.Name = anthropic.String(*p.Name)
 	}
-	if p.Model != nil || p.ModelEffort != nil {
-		params.Model = agentModelConfigToParam(p.Model, p.ModelEffort)
+	if p.Model != nil || p.ModelEffort != nil || p.ModelInferenceGeo != nil {
+		params.Model = agentModelConfigToParam(p.Model, p.ModelEffort, p.ModelInferenceGeo)
 	}
 	if p.Description != nil {
 		params.Description = anthropic.String(*p.Description)
@@ -116,6 +122,9 @@ func (r *Agent) ToAnthropicUpdate(ctx *AgentConversionContext) anthropic.BetaAge
 	}
 	if p.Metadata != nil {
 		params.Metadata = p.Metadata
+	}
+	if p.Multiagent != nil {
+		params.Multiagent = agentMultiagentToParam(p.Multiagent)
 	}
 	for _, s := range p.MCPServers {
 		srv := anthropic.BetaManagedAgentsURLMCPServerParams{
@@ -160,6 +169,12 @@ func (r *Agent) FromAnthropicObservation(resp anthropic.BetaManagedAgentsAgent) 
 		r.Status.AtProvider.ModelEffort = &effort
 	} else {
 		r.Status.AtProvider.ModelEffort = nil
+	}
+	if resp.Model.InferenceGeo != "" {
+		geo := resp.Model.InferenceGeo
+		r.Status.AtProvider.ModelInferenceGeo = &geo
+	} else {
+		r.Status.AtProvider.ModelInferenceGeo = nil
 	}
 
 	r.Status.AtProvider.MCPServers = nil
@@ -206,6 +221,8 @@ func (r *Agent) FromAnthropicObservation(resp anthropic.BetaManagedAgentsAgent) 
 		r.Status.AtProvider.Tools = append(r.Status.AtProvider.Tools, cfg)
 	}
 
+	r.Status.AtProvider.Multiagent = agentMultiagentFromObservation(resp.Multiagent, resp.ID)
+
 	createdAt := resp.CreatedAt.Format(time.RFC3339)
 	r.Status.AtProvider.CreatedAt = &createdAt
 	updatedAt := resp.UpdatedAt.Format(time.RFC3339)
@@ -240,6 +257,88 @@ func agentSkillToParam(s AgentSkillConfig) anthropic.BetaManagedAgentsSkillParam
 			},
 		}
 	}
+}
+
+func agentMultiagentToParam(m *AgentMultiagentConfig) anthropic.BetaManagedAgentsMultiagentParams {
+	params := anthropic.BetaManagedAgentsMultiagentParams{
+		Type: anthropic.BetaManagedAgentsMultiagentParamsTypeCoordinator,
+	}
+	for _, e := range m.Agents {
+		params.Agents = append(params.Agents, agentRosterEntryToParam(e))
+	}
+	return params
+}
+
+func agentRosterEntryToParam(e AgentRosterEntry) anthropic.BetaManagedAgentsMultiagentRosterEntryParamsUnion {
+	entryType := ""
+	if e.Type != nil {
+		entryType = *e.Type
+	}
+	switch entryType {
+	case "self":
+		return anthropic.BetaManagedAgentsMultiagentRosterEntryParamsUnion{
+			OfBetaManagedAgentsMultiagentSelfs: &anthropic.BetaManagedAgentsMultiagentSelfParams{
+				Type: anthropic.BetaManagedAgentsMultiagentSelfParamsTypeSelf,
+			},
+		}
+	case "advisor":
+		model := ""
+		if e.Model != nil {
+			model = *e.Model
+		}
+		return anthropic.BetaManagedAgentsMultiagentRosterEntryParamsUnion{
+			OfBetaManagedAgentsAdvisors: &anthropic.BetaManagedAgentsAdvisorParams{
+				Model: model,
+				Type:  anthropic.BetaManagedAgentsAdvisorParamsTypeAdvisor,
+			},
+		}
+	case "agent":
+		fallthrough
+	default:
+		ref := &anthropic.BetaManagedAgentsAgentParams{
+			Type: anthropic.BetaManagedAgentsAgentParamsTypeAgent,
+		}
+		if e.ID != nil {
+			ref.ID = *e.ID
+		}
+		if e.Version != nil {
+			ref.Version = anthropic.Int(*e.Version)
+		}
+		return anthropic.BetaManagedAgentsMultiagentRosterEntryParamsUnion{
+			OfBetaManagedAgentsAgents: ref,
+		}
+	}
+}
+
+// agentMultiagentFromObservation maps the resolved roster into status. The API
+// resolves "self" entries to concrete agent references, so an entry whose ID
+// matches the agent's own ID is reported back as type "self" — otherwise a
+// desired {type: self} entry would drift forever. Its resolved id and version
+// are kept as extra keys, which the subset comparison ignores.
+func agentMultiagentFromObservation(m anthropic.BetaManagedAgentsMultiagent, ownID string) *AgentMultiagentObservation {
+	if m.Type == "" {
+		return nil
+	}
+	obs := &AgentMultiagentObservation{}
+	for _, e := range m.Agents {
+		entryType := e.Type
+		entry := AgentRosterEntryObservation{Type: &entryType}
+		switch e.Type {
+		case "advisor":
+			model := e.Model
+			entry.Model = &model
+		default:
+			id, version := e.ID, e.Version
+			if id == ownID {
+				self := "self"
+				entry.Type = &self
+			}
+			entry.ID = &id
+			entry.Version = &version
+		}
+		obs.Agents = append(obs.Agents, entry)
+	}
+	return obs
 }
 
 func agentToolToNewParam(t AgentToolConfig) anthropic.BetaAgentNewParamsToolUnion {

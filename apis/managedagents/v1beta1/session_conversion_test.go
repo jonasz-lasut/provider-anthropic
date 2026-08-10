@@ -134,6 +134,36 @@ func TestSessionToAnthropicUpdate(t *testing.T) {
 	}
 }
 
+func TestSessionToAnthropicNew_Budget(t *testing.T) {
+	r := &Session{
+		Spec: SessionSpec{ForProvider: SessionParameters{
+			Budget: &BudgetLimit{MaxListCost: &MonetaryAmount{Amount: ptr("2500"), Currency: ptr("USD")}},
+		}},
+	}
+	p := r.ToAnthropicNew(nil)
+	if p.Budget.Type != anthropic.BetaManagedAgentsBudgetLimitTypeLimit {
+		t.Errorf("Budget.Type = %q, want %q", p.Budget.Type, "limit")
+	}
+	if p.Budget.MaxListCost.Amount != "2500" {
+		t.Errorf("Budget.MaxListCost.Amount = %q, want %q", p.Budget.MaxListCost.Amount, "2500")
+	}
+	if p.Budget.MaxListCost.Currency != anthropic.BetaCurrencyUsd {
+		t.Errorf("Budget.MaxListCost.Currency = %q, want %q", p.Budget.MaxListCost.Currency, "USD")
+	}
+}
+
+func TestSessionToAnthropicUpdate_Budget(t *testing.T) {
+	r := &Session{
+		Spec: SessionSpec{ForProvider: SessionParameters{
+			Budget: &BudgetLimit{MaxListCost: &MonetaryAmount{Amount: ptr("50"), Currency: ptr("USD")}},
+		}},
+	}
+	p := r.ToAnthropicUpdate()
+	if p.Budget.MaxListCost.Amount != "50" {
+		t.Errorf("Budget.MaxListCost.Amount = %q, want %q", p.Budget.MaxListCost.Amount, "50")
+	}
+}
+
 func TestSessionFromAnthropicObservation(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	resp := anthropic.BetaManagedAgentsSession{
@@ -147,6 +177,10 @@ func TestSessionFromAnthropicObservation(t *testing.T) {
 		CreatedAt:     now,
 		UpdatedAt:     now,
 		Agent:         anthropic.BetaManagedAgentsSessionAgent{ID: "agt_123"},
+		Budget: anthropic.BetaManagedAgentsBudgetLimit{
+			Type:        anthropic.BetaManagedAgentsBudgetLimitTypeLimit,
+			MaxListCost: anthropic.BetaMonetaryAmount{Amount: "2500", Currency: anthropic.BetaCurrencyUsd},
+		},
 	}
 	r := &Session{}
 	r.FromAnthropicObservation(resp)
@@ -168,6 +202,21 @@ func TestSessionFromAnthropicObservation(t *testing.T) {
 	}
 	if len(r.Status.AtProvider.VaultIDs) != 1 || r.Status.AtProvider.VaultIDs[0] != "vlt_1" {
 		t.Errorf("VaultIDs = %v", r.Status.AtProvider.VaultIDs)
+	}
+	b := r.Status.AtProvider.Budget
+	if b == nil || b.MaxListCost == nil || b.MaxListCost.Amount == nil || *b.MaxListCost.Amount != "2500" {
+		t.Errorf("Budget = %+v, want maxListCost.amount 2500", b)
+	}
+	if b != nil && (b.MaxListCost.Currency == nil || *b.MaxListCost.Currency != "USD") {
+		t.Errorf("Budget currency = %+v, want USD", b.MaxListCost)
+	}
+}
+
+func TestSessionFromAnthropicObservation_NoBudget(t *testing.T) {
+	r := &Session{}
+	r.FromAnthropicObservation(anthropic.BetaManagedAgentsSession{ID: "sess_abc"})
+	if r.Status.AtProvider.Budget != nil {
+		t.Errorf("Budget = %+v, want nil when absent from the response", r.Status.AtProvider.Budget)
 	}
 }
 

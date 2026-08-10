@@ -33,6 +33,27 @@ func (mg *Agent) ResolveReferences(ctx context.Context, c client.Reader) error {
 	var rsp reference.NamespacedResolutionResponse
 	var err error
 
+	if mg.Spec.ForProvider.Multiagent != nil {
+		for i4 := 0; i4 < len(mg.Spec.ForProvider.Multiagent.Agents); i4++ {
+			rsp, err = r.Resolve(ctx, reference.NamespacedResolutionRequest{
+				CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.Multiagent.Agents[i4].ID),
+				Extract:      extractors.ComputedFieldExtractor("id"),
+				Namespace:    mg.GetNamespace(),
+				Reference:    mg.Spec.ForProvider.Multiagent.Agents[i4].IDRef,
+				Selector:     mg.Spec.ForProvider.Multiagent.Agents[i4].IDSelector,
+				To: reference.To{
+					List:    &AgentList{},
+					Managed: &Agent{},
+				},
+			})
+			if err != nil {
+				return errors.Wrap(err, "mg.Spec.ForProvider.Multiagent.Agents[i4].ID")
+			}
+			mg.Spec.ForProvider.Multiagent.Agents[i4].ID = reference.ToPtrValue(rsp.ResolvedValue)
+			mg.Spec.ForProvider.Multiagent.Agents[i4].IDRef = rsp.ResolvedReference
+
+		}
+	}
 	for i3 := 0; i3 < len(mg.Spec.ForProvider.Skills); i3++ {
 		rsp, err = r.Resolve(ctx, reference.NamespacedResolutionRequest{
 			CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.Skills[i3].SkillID),

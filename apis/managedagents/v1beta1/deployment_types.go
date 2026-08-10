@@ -228,6 +228,12 @@ type DeploymentParameters struct {
 	// +optional
 	Metadata map[string]string `json:"metadata,omitempty"`
 
+	// Budget is a hard spend ceiling applied to each session created from
+	// this deployment. A session stops issuing new model requests once its
+	// tracked list cost reaches budget.maxListCost.
+	// +optional
+	Budget *BudgetLimit `json:"budget,omitempty"`
+
 	// Paused controls the deployment lifecycle. Set to true to pause the
 	// schedule (the reconciler calls Pause); set to false (or omit) to keep it
 	// active (the reconciler calls Unpause when needed).
@@ -295,6 +301,11 @@ type DeploymentObservation struct {
 	// Metadata is the observed key-value metadata map.
 	// +optional
 	Metadata map[string]string `json:"metadata,omitempty"`
+
+	// Budget is the observed hard spend ceiling for sessions created from
+	// this deployment.
+	// +optional
+	Budget *BudgetLimit `json:"budget,omitempty"`
 
 	// Schedule is the observed cron schedule with computed runtime timestamps.
 	// +optional

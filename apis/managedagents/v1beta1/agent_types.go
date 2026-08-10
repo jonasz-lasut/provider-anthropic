@@ -37,6 +37,11 @@ type AgentParameters struct {
 	// +kubebuilder:validation:Enum=low;medium;high;xhigh;max
 	ModelEffort *string `json:"modelEffort,omitempty"`
 
+	// ModelInferenceGeo is the geographic region for model inference. When
+	// unset, requests fall through to the workspace's default inference geo.
+	// +optional
+	ModelInferenceGeo *string `json:"modelInferenceGeo,omitempty"`
+
 	// Required: Name is the human-readable name for the agent (1–256 characters).
 	// +optional
 	// +kubebuilder:validation:MaxLength=256
@@ -62,6 +67,14 @@ type AgentParameters struct {
 	// Maximum 16 pairs; keys up to 64 chars, values up to 512 chars.
 	// +optional
 	Metadata map[string]string `json:"metadata,omitempty"`
+
+	// Multiagent configures a coordinator topology: sessions running this
+	// agent orchestrate work by spawning session threads, each running an
+	// agent drawn from the agents roster. Referenced agents must exist, must
+	// not be archived, and must not themselves have multiagent set (depth
+	// limit 1). Omit to leave any existing topology unchanged.
+	// +optional
+	Multiagent *AgentMultiagentConfig `json:"multiagent,omitempty"`
 
 	// Skills available to the agent. Maximum 20.
 	// +optional
@@ -160,6 +173,86 @@ type AgentCustomToolInputSchema struct {
 	Required []string `json:"required,omitempty"`
 }
 
+// AgentMultiagentConfig configures a coordinator topology for an agent. The
+// constant "coordinator" type discriminator is omitted from the CRD and
+// hardcoded in conversion.
+type AgentMultiagentConfig struct {
+	// Required: Agents is the roster of agents the coordinator may spawn as
+	// session threads. 1–20 entries referencing distinct agents; at most one
+	// "self" and at most one "advisor" entry.
+	// +optional
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:MaxItems=20
+	Agents []AgentRosterEntry `json:"agents,omitempty"`
+}
+
+// AgentRosterEntry is a single multiagent roster entry. Type selects the
+// variant; the remaining fields belong to the variant they mention.
+type AgentRosterEntry struct {
+	// Required: Type of the roster entry: "agent" references another agent,
+	// "self" allows recursive self-invocation, and "advisor" adds a model the
+	// session's primary thread may consult mid-turn.
+	// +optional
+	// +kubebuilder:validation:Enum=agent;self;advisor
+	Type *string `json:"type,omitempty"`
+
+	// ID of the referenced agent (agent variant). Populate directly or via
+	// IDRef / IDSelector.
+	// +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1.Agent
+	// +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic/internal/extractors.ComputedFieldExtractor("id")
+	// +optional
+	ID *string `json:"id,omitempty"`
+
+	// Reference to an Agent to populate id.
+	// +kubebuilder:validation:Optional
+	IDRef *xpv2.NamespacedReference `json:"idRef,omitempty"`
+
+	// Selector for an Agent to populate id.
+	// +kubebuilder:validation:Optional
+	IDSelector *xpv2.NamespacedSelector `json:"idSelector,omitempty"`
+
+	// Version pins the referenced agent to a specific version (agent
+	// variant). Omit to use the latest version.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	Version *int64 `json:"version,omitempty"`
+
+	// Model is the advisor model id (advisor variant). The model must be
+	// permitted as an advisor for this agent's model.
+	// +optional
+	Model *string `json:"model,omitempty"`
+}
+
+// AgentMultiagentObservation is the observed coordinator topology, with every
+// roster entry resolved to a concrete agent version.
+type AgentMultiagentObservation struct {
+	// Agents is the resolved roster.
+	// +optional
+	Agents []AgentRosterEntryObservation `json:"agents,omitempty"`
+}
+
+// AgentRosterEntryObservation is a single resolved roster entry.
+type AgentRosterEntryObservation struct {
+	// Type is "agent", "advisor", or "self" when the resolved reference
+	// points back at this agent itself. The API resolves "self" entries to
+	// concrete agent references; reporting them as "self" here keeps drift
+	// detection aligned with the desired entry.
+	// +optional
+	Type *string `json:"type,omitempty"`
+
+	// ID of the referenced agent.
+	// +optional
+	ID *string `json:"id,omitempty"`
+
+	// Version the reference resolved to.
+	// +optional
+	Version *int64 `json:"version,omitempty"`
+
+	// Model is the advisor model id.
+	// +optional
+	Model *string `json:"model,omitempty"`
+}
+
 // AgentModelObservation is the observed model configuration returned by the API.
 type AgentModelObservation struct {
 	// ID is the model identifier, e.g. "claude-opus-4-7".
@@ -193,6 +286,12 @@ type AgentObservation struct {
 	// +optional
 	ModelEffort *string `json:"modelEffort,omitempty"`
 
+	// ModelInferenceGeo is the observed inference geo. Matches the top-level
+	// ModelInferenceGeo key in AgentParameters (rather than nesting under
+	// Model) so drift detection compares it directly against the desired value.
+	// +optional
+	ModelInferenceGeo *string `json:"modelInferenceGeo,omitempty"`
+
 	// SystemSha256 is the lowercase hex SHA-256 digest of the system prompt
 	// stored on the API. Used for drift detection; the raw value is never
 	// stored in status. Access the system prompt via spec.writeConnectionSecretToRef.
@@ -214,6 +313,10 @@ type AgentObservation struct {
 	// Metadata is the observed key-value metadata map.
 	// +optional
 	Metadata map[string]string `json:"metadata,omitempty"`
+
+	// Multiagent is the observed coordinator topology with a resolved roster.
+	// +optional
+	Multiagent *AgentMultiagentObservation `json:"multiagent,omitempty"`
 
 	// CreatedAt is the RFC 3339 timestamp when the agent was created.
 	// +optional

@@ -51,6 +51,9 @@ func (r *Deployment) ToAnthropicNew(ctx *DeploymentConversionContext) anthropic.
 	if p.Metadata != nil {
 		params.Metadata = p.Metadata
 	}
+	if p.Budget != nil {
+		params.Budget = budgetLimitToParam(*p.Budget)
+	}
 	params.VaultIDs = p.VaultIDs
 	if p.Schedule != nil {
 		params.Schedule = deploymentScheduleToParam(*p.Schedule)
@@ -82,6 +85,9 @@ func (r *Deployment) ToAnthropicUpdate(ctx *DeploymentConversionContext) anthrop
 	if p.Metadata != nil {
 		params.Metadata = p.Metadata
 	}
+	if p.Budget != nil {
+		params.Budget = budgetLimitToParam(*p.Budget)
+	}
 	params.VaultIDs = p.VaultIDs
 	if p.Schedule != nil {
 		params.Schedule = deploymentScheduleToParam(*p.Schedule)
@@ -103,6 +109,7 @@ func (r *Deployment) FromAnthropicObservation(resp anthropic.BetaManagedAgentsDe
 	r.Status.AtProvider.EnvironmentID = &resp.EnvironmentID
 	r.Status.AtProvider.VaultIDs = resp.VaultIDs
 	r.Status.AtProvider.Metadata = resp.Metadata
+	r.Status.AtProvider.Budget = budgetLimitFromObservation(resp.Budget)
 	agentID := resp.Agent.ID
 	r.Status.AtProvider.AgentID = &agentID
 	agentVersion := resp.Agent.Version
