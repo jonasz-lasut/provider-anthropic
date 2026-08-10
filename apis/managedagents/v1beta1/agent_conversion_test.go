@@ -331,3 +331,121 @@ func TestAgentFromAnthropicObservation(t *testing.T) {
 		t.Errorf("CreatedAt = %v, want %q", r.Status.AtProvider.CreatedAt, wantCreated)
 	}
 }
+
+func TestAgentToAnthropicNew_Multiagent(t *testing.T) {
+	r := &Agent{
+		Spec: AgentSpec{ForProvider: AgentParameters{
+			Name: ptr("coord"),
+			Multiagent: &AgentMultiagentConfig{Agents: []AgentRosterEntry{
+				{Type: ptr("agent"), ID: ptr("agent_abc"), Version: ptr(int64(2))},
+				{Type: ptr("self")},
+				{Type: ptr("advisor"), Model: ptr("claude-opus-5")},
+			}},
+		}},
+	}
+	p := r.ToAnthropicNew(nil)
+	if p.Multiagent.Type != "coordinator" {
+		t.Errorf("Multiagent.Type = %q, want %q", p.Multiagent.Type, "coordinator")
+	}
+	if len(p.Multiagent.Agents) != 3 {
+		t.Fatalf("Agents len = %d, want 3", len(p.Multiagent.Agents))
+	}
+	ref := p.Multiagent.Agents[0].OfBetaManagedAgentsAgents
+	if ref == nil || ref.ID != "agent_abc" || ref.Version.Value != 2 {
+		t.Errorf("agent entry = %+v, want id agent_abc version 2", ref)
+	}
+	if p.Multiagent.Agents[1].OfBetaManagedAgentsMultiagentSelfs == nil {
+		t.Errorf("self entry = %+v, want self variant", p.Multiagent.Agents[1])
+	}
+	adv := p.Multiagent.Agents[2].OfBetaManagedAgentsAdvisors
+	if adv == nil || adv.Model != "claude-opus-5" {
+		t.Errorf("advisor entry = %+v, want model claude-opus-5", adv)
+	}
+}
+
+func TestAgentToAnthropicNew_MultiagentUnpinnedVersion(t *testing.T) {
+	r := &Agent{
+		Spec: AgentSpec{ForProvider: AgentParameters{
+			Name: ptr("coord"),
+			Multiagent: &AgentMultiagentConfig{Agents: []AgentRosterEntry{
+				{Type: ptr("agent"), ID: ptr("agent_abc")},
+			}},
+		}},
+	}
+	p := r.ToAnthropicNew(nil)
+	ref := p.Multiagent.Agents[0].OfBetaManagedAgentsAgents
+	if ref == nil || ref.Version.Valid() {
+		t.Errorf("agent entry = %+v, want omitted version", ref)
+	}
+}
+
+func TestAgentToAnthropicUpdate_Multiagent(t *testing.T) {
+	ver := int64(1)
+	r := &Agent{
+		Spec: AgentSpec{ForProvider: AgentParameters{
+			Name: ptr("coord"),
+			Multiagent: &AgentMultiagentConfig{Agents: []AgentRosterEntry{
+				{Type: ptr("agent"), ID: ptr("agent_abc")},
+			}},
+		}},
+		Status: AgentStatus{AtProvider: AgentObservation{Version: &ver}},
+	}
+	p := r.ToAnthropicUpdate(nil)
+	if p.Multiagent.Type != "coordinator" {
+		t.Errorf("Multiagent.Type = %q, want %q", p.Multiagent.Type, "coordinator")
+	}
+	if len(p.Multiagent.Agents) != 1 || p.Multiagent.Agents[0].OfBetaManagedAgentsAgents == nil {
+		t.Fatalf("Agents = %+v, want one agent entry", p.Multiagent.Agents)
+	}
+}
+
+func TestAgentFromAnthropicObservation_Multiagent(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	resp := anthropic.BetaManagedAgentsAgent{
+		ID: "agent_coord", Name: "n", Version: 1,
+		CreatedAt: now, UpdatedAt: now,
+		Model: anthropic.BetaManagedAgentsModelConfig{ID: "claude-opus-4-7"},
+		Multiagent: anthropic.BetaManagedAgentsMultiagent{
+			Type: "coordinator",
+			Agents: []anthropic.BetaManagedAgentsMultiagentAgentUnion{
+				{Type: "agent", ID: "agent_other", Version: 4},
+				{Type: "agent", ID: "agent_coord", Version: 1},
+				{Type: "advisor", Model: "claude-opus-5"},
+			},
+		},
+	}
+	r := &Agent{}
+	r.FromAnthropicObservation(resp)
+
+	ma := r.Status.AtProvider.Multiagent
+	if ma == nil || len(ma.Agents) != 3 {
+		t.Fatalf("Multiagent = %+v, want 3 roster entries", ma)
+	}
+	if *ma.Agents[0].Type != "agent" || *ma.Agents[0].ID != "agent_other" || *ma.Agents[0].Version != 4 {
+		t.Errorf("entry 0 = %+v, want agent agent_other version 4", ma.Agents[0])
+	}
+	// The entry resolving to the agent itself must be reported as "self".
+	if *ma.Agents[1].Type != "self" || *ma.Agents[1].ID != "agent_coord" || *ma.Agents[1].Version != 1 {
+		t.Errorf("entry 1 = %+v, want self agent_coord version 1", ma.Agents[1])
+	}
+	if *ma.Agents[2].Type != "advisor" || *ma.Agents[2].Model != "claude-opus-5" {
+		t.Errorf("entry 2 = %+v, want advisor claude-opus-5", ma.Agents[2])
+	}
+	if ma.Agents[2].ID != nil || ma.Agents[2].Version != nil {
+		t.Errorf("advisor entry carries id/version: %+v", ma.Agents[2])
+	}
+}
+
+func TestAgentFromAnthropicObservation_NoMultiagent(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	resp := anthropic.BetaManagedAgentsAgent{
+		ID: "x", Name: "n", Version: 1,
+		CreatedAt: now, UpdatedAt: now,
+		Model: anthropic.BetaManagedAgentsModelConfig{ID: "claude-opus-4-7"},
+	}
+	r := &Agent{}
+	r.FromAnthropicObservation(resp)
+	if r.Status.AtProvider.Multiagent != nil {
+		t.Errorf("Multiagent = %+v, want nil", r.Status.AtProvider.Multiagent)
+	}
+}

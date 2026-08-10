@@ -1,0 +1,41 @@
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Agent
+metadata:
+  name: example-agent-coordinator
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: multiagent
+  annotations:
+    meta.upbound.io/example-id: managedagents/v1beta1/agent-multiagent
+spec:
+  forProvider:
+    model: claude-opus-4-8
+    name: example-agent-coordinator
+    description: Example coordinator agent for multiagent E2E testing.
+    metadata:
+      example: "true"
+    multiagent:
+      agents:
+        - type: agent
+          idSelector:
+            matchLabels:
+              testing.upbound.io/example-name: multiagent-worker
+        - type: self
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Agent
+metadata:
+  name: example-agent-worker
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: multiagent-worker
+  annotations:
+    meta.upbound.io/example-id: managedagents/v1beta1/agent-multiagent
+spec:
+  forProvider:
+    model: claude-opus-4-8
+    name: example-agent-worker
+    description: Example worker agent spawned by the coordinator roster.
+    metadata:
+      example: "true"
