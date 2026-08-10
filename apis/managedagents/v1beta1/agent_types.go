@@ -37,6 +37,11 @@ type AgentParameters struct {
 	// +kubebuilder:validation:Enum=low;medium;high;xhigh;max
 	ModelEffort *string `json:"modelEffort,omitempty"`
 
+	// ModelInferenceGeo is the geographic region for model inference. When
+	// unset, requests fall through to the workspace's default inference geo.
+	// +optional
+	ModelInferenceGeo *string `json:"modelInferenceGeo,omitempty"`
+
 	// Required: Name is the human-readable name for the agent (1–256 characters).
 	// +optional
 	// +kubebuilder:validation:MaxLength=256
@@ -192,6 +197,12 @@ type AgentObservation struct {
 	// drift detection compares it directly against the desired value.
 	// +optional
 	ModelEffort *string `json:"modelEffort,omitempty"`
+
+	// ModelInferenceGeo is the observed inference geo. Matches the top-level
+	// ModelInferenceGeo key in AgentParameters (rather than nesting under
+	// Model) so drift detection compares it directly against the desired value.
+	// +optional
+	ModelInferenceGeo *string `json:"modelInferenceGeo,omitempty"`
 
 	// SystemSha256 is the lowercase hex SHA-256 digest of the system prompt
 	// stored on the API. Used for drift detection; the raw value is never

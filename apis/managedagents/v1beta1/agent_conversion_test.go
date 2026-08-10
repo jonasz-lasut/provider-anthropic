@@ -98,6 +98,35 @@ func TestAgentToAnthropicUpdate_ModelEffort(t *testing.T) {
 	}
 }
 
+func TestAgentToAnthropicNew_ModelInferenceGeo(t *testing.T) {
+	r := &Agent{
+		Spec: AgentSpec{ForProvider: AgentParameters{
+			Name:              ptr("a"),
+			Model:             ptr("claude-opus-4-7"),
+			ModelInferenceGeo: ptr("us"),
+		}},
+	}
+	p := r.ToAnthropicNew(nil)
+	if p.Model.ID != "claude-opus-4-7" {
+		t.Errorf("Model.ID = %q, want %q", p.Model.ID, "claude-opus-4-7")
+	}
+	if p.Model.InferenceGeo.Value != "us" {
+		t.Errorf("Model.InferenceGeo = %q, want %q", p.Model.InferenceGeo.Value, "us")
+	}
+}
+
+func TestAgentToAnthropicUpdate_ModelInferenceGeo(t *testing.T) {
+	ver := int64(1)
+	r := &Agent{
+		Spec:   AgentSpec{ForProvider: AgentParameters{Name: ptr("a"), ModelInferenceGeo: ptr("us")}},
+		Status: AgentStatus{AtProvider: AgentObservation{Version: &ver}},
+	}
+	p := r.ToAnthropicUpdate(nil)
+	if p.Model.InferenceGeo.Value != "us" {
+		t.Errorf("Model.InferenceGeo = %q, want %q", p.Model.InferenceGeo.Value, "us")
+	}
+}
+
 func TestAgentToAnthropicNew_MCPTool(t *testing.T) {
 	r := &Agent{
 		Spec: AgentSpec{ForProvider: AgentParameters{
@@ -244,8 +273,9 @@ func TestAgentFromAnthropicObservation(t *testing.T) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 		Model: anthropic.BetaManagedAgentsModelConfig{
-			ID:     "claude-opus-4-7",
-			Effort: anthropic.BetaManagedAgentsModelConfigEffortUnion{Type: "high"},
+			ID:           "claude-opus-4-7",
+			Effort:       anthropic.BetaManagedAgentsModelConfigEffortUnion{Type: "high"},
+			InferenceGeo: "us",
 		},
 		MCPServers: []anthropic.BetaManagedAgentsMCPServerURLDefinition{
 			{Name: "srv", URL: "https://mcp.example"},
@@ -275,6 +305,9 @@ func TestAgentFromAnthropicObservation(t *testing.T) {
 	}
 	if r.Status.AtProvider.ModelEffort == nil || *r.Status.AtProvider.ModelEffort != "high" {
 		t.Errorf("ModelEffort = %v, want %q", r.Status.AtProvider.ModelEffort, "high")
+	}
+	if r.Status.AtProvider.ModelInferenceGeo == nil || *r.Status.AtProvider.ModelInferenceGeo != "us" {
+		t.Errorf("ModelInferenceGeo = %v, want %q", r.Status.AtProvider.ModelInferenceGeo, "us")
 	}
 	if r.Status.AtProvider.ArchivedAt != nil {
 		t.Errorf("ArchivedAt should be nil, got %v", r.Status.AtProvider.ArchivedAt)

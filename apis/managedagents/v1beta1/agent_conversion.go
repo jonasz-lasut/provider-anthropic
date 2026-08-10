@@ -50,8 +50,8 @@ func (r *Agent) ToAnthropicNew(ctx *AgentConversionContext) anthropic.BetaAgentN
 	if p.Name != nil {
 		params.Name = *p.Name
 	}
-	if p.Model != nil || p.ModelEffort != nil {
-		params.Model = agentModelConfigToParam(p.Model, p.ModelEffort)
+	if p.Model != nil || p.ModelEffort != nil || p.ModelInferenceGeo != nil {
+		params.Model = agentModelConfigToParam(p.Model, p.ModelEffort, p.ModelInferenceGeo)
 	}
 	if p.Description != nil {
 		params.Description = anthropic.String(*p.Description)
@@ -83,7 +83,7 @@ func (r *Agent) ToAnthropicNew(ctx *AgentConversionContext) anthropic.BetaAgentN
 	return params
 }
 
-func agentModelConfigToParam(model, effort *string) anthropic.BetaManagedAgentsModelConfigParams {
+func agentModelConfigToParam(model, effort, inferenceGeo *string) anthropic.BetaManagedAgentsModelConfigParams {
 	mc := anthropic.BetaManagedAgentsModelConfigParams{}
 	if model != nil {
 		mc.ID = *model
@@ -92,6 +92,9 @@ func agentModelConfigToParam(model, effort *string) anthropic.BetaManagedAgentsM
 		mc.Effort = anthropic.BetaManagedAgentsModelConfigParamsEffortUnion{
 			OfBetaManagedAgentsModelConfigsEffortBetaManagedAgentsEffortLevel: anthropic.String(*effort),
 		}
+	}
+	if inferenceGeo != nil {
+		mc.InferenceGeo = anthropic.String(*inferenceGeo)
 	}
 	return mc
 }
@@ -105,8 +108,8 @@ func (r *Agent) ToAnthropicUpdate(ctx *AgentConversionContext) anthropic.BetaAge
 	if p.Name != nil {
 		params.Name = anthropic.String(*p.Name)
 	}
-	if p.Model != nil || p.ModelEffort != nil {
-		params.Model = agentModelConfigToParam(p.Model, p.ModelEffort)
+	if p.Model != nil || p.ModelEffort != nil || p.ModelInferenceGeo != nil {
+		params.Model = agentModelConfigToParam(p.Model, p.ModelEffort, p.ModelInferenceGeo)
 	}
 	if p.Description != nil {
 		params.Description = anthropic.String(*p.Description)
@@ -160,6 +163,12 @@ func (r *Agent) FromAnthropicObservation(resp anthropic.BetaManagedAgentsAgent) 
 		r.Status.AtProvider.ModelEffort = &effort
 	} else {
 		r.Status.AtProvider.ModelEffort = nil
+	}
+	if resp.Model.InferenceGeo != "" {
+		geo := resp.Model.InferenceGeo
+		r.Status.AtProvider.ModelInferenceGeo = &geo
+	} else {
+		r.Status.AtProvider.ModelInferenceGeo = nil
 	}
 
 	r.Status.AtProvider.MCPServers = nil

@@ -178,6 +178,32 @@ func TestDeploymentToAnthropicUpdate(t *testing.T) {
 	}
 }
 
+func TestDeploymentToAnthropicNewBudget(t *testing.T) {
+	r := &Deployment{Spec: DeploymentSpec{ForProvider: DeploymentParameters{
+		Budget: &BudgetLimit{MaxListCost: &MonetaryAmount{Amount: ptr("2500"), Currency: ptr("USD")}},
+	}}}
+	p := r.ToAnthropicNew(nil)
+	if p.Budget.Type != anthropic.BetaManagedAgentsBudgetLimitTypeLimit {
+		t.Errorf("Budget.Type = %q, want %q", p.Budget.Type, "limit")
+	}
+	if p.Budget.MaxListCost.Amount != "2500" {
+		t.Errorf("Budget.MaxListCost.Amount = %q, want %q", p.Budget.MaxListCost.Amount, "2500")
+	}
+	if p.Budget.MaxListCost.Currency != anthropic.BetaCurrencyUsd {
+		t.Errorf("Budget.MaxListCost.Currency = %q, want %q", p.Budget.MaxListCost.Currency, "USD")
+	}
+}
+
+func TestDeploymentToAnthropicUpdateBudget(t *testing.T) {
+	r := &Deployment{Spec: DeploymentSpec{ForProvider: DeploymentParameters{
+		Budget: &BudgetLimit{MaxListCost: &MonetaryAmount{Amount: ptr("50"), Currency: ptr("USD")}},
+	}}}
+	p := r.ToAnthropicUpdate(nil)
+	if p.Budget.MaxListCost.Amount != "50" {
+		t.Errorf("Budget.MaxListCost.Amount = %q, want %q", p.Budget.MaxListCost.Amount, "50")
+	}
+}
+
 func TestDeploymentFromAnthropicObservation(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	resp := anthropic.BetaManagedAgentsDeployment{
@@ -190,8 +216,12 @@ func TestDeploymentFromAnthropicObservation(t *testing.T) {
 		Status:        anthropic.BetaManagedAgentsDeploymentStatusPaused,
 		Agent:         anthropic.BetaManagedAgentsAgentReference{ID: "agt_1", Version: 3},
 		Schedule:      anthropic.BetaManagedAgentsSchedule{Expression: "0 9 * * 1-5", Timezone: "UTC"},
-		CreatedAt:     now,
-		UpdatedAt:     now,
+		Budget: anthropic.BetaManagedAgentsBudgetLimit{
+			Type:        anthropic.BetaManagedAgentsBudgetLimitTypeLimit,
+			MaxListCost: anthropic.BetaMonetaryAmount{Amount: "2500", Currency: anthropic.BetaCurrencyUsd},
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 	r := &Deployment{}
 	r.FromAnthropicObservation(resp)
@@ -220,6 +250,9 @@ func TestDeploymentFromAnthropicObservation(t *testing.T) {
 	}
 	if ap.Schedule == nil || ap.Schedule.Expression == nil || *ap.Schedule.Expression != "0 9 * * 1-5" {
 		t.Errorf("Schedule = %+v", ap.Schedule)
+	}
+	if ap.Budget == nil || ap.Budget.MaxListCost == nil || ap.Budget.MaxListCost.Amount == nil || *ap.Budget.MaxListCost.Amount != "2500" {
+		t.Errorf("Budget = %+v, want maxListCost.amount 2500", ap.Budget)
 	}
 	if ap.ArchivedAt != nil {
 		t.Errorf("ArchivedAt should be nil, got %v", ap.ArchivedAt)

@@ -60,6 +60,9 @@ func (r *Session) ToAnthropicNew(ctx *SessionConversionContext) anthropic.BetaSe
 	if p.Metadata != nil {
 		params.Metadata = p.Metadata
 	}
+	if p.Budget != nil {
+		params.Budget = budgetLimitToParam(*p.Budget)
+	}
 	params.VaultIDs = p.VaultIDs
 	for i, res := range p.Resources {
 		token := ""
@@ -83,7 +86,38 @@ func (r *Session) ToAnthropicUpdate() anthropic.BetaSessionUpdateParams {
 	if p.Metadata != nil {
 		params.Metadata = p.Metadata
 	}
+	if p.Budget != nil {
+		params.Budget = budgetLimitToParam(*p.Budget)
+	}
 	return params
+}
+
+// budgetLimitToParam converts a BudgetLimit into the SDK param, hardcoding
+// the constant "limit" type discriminator (the only variant).
+func budgetLimitToParam(b BudgetLimit) anthropic.BetaManagedAgentsBudgetLimitParam {
+	params := anthropic.BetaManagedAgentsBudgetLimitParam{
+		Type: anthropic.BetaManagedAgentsBudgetLimitTypeLimit,
+	}
+	if b.MaxListCost != nil {
+		if b.MaxListCost.Amount != nil {
+			params.MaxListCost.Amount = *b.MaxListCost.Amount
+		}
+		if b.MaxListCost.Currency != nil {
+			params.MaxListCost.Currency = anthropic.BetaCurrency(*b.MaxListCost.Currency)
+		}
+	}
+	return params
+}
+
+// budgetLimitFromObservation mirrors an observed budget into the CRD shape,
+// returning nil when the API reported no budget (zero-value struct).
+func budgetLimitFromObservation(b anthropic.BetaManagedAgentsBudgetLimit) *BudgetLimit {
+	if b.Type == "" {
+		return nil
+	}
+	amount := b.MaxListCost.Amount
+	currency := string(b.MaxListCost.Currency)
+	return &BudgetLimit{MaxListCost: &MonetaryAmount{Amount: &amount, Currency: &currency}}
 }
 
 func (r *Session) FromAnthropicObservation(resp anthropic.BetaManagedAgentsSession) {
@@ -91,6 +125,7 @@ func (r *Session) FromAnthropicObservation(resp anthropic.BetaManagedAgentsSessi
 	r.Status.AtProvider.Title = &resp.Title
 	r.Status.AtProvider.EnvironmentID = &resp.EnvironmentID
 	r.Status.AtProvider.Metadata = resp.Metadata
+	r.Status.AtProvider.Budget = budgetLimitFromObservation(resp.Budget)
 	r.Status.AtProvider.VaultIDs = resp.VaultIDs
 	status := string(resp.Status)
 	r.Status.AtProvider.Status = &status
