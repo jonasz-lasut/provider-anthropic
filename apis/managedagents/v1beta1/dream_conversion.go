@@ -49,7 +49,33 @@ func (r *Dream) ToAnthropicNew() anthropic.BetaDreamNewParams {
 		params.Instructions = anthropic.String(*p.Instructions)
 	}
 
+	if p.OutputBehavior != nil {
+		params.OutputBehavior = dreamOutputBehaviorToParam(*p.OutputBehavior)
+	}
+
 	return params
+}
+
+func dreamOutputBehaviorToParam(ob DreamOutputBehavior) anthropic.BetaOutputBehaviorUnionParam {
+	obType := ""
+	if ob.Type != nil {
+		obType = *ob.Type
+	}
+	switch obType {
+	case "create_new":
+		return anthropic.BetaOutputBehaviorUnionParam{OfCreateNew: &anthropic.BetaOutputBehaviorCreateNewParam{
+			Type: anthropic.BetaOutputBehaviorCreateNewTypeCreateNew,
+		}}
+	case "update_existing":
+		ue := anthropic.BetaOutputBehaviorUpdateExistingParam{
+			Type: anthropic.BetaOutputBehaviorUpdateExistingTypeUpdateExisting,
+		}
+		if ob.MemoryStoreID != nil {
+			ue.MemoryStoreID = *ob.MemoryStoreID
+		}
+		return anthropic.BetaOutputBehaviorUnionParam{OfUpdateExisting: &ue}
+	}
+	return anthropic.BetaOutputBehaviorUnionParam{}
 }
 
 func dreamInputToParam(in DreamInput) anthropic.BetaDreamInputUnionParam {
@@ -110,6 +136,17 @@ func (r *Dream) FromAnthropicObservation(resp anthropic.BetaDream) {
 			obs.SessionIDs = in.SessionIDs
 		}
 		ap.Inputs = append(ap.Inputs, obs)
+	}
+
+	if resp.OutputBehavior.Type != "" {
+		obs := &DreamOutputBehaviorObservation{Type: &resp.OutputBehavior.Type}
+		if resp.OutputBehavior.MemoryStoreID != "" {
+			id := resp.OutputBehavior.MemoryStoreID
+			obs.MemoryStoreID = &id
+		}
+		ap.OutputBehavior = obs
+	} else {
+		ap.OutputBehavior = nil
 	}
 
 	ap.Outputs = nil

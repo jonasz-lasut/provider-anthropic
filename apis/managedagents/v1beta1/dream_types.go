@@ -82,6 +82,35 @@ type DreamInput struct {
 	SessionIDsSelector *xpv2.NamespacedSelector `json:"sessionIdsSelector,omitempty"`
 }
 
+// DreamOutputBehavior selects where the dream writes its consolidated
+// memories. The Type field selects the variant; supply only the fields
+// relevant to that variant. "create_new" (the API default when omitted)
+// creates a new output memory store as a clone of the memory_store input;
+// "update_existing" consolidates an existing store in place — during the
+// early-access period that store must be the dream's own memory_store input.
+type DreamOutputBehavior struct {
+	// Required: Type identifies the output-behavior variant.
+	// +optional
+	// +kubebuilder:validation:Enum=create_new;update_existing
+	Type *string `json:"type,omitempty"`
+
+	// MemoryStoreID is the ID of the existing memory store to consolidate in
+	// place (update_existing type). Populate directly or via MemoryStoreIDRef /
+	// MemoryStoreIDSelector.
+	// +crossplane:generate:reference:type=github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1.MemoryStore
+	// +crossplane:generate:reference:extractor=github.com/jonasz-lasut/provider-anthropic/internal/extractors.ComputedFieldExtractor("id")
+	// +optional
+	MemoryStoreID *string `json:"memoryStoreId,omitempty"`
+
+	// Reference to a MemoryStore to populate memoryStoreId.
+	// +kubebuilder:validation:Optional
+	MemoryStoreIDRef *xpv2.NamespacedReference `json:"memoryStoreIdRef,omitempty"`
+
+	// Selector for a MemoryStore to populate memoryStoreId.
+	// +kubebuilder:validation:Optional
+	MemoryStoreIDSelector *xpv2.NamespacedSelector `json:"memoryStoreIdSelector,omitempty"`
+}
+
 // DreamParameters defines the desired state of an Anthropic Dream.
 // These fields map to BetaDreamNewParams from the Anthropic SDK.
 //
@@ -102,6 +131,12 @@ type DreamParameters struct {
 	// Instructions guide the consolidation. Immutable after creation.
 	// +optional
 	Instructions *string `json:"instructions,omitempty"`
+
+	// OutputBehavior selects where the dream writes its consolidated memories.
+	// When omitted the API defaults to creating a new output memory store.
+	// Immutable after creation.
+	// +optional
+	OutputBehavior *DreamOutputBehavior `json:"outputBehavior,omitempty"`
 }
 
 // DreamModelObservation is the observed model configuration.
@@ -138,6 +173,19 @@ type DreamOutputObservation struct {
 
 	// MemoryStoreID is the ID of the memory store the dream created and wrote
 	// consolidated memories into.
+	// +optional
+	MemoryStoreID *string `json:"memoryStoreId,omitempty"`
+}
+
+// DreamOutputBehaviorObservation is the observed output-behavior destination.
+type DreamOutputBehaviorObservation struct {
+	// Type identifies the output-behavior variant ("create_new" or
+	// "update_existing").
+	// +optional
+	Type *string `json:"type,omitempty"`
+
+	// MemoryStoreID is the existing memory store being consolidated in place
+	// (update_existing type).
 	// +optional
 	MemoryStoreID *string `json:"memoryStoreId,omitempty"`
 }
@@ -203,6 +251,10 @@ type DreamObservation struct {
 	// Inputs are the observed input sources.
 	// +optional
 	Inputs []DreamInputObservation `json:"inputs,omitempty"`
+
+	// OutputBehavior is the observed destination for the consolidated memories.
+	// +optional
+	OutputBehavior *DreamOutputBehaviorObservation `json:"outputBehavior,omitempty"`
 
 	// Outputs are the memory stores the dream wrote consolidated memories into.
 	// +optional

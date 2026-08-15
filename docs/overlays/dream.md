@@ -2,8 +2,9 @@
 
 `Dream` (Anthropic `BetaDreamService`, added in `anthropic-sdk-go` v1.57.0) is a
 **research-preview** asynchronous memory-consolidation job: it reads a memory
-store plus a set of session transcripts and writes consolidated memories into a
-new output memory store. It deviates from the standard `/add-resource` pattern
+store plus a set of session transcripts and writes consolidated memories into an
+output memory store — a new store by default, or an existing store chosen via
+`outputBehavior`. It deviates from the standard `/add-resource` pattern
 in several deliberate ways recorded below, so a future `/update-anthropic-sdk`
 or `/add-resource` re-run does not "correct" them.
 
@@ -79,7 +80,26 @@ only, and `setup.go` calls `dream.SetupGated(mgr, o)`.
   `Inputs[i].SessionIDs` — so the resolved `[]string` is populated before
   create and passed straight to the SDK by `dreamInputToParam`.
 
-## 6. Model union → object variant only
+## 6. Output-behavior union (SDK v1.63.0)
+
+`BetaDreamNewParams.OutputBehavior` is an optional discriminated union
+(`create_new` | `update_existing`), modeled as `outputBehavior` with the same
+Type-discriminator pattern as `DreamInput` (converted by
+`dreamOutputBehaviorToParam`). The `create_new` variant carries no payload; the
+CRD keeps its `type` field anyway because the union has two variants — unlike
+single-variant unions (Session Budget's `limit`), the discriminator cannot be
+hardcoded.
+
+- The `update_existing` variant's `memoryStoreId` is a cross-resource reference
+  to `MemoryStore` (with `memoryStoreIdRef`/`memoryStoreIdSelector`), nested
+  under a pointer struct — angryjet nil-guards the resolution block.
+- During the EAP, the API requires the `update_existing` target to be the
+  dream's own `memory_store` input; this is **not** validated in the CRD (the
+  constraint is expected to lift).
+- The response's `output_behavior` is mirrored into
+  `atProvider.outputBehavior` (nil when the union is the zero value).
+
+## 7. Model union → object variant only
 
 `BetaDreamNewParamsModelUnion` is `string | {id, speed}`. `forProvider.model`
 is modeled as the object form (`DreamModelConfig{id, speed}`) and conversion

@@ -204,6 +204,25 @@ func (mg *Dream) ResolveReferences(ctx context.Context, c client.Reader) error {
 		mg.Spec.ForProvider.Inputs[i3].SessionIDsRefs = mrsp.ResolvedReferences
 
 	}
+	if mg.Spec.ForProvider.OutputBehavior != nil {
+		rsp, err = r.Resolve(ctx, reference.NamespacedResolutionRequest{
+			CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.OutputBehavior.MemoryStoreID),
+			Extract:      extractors.ComputedFieldExtractor("id"),
+			Namespace:    mg.GetNamespace(),
+			Reference:    mg.Spec.ForProvider.OutputBehavior.MemoryStoreIDRef,
+			Selector:     mg.Spec.ForProvider.OutputBehavior.MemoryStoreIDSelector,
+			To: reference.To{
+				List:    &MemoryStoreList{},
+				Managed: &MemoryStore{},
+			},
+		})
+		if err != nil {
+			return errors.Wrap(err, "mg.Spec.ForProvider.OutputBehavior.MemoryStoreID")
+		}
+		mg.Spec.ForProvider.OutputBehavior.MemoryStoreID = reference.ToPtrValue(rsp.ResolvedValue)
+		mg.Spec.ForProvider.OutputBehavior.MemoryStoreIDRef = rsp.ResolvedReference
+
+	}
 
 	return nil
 }
