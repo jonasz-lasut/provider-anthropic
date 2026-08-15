@@ -16,8 +16,9 @@ func TestDreamToAnthropicNew(t *testing.T) {
 				{Type: new("memory_store"), MemoryStoreID: new("mem_in")},
 				{Type: new("sessions"), SessionIDs: []string{"sess_1", "sess_2"}},
 			},
-			Model:        &DreamModelConfig{ID: new("claude-opus-4-7"), Speed: new("fast")},
-			Instructions: new("consolidate the notes"),
+			Model:          &DreamModelConfig{ID: new("claude-opus-4-7"), Speed: new("fast")},
+			Instructions:   new("consolidate the notes"),
+			OutputBehavior: &DreamOutputBehavior{Type: new("update_existing"), MemoryStoreID: new("mem_in")},
 		}},
 	}
 
@@ -52,6 +53,40 @@ func TestDreamToAnthropicNew(t *testing.T) {
 	if len(ses.SessionIDs) != 2 || ses.SessionIDs[0] != "sess_1" || ses.SessionIDs[1] != "sess_2" {
 		t.Errorf("Inputs[1].SessionIDs = %v, want [sess_1 sess_2]", ses.SessionIDs)
 	}
+	ue := p.OutputBehavior.OfUpdateExisting
+	if ue == nil {
+		t.Fatalf("OutputBehavior.OfUpdateExisting is nil")
+	}
+	if ue.MemoryStoreID != "mem_in" {
+		t.Errorf("OutputBehavior.MemoryStoreID = %q, want mem_in", ue.MemoryStoreID)
+	}
+}
+
+func TestDreamToAnthropicNew_OutputBehaviorCreateNew(t *testing.T) {
+	r := &Dream{
+		Spec: DreamSpec{ForProvider: DreamParameters{
+			OutputBehavior: &DreamOutputBehavior{Type: new("create_new")},
+		}},
+	}
+
+	p := r.ToAnthropicNew()
+
+	if p.OutputBehavior.OfCreateNew == nil {
+		t.Fatalf("OutputBehavior.OfCreateNew is nil")
+	}
+	if p.OutputBehavior.OfUpdateExisting != nil {
+		t.Errorf("OutputBehavior.OfUpdateExisting = %v, want nil", p.OutputBehavior.OfUpdateExisting)
+	}
+}
+
+func TestDreamToAnthropicNew_OutputBehaviorOmitted(t *testing.T) {
+	r := &Dream{Spec: DreamSpec{ForProvider: DreamParameters{}}}
+
+	p := r.ToAnthropicNew()
+
+	if p.OutputBehavior.OfCreateNew != nil || p.OutputBehavior.OfUpdateExisting != nil {
+		t.Errorf("OutputBehavior = %+v, want zero (unset)", p.OutputBehavior)
+	}
 }
 
 func TestDreamToAnthropicNew_ModelWithoutSpeed(t *testing.T) {
@@ -83,6 +118,7 @@ func TestDreamFromAnthropicObservation(t *testing.T) {
 			{Type: "memory_store", MemoryStoreID: "mem_in"},
 			{Type: "sessions", SessionIDs: []string{"sess_1"}},
 		},
+		OutputBehavior: anthropic.BetaOutputBehaviorUnion{Type: "update_existing", MemoryStoreID: "mem_in"},
 		Outputs: []anthropic.BetaDreamOutput{
 			{Type: anthropic.BetaDreamOutputTypeMemoryStore, MemoryStoreID: "mem_out"},
 		},
@@ -118,6 +154,12 @@ func TestDreamFromAnthropicObservation(t *testing.T) {
 	}
 	if len(ap.Inputs[1].SessionIDs) != 1 || ap.Inputs[1].SessionIDs[0] != "sess_1" {
 		t.Errorf("Inputs[1].SessionIDs = %v", ap.Inputs[1].SessionIDs)
+	}
+	if ap.OutputBehavior == nil || ap.OutputBehavior.Type == nil || *ap.OutputBehavior.Type != "update_existing" {
+		t.Errorf("OutputBehavior = %v", ap.OutputBehavior)
+	}
+	if ap.OutputBehavior == nil || ap.OutputBehavior.MemoryStoreID == nil || *ap.OutputBehavior.MemoryStoreID != "mem_in" {
+		t.Errorf("OutputBehavior.MemoryStoreID = %v", ap.OutputBehavior)
 	}
 	if len(ap.Outputs) != 1 || ap.Outputs[0].MemoryStoreID == nil || *ap.Outputs[0].MemoryStoreID != "mem_out" {
 		t.Errorf("Outputs = %v", ap.Outputs)
@@ -169,5 +211,8 @@ func TestDreamFromAnthropicObservation_NoErrorWhenSucceeded(t *testing.T) {
 	}
 	if r.Status.AtProvider.EndedAt != nil {
 		t.Errorf("EndedAt = %v, want nil (zero time)", r.Status.AtProvider.EndedAt)
+	}
+	if r.Status.AtProvider.OutputBehavior != nil {
+		t.Errorf("OutputBehavior = %v, want nil (zero union)", r.Status.AtProvider.OutputBehavior)
 	}
 }
