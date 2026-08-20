@@ -7,7 +7,7 @@ require (
 	github.com/anthropics/anthropic-sdk-go v1.63.1
 	github.com/crossplane/crossplane-runtime/v2 v2.3.3
 	github.com/crossplane/crossplane-tools v0.0.0-20260719180100-659f1dc036c5
-	github.com/crossplane/crossplane/apis/v2 v2.3.4
+	github.com/crossplane/crossplane/apis/v2 v2.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/afero v1.15.0
 	k8s.io/api v0.36.3
