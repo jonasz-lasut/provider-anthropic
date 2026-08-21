@@ -1,7 +1,7 @@
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: ['config:recommended'],
-  enabledManagers: ['gomod', 'github-actions', 'custom.regex'],
+  enabledManagers: ['gomod', 'github-actions', 'custom.regex', 'dockerfile'],
   postUpdateOptions: ['gomodTidy', 'gomodUpdateImportPaths'],
   customManagers: [
     // golangci-lint version, kept in lockstep between the Makefile and the CI workflow.
@@ -93,6 +93,16 @@
       matchManagers: ['gomod'],
       matchDepNames: ['github.com/anthropics/anthropic-sdk-go'],
       enabled: false,
+    },
+
+    // Dockerfile: the runtime base is pinned to a digest that moves with
+    // distroless's rebuilds of the `nonroot` tag: one PR per digest bump, so
+    // a rebuild that breaks the image is judged on its own.
+    {
+      matchManagers: ['dockerfile'],
+      matchPackageNames: ['gcr.io/distroless/static-debian13'],
+      pinDigests: true,
+      groupName: 'runtime image',
     },
   ],
 }
