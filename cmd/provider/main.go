@@ -23,10 +23,14 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
@@ -47,6 +51,11 @@ func main() {
 		"skip-default-metadata",
 		"Do not set default Crossplane identifiers on spec.forProvider.metadata.",
 	).Bool()
+	enableSecretCache := app.Flag(
+		"enable-secret-cache",
+		"Cache Secrets in the informer cache. Disable to read Secrets live from the "+
+			"API server instead, trading reconcile QPS for lower memory use.",
+	).Default("true").Envar("ENABLE_SECRET_CACHE").Bool()
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 
 	zl := zap.New(zap.UseDevMode(*debug))
@@ -55,31 +64,53 @@ func main() {
 	}
 	log := logging.NewLogrLogger(zl.WithName(filepath.Base(os.Args[0])))
 
-	// Omitting Scheme makes controller-runtime fall back to client-go's default
-	// scheme, which is pre-populated with all standard Kubernetes types
-	// (corev1, appsv1, rbacv1, ...). The credential extractor relies on
-	// corev1.Secret being registered.
+	// Built explicitly (rather than relying on the manager's default scheme
+	// plus later AddToScheme calls on mgr.GetScheme()) so it's fully
+	// populated before the manager is created. Includes client-go's default
+	// types (corev1, appsv1, rbacv1, ...) since the credential extractor
+	// relies on corev1.Secret being registered.
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		log.Info("Cannot register client-go scheme", "error", err)
+		os.Exit(1)
+	}
+	if err := apis.AddToScheme(scheme); err != nil {
+		log.Info("Cannot register API types", "error", err)
+		os.Exit(1)
+	}
+	// Required for the customresourcesgate controller to watch CRD objects.
+	if err := apiextensionsv1.AddToScheme(scheme); err != nil {
+		log.Info("Cannot register apiextensions scheme", "error", err)
+		os.Exit(1)
+	}
+
+	var clientOpts client.Options
+	if !*enableSecretCache {
+		clientOpts = client.Options{
+			Cache: &client.CacheOptions{DisableFor: []client.Object{&corev1.Secret{}}},
+		}
+	}
+
 	syncPeriod := 10 * time.Minute
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Scheme: scheme,
+		Client: clientOpts,
 		Cache: cache.Options{
 			SyncPeriod: &syncPeriod,
+			ByObject: map[client.Object]cache.ByObject{
+				// Strips the OpenAPI schema, managedFields, and the
+				// last-applied-configuration annotation from CRDs before they
+				// enter the informer cache
+				&apiextensionsv1.CustomResourceDefinition{}: {
+					Transform: customresourcesgate.TransformStripCRDSchema,
+				},
+			},
 		},
 		LeaderElection:   true,
 		LeaderElectionID: "provider-anthropic.crossplane.io",
 	})
 	if err != nil {
 		log.Info("Cannot create manager", "error", err)
-		os.Exit(1)
-	}
-
-	// Layer provider-specific types onto the default scheme.
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Info("Cannot register API types", "error", err)
-		os.Exit(1)
-	}
-	// Required for the customresourcesgate controller to watch CRD objects.
-	if err := apiextensionsv1.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Info("Cannot register apiextensions scheme", "error", err)
 		os.Exit(1)
 	}
 
