@@ -147,7 +147,7 @@ func TestSessionToAnthropicNew_Budget(t *testing.T) {
 	if p.Budget.MaxListCost.Amount != "2500" {
 		t.Errorf("Budget.MaxListCost.Amount = %q, want %q", p.Budget.MaxListCost.Amount, "2500")
 	}
-	if p.Budget.MaxListCost.Currency != anthropic.BetaCurrencyUsd {
+	if p.Budget.MaxListCost.Currency != anthropic.BetaCurrencyUSD {
 		t.Errorf("Budget.MaxListCost.Currency = %q, want %q", p.Budget.MaxListCost.Currency, "USD")
 	}
 }
@@ -179,7 +179,7 @@ func TestSessionFromAnthropicObservation(t *testing.T) {
 		Agent:         anthropic.BetaManagedAgentsSessionAgent{ID: "agt_123"},
 		Budget: anthropic.BetaManagedAgentsBudgetLimit{
 			Type:        anthropic.BetaManagedAgentsBudgetLimitTypeLimit,
-			MaxListCost: anthropic.BetaMonetaryAmount{Amount: "2500", Currency: anthropic.BetaCurrencyUsd},
+			MaxListCost: anthropic.BetaMonetaryAmount{Amount: "2500", Currency: anthropic.BetaCurrencyUSD},
 		},
 	}
 	r := &Session{}
