@@ -22,7 +22,7 @@ on:
         required: true
       go-version:
         description: 'Go version to use if building needs to be done'
-        default: '1.27.0'
+        default: '1.27.1'
         required: false
 
 permissions:
