@@ -1,0 +1,17 @@
+# Kind cluster config rendered by the `kind.up` Makefile target (__PKI_DIR__
+# becomes the absolute path of $(KIND_SA_KEY_DIR)). Mounting a persistent
+# ServiceAccount signing keypair over kubeadm's defaults gives every recreated
+# cluster the same OIDC issuer (https://kubernetes.default.svc.cluster.local)
+# and the same JWKS, so an Anthropic federation issuer registered once keeps
+# trusting the provider's projected tokens across `make controlplane.down`.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraMounts:
+      - hostPath: __PKI_DIR__/sa.key
+        containerPath: /etc/kubernetes/pki/sa.key
+        readOnly: true
+      - hostPath: __PKI_DIR__/sa.pub
+        containerPath: /etc/kubernetes/pki/sa.pub
+        readOnly: true
