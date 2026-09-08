@@ -26,6 +26,8 @@ import (
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/deployment"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/dream"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/environment"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/externalkey"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/invite"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/memorystore"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/memorystorememory"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/skill"
@@ -82,6 +84,12 @@ func SetupProviders(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata 
 		return err
 	}
 	if err := workspacemember.SetupGated(mgr, o); err != nil {
+		return err
+	}
+	if err := invite.SetupGated(mgr, o); err != nil {
+		return err
+	}
+	if err := externalkey.SetupGated(mgr, o); err != nil {
 		return err
 	}
 	return nil

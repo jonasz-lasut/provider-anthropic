@@ -22,6 +22,8 @@ and management of resources on the [Anthropic platform](https://docs.anthropic.c
 | `Skill` | `managedagents.anthropic.crossplane.io/v1beta1` | Reusable skill packages and their versioned file content for agents |
 | `Workspace` | `organization.anthropic.crossplane.io/v1beta1` | Organization workspaces (Admin API, needs an Admin API key) |
 | `WorkspaceMember` | `organization.anthropic.crossplane.io/v1beta1` | A user's membership and role in a workspace (Admin API) |
+| `Invite` | `organization.anthropic.crossplane.io/v1beta1` | Invitations of users into the organization; create-only (Admin API) |
+| `ExternalKey` | `organization.anthropic.crossplane.io/v1beta1` | Customer-managed encryption key configurations (Admin API, needs CMEK) |
 
 ## Install
 
@@ -132,7 +134,8 @@ See [Required configuration](#required-configuration) for how to set up credenti
     there. Use one `ProviderConfig` per workspace rather than switching the value on an existing
     one, which would re-target every managed resource that uses it.
 
-    The `organization.anthropic.crossplane.io` resources (`Workspace`, `WorkspaceMember`) call the
+    The `organization.anthropic.crossplane.io` resources (`Workspace`, `WorkspaceMember`, `Invite`,
+    `ExternalKey`) call the
     Admin API, which rejects regular API keys. Give them their own `ProviderConfig` whose secret
     holds an [Admin API key](https://docs.anthropic.com/en/api/administration-api) (`sk-ant-admin...`)
     with the same `APIKey` identity; see
@@ -184,21 +187,23 @@ UPTEST_EXAMPLE_LIST="examples/organization/v1beta1/workspace.yaml" \
 make e2e
 ```
 
-`WorkspaceMember` also needs a datasource file that supplies `${data.anthropic_user_id}`, the
+`WorkspaceMember` and `Invite` also need a datasource file: `${data.anthropic_user_id}` is the
 `user_...` ID of an organization member with the `user` or `developer` role (organization admins
-and billing members are implicit members of every workspace). List members with
-`GET /v1/organizations/users` using the admin key:
+and billing members are implicit members of every workspace; list members with
+`GET /v1/organizations/users` using the admin key), and `${data.anthropic_invite_email}` is a
+throwaway address that receives the invite email during the test:
 
 ```console
-mkdir -p .work && printf 'anthropic_user_id: user_...\n' > .work/uptest-datasource.yaml
+mkdir -p .work && printf 'anthropic_user_id: user_...\nanthropic_invite_email: e2e@example.com\n' > .work/uptest-datasource.yaml
 UPTEST_ADMIN_CREDENTIALS='{"api_key":"YOUR_ANTHROPIC_ADMIN_API_KEY"}' \
 UPTEST_DATASOURCE_PATH=.work/uptest-datasource.yaml \
-UPTEST_EXAMPLE_LIST="examples/organization/v1beta1/workspacemember.yaml" \
+UPTEST_EXAMPLE_LIST="examples/organization/v1beta1/workspacemember.yaml,examples/organization/v1beta1/invite.yaml" \
 make e2e
 ```
 
 In CI the datasource comes from the `UPTEST_DATASOURCE` repository secret, which holds the whole
-YAML file.
+YAML file. `ExternalKey` is excluded from E2E (`upjet.upbound.io/manual-intervention`): it needs
+CMEK enabled for the organization and a real KMS key.
 
 ### Verifying before a pull request
 

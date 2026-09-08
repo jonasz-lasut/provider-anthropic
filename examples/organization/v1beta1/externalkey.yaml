@@ -1,0 +1,22 @@
+---
+apiVersion: organization.anthropic.crossplane.io/v1beta1
+kind: ExternalKey
+metadata:
+  name: example-external-key
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: organization/v1beta1/externalkey
+    upjet.upbound.io/manual-intervention: "Needs customer-managed encryption keys (CMEK) enabled for the organization and a real KMS key the organization can reach; replace spec.forProvider.providerConfig and apply by hand."
+spec:
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: admin
+  forProvider:
+    displayName: example-cmek
+    geo: us
+    providerConfig:
+      type: aws
+      kmsArn: arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000
+      region: us-east-1

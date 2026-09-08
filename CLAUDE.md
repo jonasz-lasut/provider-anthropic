@@ -106,11 +106,13 @@ scaffolding, so always read the overlay before touching the resource.
   (`internal/controller/skill/fs.go`, `internal/capabilities/fs.go`). `Update` creates a new
   version rather than patching. The full deviation list is in **`docs/overlays/skill.md`** — read it
   before touching anything under `skill/`.
-- **`Workspace`** and **`WorkspaceMember`** are the Admin API family under `apis/organization`:
-  a separate group, a separate Admin-key `ProviderConfig` (`admin` in E2E, created by
-  `cluster/test/setup.sh` from `UPTEST_ADMIN_CREDENTIALS`), parameterless `Get`/`Archive`, tags as
-  the default-metadata map, and a member sub-resource keyed by user ID with no ID of its own. See
-  **`docs/overlays/workspace.md`** and **`docs/overlays/workspacemember.md`**.
+- **`Workspace`**, **`WorkspaceMember`**, **`Invite`**, and **`ExternalKey`** are the Admin API
+  family under `apis/organization`: a separate group, a separate Admin-key `ProviderConfig` (`admin`
+  in E2E, created by `cluster/test/setup.sh` from `UPTEST_ADMIN_CREDENTIALS`), parameterless
+  `Get`/`Archive`/`Delete`, tags as the default-metadata map on `Workspace`, a member sub-resource
+  keyed by user ID with no ID of its own, a create-only `Invite`, and a flattened KMS-provider union
+  on `ExternalKey`. See the overlays **`docs/overlays/workspace.md`**, **`workspacemember.md`**,
+  **`invite.md`**, and **`externalkey.md`**.
 - **`MemoryStoreMemory`** and **`VaultCredential`** are *sub-resources*: each maps onto a service
   nested under a parent (`Beta.MemoryStores.Memories`, `Beta.Vaults.Credentials`) whose methods take
   the parent ID as a **positional argument** on `New` and inside the params struct on
@@ -159,10 +161,11 @@ make e2e
 - `cluster/test/setup.sh` runs before the suite: when `UPTEST_CLOUD_CREDENTIALS` is set it creates
   the `provider-secret` Secret and a `default` `ClusterProviderConfig` so examples reconcile; when
   `UPTEST_ADMIN_CREDENTIALS` is set it also creates the `admin` `ClusterProviderConfig` the
-  `examples/organization/` manifests reference. `WorkspaceMember` additionally needs
+  `examples/organization/` manifests reference. `WorkspaceMember` and `Invite` additionally need
   `UPTEST_DATASOURCE_PATH` pointing at a YAML file with `anthropic_user_id: user_...` (a member
-  with the `user` or `developer` role); CI writes the whole file from the `UPTEST_DATASOURCE`
-  repository secret into `.work/uptest-datasource.yaml`.
+  with the `user` or `developer` role) and `anthropic_invite_email: ...` (a throwaway inbox); CI
+  writes the whole file from the `UPTEST_DATASOURCE` repository secret into
+  `.work/uptest-datasource.yaml`. `ExternalKey` is excluded via `upjet.upbound.io/manual-intervention`.
 - Each example manifest carries `testing.upbound.io/example-name` / `meta.upbound.io/example-id`
   labels that Uptest relies on — keep them when editing examples.
 

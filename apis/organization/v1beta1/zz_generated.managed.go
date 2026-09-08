@@ -20,6 +20,86 @@ package v1beta1
 
 import xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
+// GetCondition of this ExternalKey.
+func (mg *ExternalKey) GetCondition(ct xpv2.ConditionType) xpv2.Condition {
+	return mg.Status.GetCondition(ct)
+}
+
+// GetManagementPolicies of this ExternalKey.
+func (mg *ExternalKey) GetManagementPolicies() xpv2.ManagementPolicies {
+	return mg.Spec.ManagementPolicies
+}
+
+// GetProviderConfigReference of this ExternalKey.
+func (mg *ExternalKey) GetProviderConfigReference() *xpv2.ProviderConfigReference {
+	return mg.Spec.ProviderConfigReference
+}
+
+// GetWriteConnectionSecretToReference of this ExternalKey.
+func (mg *ExternalKey) GetWriteConnectionSecretToReference() *xpv2.LocalSecretReference {
+	return mg.Spec.WriteConnectionSecretToReference
+}
+
+// SetConditions of this ExternalKey.
+func (mg *ExternalKey) SetConditions(c ...xpv2.Condition) {
+	mg.Status.SetConditions(c...)
+}
+
+// SetManagementPolicies of this ExternalKey.
+func (mg *ExternalKey) SetManagementPolicies(r xpv2.ManagementPolicies) {
+	mg.Spec.ManagementPolicies = r
+}
+
+// SetProviderConfigReference of this ExternalKey.
+func (mg *ExternalKey) SetProviderConfigReference(r *xpv2.ProviderConfigReference) {
+	mg.Spec.ProviderConfigReference = r
+}
+
+// SetWriteConnectionSecretToReference of this ExternalKey.
+func (mg *ExternalKey) SetWriteConnectionSecretToReference(r *xpv2.LocalSecretReference) {
+	mg.Spec.WriteConnectionSecretToReference = r
+}
+
+// GetCondition of this Invite.
+func (mg *Invite) GetCondition(ct xpv2.ConditionType) xpv2.Condition {
+	return mg.Status.GetCondition(ct)
+}
+
+// GetManagementPolicies of this Invite.
+func (mg *Invite) GetManagementPolicies() xpv2.ManagementPolicies {
+	return mg.Spec.ManagementPolicies
+}
+
+// GetProviderConfigReference of this Invite.
+func (mg *Invite) GetProviderConfigReference() *xpv2.ProviderConfigReference {
+	return mg.Spec.ProviderConfigReference
+}
+
+// GetWriteConnectionSecretToReference of this Invite.
+func (mg *Invite) GetWriteConnectionSecretToReference() *xpv2.LocalSecretReference {
+	return mg.Spec.WriteConnectionSecretToReference
+}
+
+// SetConditions of this Invite.
+func (mg *Invite) SetConditions(c ...xpv2.Condition) {
+	mg.Status.SetConditions(c...)
+}
+
+// SetManagementPolicies of this Invite.
+func (mg *Invite) SetManagementPolicies(r xpv2.ManagementPolicies) {
+	mg.Spec.ManagementPolicies = r
+}
+
+// SetProviderConfigReference of this Invite.
+func (mg *Invite) SetProviderConfigReference(r *xpv2.ProviderConfigReference) {
+	mg.Spec.ProviderConfigReference = r
+}
+
+// SetWriteConnectionSecretToReference of this Invite.
+func (mg *Invite) SetWriteConnectionSecretToReference(r *xpv2.LocalSecretReference) {
+	mg.Spec.WriteConnectionSecretToReference = r
+}
+
 // GetCondition of this Workspace.
 func (mg *Workspace) GetCondition(ct xpv2.ConditionType) xpv2.Condition {
 	return mg.Status.GetCondition(ct)
