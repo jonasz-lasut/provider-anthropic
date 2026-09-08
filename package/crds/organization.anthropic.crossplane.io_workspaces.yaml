@@ -1,0 +1,318 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    anthropic.crossplane.io/sdk-version: v1.71.0
+  name: workspaces.organization.anthropic.crossplane.io
+spec:
+  group: organization.anthropic.crossplane.io
+  names:
+    categories:
+      - crossplane
+      - managed
+      - anthropic
+    kind: Workspace
+    listKind: WorkspaceList
+    plural: workspaces
+    shortNames:
+      - wrkspc
+    singular: workspace
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .status.conditions[?(@.type=='Ready')].status
+          name: READY
+          type: string
+        - jsonPath: .status.conditions[?(@.type=='Synced')].status
+          name: SYNCED
+          type: string
+        - jsonPath: .metadata.annotations.crossplane\.io/external-name
+          name: EXTERNAL-NAME
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: AGE
+          type: date
+      name: v1beta1
+      schema:
+        openAPIV3Schema:
+          description: |-
+            Workspace is a managed resource representing an Anthropic organization
+            workspace (Admin API). Deleting it archives the workspace, which the
+            Anthropic API cannot undo. Requires a ProviderConfig backed by an Admin API
+            key.
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: WorkspaceSpec defines the desired state of Workspace.
+              properties:
+                forProvider:
+                  description: |-
+                    ForProvider holds the configuration the provider reconciles against the
+                    Anthropic API on every loop.
+                  properties:
+                    dataResidency:
+                      description: |-
+                        DataResidency configures data storage and inference geos. When omitted
+                        the API defaults to workspaceGeo "us", allowedInferenceGeos
+                        ["unrestricted"], and defaultInferenceGeo "global".
+                      properties:
+                        allowedInferenceGeos:
+                          description: |-
+                            AllowedInferenceGeos lists the inference geos requests may use. The
+                            single entry "unrestricted" allows every geo, which is the API default.
+                          items:
+                            enum:
+                              - unrestricted
+                              - global
+                              - us
+                            type: string
+                          type: array
+                        defaultInferenceGeo:
+                          description: |-
+                            DefaultInferenceGeo applies when a request omits the parameter. It must
+                            be listed in AllowedInferenceGeos unless that is "unrestricted"; the API
+                            defaults it to "global".
+                          enum:
+                            - global
+                            - us
+                          type: string
+                        workspaceGeo:
+                          description: |-
+                            WorkspaceGeo is the geographic region for workspace data storage.
+                            Immutable after creation; the API defaults it to "us".
+                          enum:
+                            - us
+                          type: string
+                      type: object
+                    displayColor:
+                      description: |-
+                        DisplayColor is the hex color code representing the workspace in the
+                        Anthropic Console, e.g. "#6C5BB9".
+                      type: string
+                    externalKeyId:
+                      description: |-
+                        ExternalKeyID is the ID of the customer-managed encryption key (CMEK)
+                        configuration for this workspace. Requires CMEK to be enabled for the
+                        organization and is write-once: once a key is attached it cannot be
+                        detached or replaced.
+                      type: string
+                    name:
+                      description: 'Required: Name of the workspace.'
+                      type: string
+                    tags:
+                      additionalProperties:
+                        type: string
+                      description: |-
+                        Tags are user-defined string key-value pairs. Keys may not begin with
+                        "anthropic". The provider merges its canonical crossplane-* identifier
+                        tags into this map unless started with --skip-default-metadata.
+                      type: object
+                  type: object
+                managementPolicies:
+                  default:
+                    - '*'
+                  description: |-
+                    THIS IS A BETA FIELD. It is on by default but can be opted out
+                    through a Crossplane feature flag.
+                    ManagementPolicies specify the array of actions Crossplane is allowed to
+                    take on the managed and external resources.
+                    See the design doc for more information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223
+                    and this one: https://github.com/crossplane/crossplane/blob/444267e84783136daa93568b364a5f01228cacbe/design/one-pager-ignore-changes.md
+                  items:
+                    description: |-
+                      A ManagementAction represents an action that the Crossplane controllers
+                      can take on an external resource.
+                    enum:
+                      - Observe
+                      - Create
+                      - Update
+                      - Delete
+                      - LateInitialize
+                      - '*'
+                    type: string
+                  type: array
+                providerConfigRef:
+                  default:
+                    kind: ClusterProviderConfig
+                    name: default
+                  description: |-
+                    ProviderConfigReference specifies how the provider that will be used to
+                    create, observe, update, and delete this managed resource should be
+                    configured.
+                  properties:
+                    kind:
+                      description: Kind of the referenced object.
+                      type: string
+                    name:
+                      description: Name of the referenced object.
+                      type: string
+                  required:
+                    - kind
+                    - name
+                  type: object
+                writeConnectionSecretToRef:
+                  description: |-
+                    WriteConnectionSecretToReference specifies the namespace and name of a
+                    Secret to which any connection details for this managed resource should
+                    be written. Connection details frequently include the endpoint, username,
+                    and password required to connect to the managed resource.
+                  properties:
+                    name:
+                      description: Name of the secret.
+                      type: string
+                  required:
+                    - name
+                  type: object
+              required:
+                - forProvider
+              type: object
+            status:
+              description: WorkspaceStatus defines the observed state of Workspace.
+              properties:
+                atProvider:
+                  description: AtProvider holds the observed state as returned by the Anthropic API.
+                  properties:
+                    archivedAt:
+                      description: ArchivedAt is set when the workspace has been archived.
+                      type: string
+                    compartmentId:
+                      description: CompartmentID is the ID of the compartment that holds the workspace.
+                      type: string
+                    createdAt:
+                      description: CreatedAt is the RFC 3339 timestamp when the workspace was created.
+                      type: string
+                    dataResidency:
+                      description: DataResidency is the observed data residency configuration.
+                      properties:
+                        allowedInferenceGeos:
+                          description: |-
+                            AllowedInferenceGeos lists the inference geos requests may use. The
+                            single entry "unrestricted" allows every geo, which is the API default.
+                          items:
+                            enum:
+                              - unrestricted
+                              - global
+                              - us
+                            type: string
+                          type: array
+                        defaultInferenceGeo:
+                          description: |-
+                            DefaultInferenceGeo applies when a request omits the parameter. It must
+                            be listed in AllowedInferenceGeos unless that is "unrestricted"; the API
+                            defaults it to "global".
+                          enum:
+                            - global
+                            - us
+                          type: string
+                        workspaceGeo:
+                          description: |-
+                            WorkspaceGeo is the geographic region for workspace data storage.
+                            Immutable after creation; the API defaults it to "us".
+                          enum:
+                            - us
+                          type: string
+                      type: object
+                    displayColor:
+                      description: DisplayColor is the observed Console color.
+                      type: string
+                    externalKeyId:
+                      description: ExternalKeyID is the attached CMEK key configuration, if any.
+                      type: string
+                    id:
+                      description: |-
+                        ID is the Anthropic-assigned workspace identifier (wrkspc_...). Also
+                        stored in the external-name annotation, which the reconciler uses as
+                        the primary key.
+                      type: string
+                    name:
+                      description: Name is the observed workspace name.
+                      type: string
+                    tags:
+                      additionalProperties:
+                        type: string
+                      description: Tags is the observed tag map.
+                      type: object
+                  type: object
+                conditions:
+                  description: Conditions of the resource.
+                  items:
+                    description: A Condition that may apply to a resource.
+                    properties:
+                      lastTransitionTime:
+                        description: |-
+                          LastTransitionTime is the last time this condition transitioned from one
+                          status to another.
+                        format: date-time
+                        type: string
+                      message:
+                        description: |-
+                          A Message containing details about this condition's last transition from
+                          one status to another, if any.
+                        type: string
+                      observedGeneration:
+                        description: |-
+                          ObservedGeneration represents the .metadata.generation that the condition was set based upon.
+                          For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                          with respect to the current state of the instance.
+                        format: int64
+                        type: integer
+                      reason:
+                        description: A Reason for this condition's last transition from one status to another.
+                        type: string
+                      status:
+                        description: Status of this condition; is it currently True, False, or Unknown?
+                        type: string
+                      type:
+                        description: |-
+                          Type of this condition. At most one of each condition type may apply to
+                          a resource at any point in time.
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                  x-kubernetes-list-map-keys:
+                    - type
+                  x-kubernetes-list-type: map
+                lastHandledReconcileAt:
+                  description: |-
+                    LastHandledReconcileAt holds the value of the most recent
+                    reconcile-requested-at annotation token that the controller has
+                    processed. Users can compare this to the annotation to determine
+                    whether a reconcile request has been handled.
+                  type: string
+                observedGeneration:
+                  description: |-
+                    ObservedGeneration is the latest metadata.generation
+                    which resulted in either a ready state, or stalled due to error
+                    it can not recover from without human intervention.
+                  format: int64
+                  type: integer
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}

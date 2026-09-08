@@ -1,0 +1,19 @@
+---
+apiVersion: organization.anthropic.crossplane.io/v1beta1
+kind: Invite
+metadata:
+  name: example-invite
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: organization/v1beta1/invite
+spec:
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: admin
+  forProvider:
+    # Creating the invite emails this address; Uptest injects it from the
+    # datasource. Replace with a real address when applying by hand.
+    email: ${data.anthropic_invite_email}
+    role: user

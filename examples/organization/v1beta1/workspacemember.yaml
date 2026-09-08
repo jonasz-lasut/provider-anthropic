@@ -1,0 +1,39 @@
+---
+apiVersion: organization.anthropic.crossplane.io/v1beta1
+kind: WorkspaceMember
+metadata:
+  name: example-workspace-member
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: organization/v1beta1/workspacemember
+spec:
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: admin
+  forProvider:
+    workspaceIdRef:
+      name: example-member-workspace
+    # Injected by Uptest from the datasource. Must be a user with the user or
+    # developer organization role; replace with a user_... ID when applying by hand.
+    userId: ${data.anthropic_user_id}
+    workspaceRole: workspace_developer
+---
+apiVersion: organization.anthropic.crossplane.io/v1beta1
+kind: Workspace
+metadata:
+  name: example-member-workspace
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: organization/v1beta1/workspacemember
+spec:
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: admin
+  forProvider:
+    name: crossplane-example-member-workspace
+    tags:
+      example: "true"

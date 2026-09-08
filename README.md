@@ -20,6 +20,10 @@ and management of resources on the [Anthropic platform](https://docs.anthropic.c
 | `MemoryStore` | `managedagents.anthropic.crossplane.io/v1beta1` | Named stores for agent memories |
 | `MemoryStoreMemory` | `managedagents.anthropic.crossplane.io/v1beta1` | Individual text memories in a store |
 | `Skill` | `managedagents.anthropic.crossplane.io/v1beta1` | Reusable skill packages and their versioned file content for agents |
+| `Workspace` | `organization.anthropic.crossplane.io/v1beta1` | Organization workspaces (Admin API, needs an Admin API key) |
+| `WorkspaceMember` | `organization.anthropic.crossplane.io/v1beta1` | A user's membership and role in a workspace (Admin API) |
+| `Invite` | `organization.anthropic.crossplane.io/v1beta1` | Invitations of users into the organization; create-only (Admin API) |
+| `ExternalKey` | `organization.anthropic.crossplane.io/v1beta1` | Customer-managed encryption key configurations (Admin API, needs CMEK) |
 
 ## Install
 
@@ -130,6 +134,14 @@ See [Required configuration](#required-configuration) for how to set up credenti
     there. Use one `ProviderConfig` per workspace rather than switching the value on an existing
     one, which would re-target every managed resource that uses it.
 
+    The `organization.anthropic.crossplane.io` resources (`Workspace`, `WorkspaceMember`, `Invite`,
+    `ExternalKey`) call the
+    Admin API, which rejects regular API keys. Give them their own `ProviderConfig` whose secret
+    holds an [Admin API key](https://docs.anthropic.com/en/api/administration-api) (`sk-ant-admin...`)
+    with the same `APIKey` identity; see
+    `examples/anthropic/v1beta1/clusterproviderconfig-admin.yaml`. An admin key cannot call the
+    Messages or Managed Agents APIs, so never share one `ProviderConfig` between the two families.
+
 1. **RBAC — managed resources**: If the provider is running inside the cluster (e.g. installed
    with Crossplane or via `make local-deploy`), Crossplane manages the provider's service account
    and automatically generates RBAC for its own CRDs. No manual role binding is required in this case.
@@ -164,6 +176,34 @@ UPTEST_CLOUD_CREDENTIALS='{"api_key":"YOUR_ANTHROPIC_API_KEY"}' \
 UPTEST_EXAMPLE_LIST="examples/managedagents/v1beta1/agent.yaml" \
 make e2e
 ```
+
+The `organization.anthropic.crossplane.io` examples additionally need `UPTEST_ADMIN_CREDENTIALS`,
+the same JSON payload holding an Admin API key, from which `cluster/test/setup.sh` creates the
+`admin` ClusterProviderConfig (in CI it comes from the repository secret of the same name):
+
+```console
+UPTEST_ADMIN_CREDENTIALS='{"api_key":"YOUR_ANTHROPIC_ADMIN_API_KEY"}' \
+UPTEST_EXAMPLE_LIST="examples/organization/v1beta1/workspace.yaml" \
+make e2e
+```
+
+`WorkspaceMember` and `Invite` also need a datasource file: `${data.anthropic_user_id}` is the
+`user_...` ID of an organization member with the `user` or `developer` role (organization admins
+and billing members are implicit members of every workspace; list members with
+`GET /v1/organizations/users` using the admin key), and `${data.anthropic_invite_email}` is a
+throwaway address that receives the invite email during the test:
+
+```console
+mkdir -p .work && printf 'anthropic_user_id: user_...\nanthropic_invite_email: e2e@example.com\n' > .work/uptest-datasource.yaml
+UPTEST_ADMIN_CREDENTIALS='{"api_key":"YOUR_ANTHROPIC_ADMIN_API_KEY"}' \
+UPTEST_DATASOURCE_PATH=.work/uptest-datasource.yaml \
+UPTEST_EXAMPLE_LIST="examples/organization/v1beta1/workspacemember.yaml,examples/organization/v1beta1/invite.yaml" \
+make e2e
+```
+
+In CI the datasource comes from the `UPTEST_DATASOURCE` repository secret, which holds the whole
+YAML file. `ExternalKey` is excluded from E2E (`upjet.upbound.io/manual-intervention`): it needs
+CMEK enabled for the organization and a real KMS key.
 
 ### Verifying before a pull request
 
