@@ -19,6 +19,7 @@ and management of resources on the [Anthropic platform](https://docs.anthropic.c
 | `Environment` | `managedagents.anthropic.crossplane.io/v1beta1` | Cloud container configuration for sessions |
 | `MemoryStore` | `managedagents.anthropic.crossplane.io/v1beta1` | Named stores for agent memories |
 | `MemoryStoreMemory` | `managedagents.anthropic.crossplane.io/v1beta1` | Individual text memories in a store |
+| `Dream` | `managedagents.anthropic.crossplane.io/v1beta1` | Asynchronous memory-consolidation jobs over a store; immutable after creation (research preview) |
 | `Skill` | `managedagents.anthropic.crossplane.io/v1beta1` | Reusable skill packages and their versioned file content for agents |
 | `Workspace` | `organization.anthropic.crossplane.io/v1beta1` | Organization workspaces (Admin API, needs an Admin API key) |
 | `WorkspaceMember` | `organization.anthropic.crossplane.io/v1beta1` | A user's membership and role in a workspace (Admin API) |
@@ -306,7 +307,9 @@ UPTEST_EXAMPLE_LIST="examples/organization/v1beta1/serviceaccount.yaml" \
 make e2e
 ```
 
-In CI the three values come from repository secrets of the same names. Projected tokens carry a
+In CI the three values come from repository secrets of the same names. `full-e2e.yaml` exercises
+every organization kind together and therefore needs the admin key, the datasource file, and the
+federation values at once. Projected tokens carry a
 `jti` claim that Anthropic accepts once, so the provider keeps one SDK client per federation
 identity and the token volume rotates every 10 minutes, well inside the minted token's lifetime.
 A restarted provider may hit a `jti_reused` rejection until the next rotation; the reconciler

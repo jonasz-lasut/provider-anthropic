@@ -8,7 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 objects on the Anthropic platform's [Managed Agents beta API](https://docs.anthropic.com/en/api/managed-agents-overview)
 (Agents, Sessions, Vaults, Skills, Memory stores, …) and the
 [Admin API](https://docs.anthropic.com/en/api/administration-api) organization family (Workspaces,
-Workspace members) as Kubernetes managed resources. It is a
+members, invites, external keys, service accounts, federation issuers and rules) as Kubernetes
+managed resources. It is a
 hand-written provider built directly on the `anthropic-sdk-go` — **not** an Upjet/Terraform-based
 provider, despite reusing the Crossplane build submodule and Uptest tooling.
 
@@ -44,8 +45,11 @@ After **any** change to `apis/` types, run `make generate` and commit the regene
 apis/<group>/<version>/        CRD Go types + handwritten conversion + generated zz_* files
   config/v1beta1/             ProviderConfig / ClusterProviderConfig (credential plumbing)
   managedagents/v1beta1/      Managed Agents resources (Agent, Session, Vault, Skill, …)
-  organization/v1beta1/       Admin API resources (Workspace, WorkspaceMember); need an Admin API key
-internal/clients/              Anthropic SDK client builder, secret resolution, drift diffing
+  organization/v1beta1/       Admin API resources (Workspace, WorkspaceMember, Invite, ExternalKey,
+                              ServiceAccount, FederationIssuer, FederationRule); Admin API key or
+                              WorkloadIdentityFederation identity, never a regular API key
+internal/clients/              Anthropic SDK client builder, secret resolution, federation client
+                              cache, drift diffing
 internal/controller/<kind>/    one package per resource: reconciler.go implements ExternalClient
 internal/controller/setup.go   SetupProviders wires every controller (gated on CRD readiness)
 cmd/provider/main.go           manager bootstrap, scheme registration, CRD gate
