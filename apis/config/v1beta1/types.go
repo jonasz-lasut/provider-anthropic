@@ -33,6 +33,18 @@ type ProviderConfigSpec struct {
 	// Identity specifies how the provider authenticates to the Anthropic API.
 	// +kubebuilder:validation:Required
 	Identity *Identity `json:"identity"`
+
+	// WorkspaceID selects the Anthropic workspace that every request made
+	// through this ProviderConfig runs in, sent as the anthropic-workspace-id
+	// header. Only multi-workspace personal or service-account API keys honour
+	// it; a key bound to a single workspace always runs there. Accepts a
+	// wrkspc_ prefixed workspace ID or the literal "default" for the
+	// organization's Default Workspace. Changing it re-targets every managed
+	// resource using this ProviderConfig to the new workspace, where their
+	// external names do not exist.
+	// +optional
+	// +kubebuilder:validation:Pattern=`^(wrkspc_[A-Za-z0-9]+|default)$`
+	WorkspaceID *string `json:"workspaceID,omitempty"`
 }
 
 // ProviderCredentials specifies how to obtain the Anthropic credentials.
