@@ -7,7 +7,8 @@ metadata:
     meta.crossplane.io/source: "github.com/jonasz-lasut/provider-anthropic"
     meta.crossplane.io/license: "Apache-2.0"
     meta.crossplane.io/description: |
-      A Crossplane provider for the Anthropic platform Managed Agents beta API.
+      A Crossplane provider for the Anthropic platform: the Managed Agents beta API
+      and the Admin API organization resources.
 spec:
   capabilities:
     - SafeStart

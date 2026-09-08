@@ -20,14 +20,16 @@ package apis
 import (
 	"k8s.io/apimachinery/pkg/runtime"
 
-	v1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 	pcv1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/config/v1beta1"
+	v1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
+	orgv1beta1 "github.com/jonasz-lasut/provider-anthropic/apis/organization/v1beta1"
 )
 
 // AddToSchemes collects the AddToScheme functions for every versioned API group.
 var AddToSchemes = runtime.SchemeBuilder{
 	pcv1beta1.SchemeBuilder.AddToScheme,
 	v1beta1.AddToScheme,
+	orgv1beta1.AddToScheme,
 }
 
 // AddToScheme adds all registered types to s.

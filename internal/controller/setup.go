@@ -33,14 +33,17 @@ import (
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/session"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/vault"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/vaultcredential"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/workspace"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/workspacemember"
 )
 
 // SetupProviders registers all controllers with the supplied manager. Each
 // controller is gated: it will only start once its CRD is established.
 //
 // When skipDefaultMetadata is true, the metadata-bearing controllers (Agent,
-// Environment, Deployment, MemoryStore, Session, Vault, VaultCredential) are
-// configured without the default-metadata initializer.
+// Environment, Deployment, MemoryStore, Session, Vault, VaultCredential, and
+// Workspace, whose tag map plays that role) are configured without the
+// default-metadata initializer.
 func SetupProviders(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata bool) error {
 	if err := providerconfig.SetupGated(mgr, o); err != nil {
 		return err
@@ -73,6 +76,12 @@ func SetupProviders(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata 
 		return err
 	}
 	if err := dream.SetupGated(mgr, o); err != nil {
+		return err
+	}
+	if err := workspace.SetupGated(mgr, o, skipDefaultMetadata); err != nil {
+		return err
+	}
+	if err := workspacemember.SetupGated(mgr, o); err != nil {
 		return err
 	}
 	return nil

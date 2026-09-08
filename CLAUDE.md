@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `provider-anthropic` is a [Crossplane](https://crossplane.io/) v2 provider that manages
 objects on the Anthropic platform's [Managed Agents beta API](https://docs.anthropic.com/en/api/managed-agents-overview)
-(Agents, Sessions, Vaults, Skills, Memory stores, …) as Kubernetes managed resources. It is a
+(Agents, Sessions, Vaults, Skills, Memory stores, …) and the
+[Admin API](https://docs.anthropic.com/en/api/administration-api) organization family (Workspaces,
+Workspace members) as Kubernetes managed resources. It is a
 hand-written provider built directly on the `anthropic-sdk-go` — **not** an Upjet/Terraform-based
 provider, despite reusing the Crossplane build submodule and Uptest tooling.
 
@@ -41,7 +43,8 @@ After **any** change to `apis/` types, run `make generate` and commit the regene
 ```
 apis/<group>/<version>/        CRD Go types + handwritten conversion + generated zz_* files
   config/v1beta1/             ProviderConfig / ClusterProviderConfig (credential plumbing)
-  managedagents/v1beta1/               every managed resource
+  managedagents/v1beta1/      Managed Agents resources (Agent, Session, Vault, Skill, …)
+  organization/v1beta1/       Admin API resources (Workspace, WorkspaceMember); need an Admin API key
 internal/clients/              Anthropic SDK client builder, secret resolution, drift diffing
 internal/controller/<kind>/    one package per resource: reconciler.go implements ExternalClient
 internal/controller/setup.go   SetupProviders wires every controller (gated on CRD readiness)
@@ -103,6 +106,11 @@ scaffolding, so always read the overlay before touching the resource.
   (`internal/controller/skill/fs.go`, `internal/capabilities/fs.go`). `Update` creates a new
   version rather than patching. The full deviation list is in **`docs/overlays/skill.md`** — read it
   before touching anything under `skill/`.
+- **`Workspace`** and **`WorkspaceMember`** are the Admin API family under `apis/organization`:
+  a separate group, a separate Admin-key `ProviderConfig` (`admin` in E2E, created by
+  `cluster/test/setup.sh` from `UPTEST_ADMIN_CREDENTIALS`), parameterless `Get`/`Archive`, tags as
+  the default-metadata map, and a member sub-resource keyed by user ID with no ID of its own. See
+  **`docs/overlays/workspace.md`** and **`docs/overlays/workspacemember.md`**.
 - **`MemoryStoreMemory`** and **`VaultCredential`** are *sub-resources*: each maps onto a service
   nested under a parent (`Beta.MemoryStores.Memories`, `Beta.Vaults.Credentials`) whose methods take
   the parent ID as a **positional argument** on `New` and inside the params struct on
@@ -149,7 +157,12 @@ make e2e
 - `UPTEST_EXAMPLE_LIST` is a comma-separated list of example files to apply, wait for
   `Ready,Synced`, then delete.
 - `cluster/test/setup.sh` runs before the suite: when `UPTEST_CLOUD_CREDENTIALS` is set it creates
-  the `provider-secret` Secret and a `default` `ClusterProviderConfig` so examples reconcile.
+  the `provider-secret` Secret and a `default` `ClusterProviderConfig` so examples reconcile; when
+  `UPTEST_ADMIN_CREDENTIALS` is set it also creates the `admin` `ClusterProviderConfig` the
+  `examples/organization/` manifests reference. `WorkspaceMember` additionally needs
+  `UPTEST_DATASOURCE_PATH` pointing at a YAML file with `anthropic_user_id: user_...` (a member
+  with the `user` or `developer` role); CI writes the whole file from the `UPTEST_DATASOURCE`
+  repository secret into `.work/uptest-datasource.yaml`.
 - Each example manifest carries `testing.upbound.io/example-name` / `meta.upbound.io/example-id`
   labels that Uptest relies on — keep them when editing examples.
 
@@ -165,6 +178,10 @@ For changes that don't need the live API, prefer the per-resource conversion uni
 - **Generated files** (`zz_generated.*.go`, `package/crds/*.yaml`, `examples/`) are never
   hand-edited — change the source types/conversion and run `make generate`.
 - **API groups:** credential/config types live under `anthropic.crossplane.io` (`apis/config`);
-  every managed resource lives under `managedagents.anthropic.crossplane.io/v1beta1` (`apis/beta`).
+  Managed Agents resources live under `managedagents.anthropic.crossplane.io/v1beta1`
+  (`apis/managedagents`) and Admin API resources under `organization.anthropic.crossplane.io/v1beta1`
+  (`apis/organization`). The `/add-resource` command assumes the former; the overlays in
+  `docs/overlays/workspace.md` and `docs/overlays/workspacemember.md` list what changes for the
+  organization group, including the separate Admin-key `ProviderConfig` its examples reference.
 - The provider declares the `SafeStart` capability; new controllers must register through
   `SetupGated` so they wait for their CRD.
