@@ -41,6 +41,10 @@ const (
 	errUnmarshalCredentials = "cannot unmarshal Anthropic credentials as JSON"
 	errMissingAPIKey        = "identity type is APIKey but credentials JSON has no \"api_key\" field"
 	errUnknownIdentityType  = "unknown identity type %q"
+
+	// workspaceIDHeader scopes a request to one Anthropic workspace. Only
+	// multi-workspace API keys honour it.
+	workspaceIDHeader = "anthropic-workspace-id"
 )
 
 // NewClient returns an Anthropic SDK client authenticated with the credentials
@@ -82,8 +86,19 @@ func buildClientFromSpec(ctx context.Context, crClient client.Client, pcSpec *pc
 		return nil, err
 	}
 
-	c := anthropic.NewClient(option.WithAPIKey(apiKey))
+	c := anthropic.NewClient(clientOptions(apiKey, pcSpec.WorkspaceID)...)
 	return &c, nil
+}
+
+// clientOptions returns the SDK request options for a ProviderConfig: the API
+// key and, when set, the workspace every request is scoped to. The workspace
+// header is applied client-wide, so no per-resource wiring is needed.
+func clientOptions(apiKey string, workspaceID *string) []option.RequestOption {
+	opts := []option.RequestOption{option.WithAPIKey(apiKey)}
+	if workspaceID != nil && *workspaceID != "" {
+		opts = append(opts, option.WithHeader(workspaceIDHeader, *workspaceID))
+	}
+	return opts
 }
 
 // apiKeyFromCredentials parses the JSON credentials payload and extracts the

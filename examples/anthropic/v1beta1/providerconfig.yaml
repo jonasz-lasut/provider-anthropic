@@ -17,6 +17,8 @@ spec:
       key: credentials
   identity:
     type: APIKey
+  # Optional: scope every request to one workspace; only multi-workspace API keys honour it.
+  # workspaceID: wrkspc_01JwQvzr7rXLA5AGx3HKfFUJ
 ---
 apiVersion: v1
 kind: Secret

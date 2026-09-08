@@ -124,6 +124,12 @@ See [Required configuration](#required-configuration) for how to set up credenti
         type: APIKey
     ```
 
+    Both kinds accept an optional `spec.workspaceID` (a `wrkspc_...` workspace ID or `default`)
+    that is sent as the `anthropic-workspace-id` header on every request. Only multi-workspace
+    personal or service-account API keys honour it; a key bound to one workspace always runs
+    there. Use one `ProviderConfig` per workspace rather than switching the value on an existing
+    one, which would re-target every managed resource that uses it.
+
 1. **RBAC — managed resources**: If the provider is running inside the cluster (e.g. installed
    with Crossplane or via `make local-deploy`), Crossplane manages the provider's service account
    and automatically generates RBAC for its own CRDs. No manual role binding is required in this case.
