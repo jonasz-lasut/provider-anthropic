@@ -1,0 +1,54 @@
+---
+apiVersion: organization.anthropic.crossplane.io/v1beta1
+kind: Workspace
+metadata:
+  name: full-e2e-workspace
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+spec:
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: admin
+  forProvider:
+    name: crossplane-full-e2e-workspace
+    tags:
+      example: "true"
+    dataResidency:
+      workspaceGeo: us
+      allowedInferenceGeos:
+        - unrestricted
+      defaultInferenceGeo: global
+---
+apiVersion: organization.anthropic.crossplane.io/v1beta1
+kind: WorkspaceMember
+metadata:
+  name: full-e2e-workspace-member
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+spec:
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: admin
+  forProvider:
+    workspaceIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: full-e2e
+    userId: ${data.anthropic_user_id}
+    workspaceRole: workspace_developer
+---
+apiVersion: organization.anthropic.crossplane.io/v1beta1
+kind: Invite
+metadata:
+  name: full-e2e-invite
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+spec:
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: admin
+  forProvider:
+    email: ${data.anthropic_invite_email}
+    role: user
