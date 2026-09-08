@@ -159,6 +159,8 @@ CRDDIFF_BASE_REF ?= origin/$(or $(GITHUB_BASE_REF),main)
 MODIFIED_CRD_LIST ?= $(shell git diff --name-only $(CRDDIFF_BASE_REF) -- package/crds/)
 
 # Advisory: reports breaking OpenAPI v3 schema changes per CRD but never fails.
+# No --enable-upjet-extensions: it presumes Upjet's spec.forProvider CEL rules
+# and refuses to load the hand-written ProviderConfig CRDs.
 crddiff:
 	@$(INFO) Checking breaking CRD schema changes against $(CRDDIFF_BASE_REF)
 	@for crd in $(MODIFIED_CRD_LIST); do \
@@ -167,7 +169,7 @@ crddiff:
 			continue ; \
 		fi ; \
 		echo "Checking $${crd} for breaking API changes..." ; \
-		if ! changes_detected=$$(set -o pipefail; go run github.com/upbound/uptest/cmd/crddiff@$(CRDDIFF_VERSION) revision --enable-upjet-extensions <(git cat-file -p "$(CRDDIFF_BASE_REF):$${crd}") "$${crd}" 2>&1 | sed '/^exit status [0-9]*$$/d') ; then \
+		if ! changes_detected=$$(set -o pipefail; go run github.com/upbound/uptest/cmd/crddiff@$(CRDDIFF_VERSION) revision <(git cat-file -p "$(CRDDIFF_BASE_REF):$${crd}") "$${crd}" 2>&1 | sed '/^exit status [0-9]*$$/d') ; then \
 			printf "\033[31m"; echo "Breaking change detected in $${crd}!"; printf "\033[0m" ; \
 			echo "$${changes_detected}" ; \
 			echo ; \
