@@ -31,7 +31,7 @@ make submodules          # required once after clone; targets fail until this ru
 | Verify generated files are committed | `make check-diff` |
 | Run controller locally, out-of-cluster | `make run` (needs a reachable cluster — see README) |
 | Build + deploy into a local Kind cluster | `make local-deploy` |
-| Tear down the local cluster | `make controlplane.down` |
+| Tear down the local cluster | `make controlplane.down` (the cluster's SA signing keypair in `cluster/local/pki/` survives, so its OIDC issuer and JWKS are stable across recreations) |
 
 After **any** change to `apis/` types, run `make generate` and commit the regenerated
 `zz_generated.*.go` files and `package/crds/*.yaml` — CI's `check-diff` fails otherwise.
@@ -67,8 +67,9 @@ Each resource follows the crossplane-runtime `managed.ExternalClient` contract w
 2. **`connector.Connect`** — builds an authenticated `*anthropic.Client` via `clients.NewClient`
    (which resolves the `ProviderConfig`, tracks usage, and extracts the API key from the
    credentials). Credentials are a JSON payload (e.g. `{"api_key":"sk-ant-…"}`); `spec.identity.type`
-   on the `ProviderConfig` selects how it's parsed — `APIKey` is currently the only identity type
-   (`internal/clients/anthropic.go` → `apiKeyFromCredentials`).
+   on the `ProviderConfig` selects how it's parsed — `APIKey` (`internal/clients/anthropic.go` →
+   `apiKeyFromCredentials`) or `WorkloadIdentityFederation`, which skips credentials entirely and
+   builds the client with `federationOptions` (projected token file + SDK jwt-bearer exchange).
 3. **`external` (Observe/Create/Update/Delete)** — translates between the CRD and the SDK using the
    conversion methods on the API type (`ToAnthropicNew`, `ToAnthropicUpdate`, `FromAnthropicObservation`).
 4. **`isUpToDate`** — drift detection (see below).
@@ -113,6 +114,17 @@ scaffolding, so always read the overlay before touching the resource.
   keyed by user ID with no ID of its own, a create-only `Invite`, and a flattened KMS-provider union
   on `ExternalKey`. See the overlays **`docs/overlays/workspace.md`**, **`workspacemember.md`**,
   **`invite.md`**, and **`externalkey.md`**.
+- **`ServiceAccount`**, **`FederationIssuer`**, and **`FederationRule`** (same group) accept only
+  `org:admin` OAuth tokens, so they need a `ProviderConfig` with
+  `spec.identity.type: WorkloadIdentityFederation` (`admin-federation` in E2E): the provider reads a
+  projected ServiceAccount token from `/var/run/secrets/anthropic/token` and the SDK's
+  `option.WithFederationTokenProvider` exchanges it. `internal/clients` keeps one SDK client per
+  federation identity for the life of the process, because projected tokens carry a `jti` claim
+  that Anthropic accepts once. E2E needs the one-time Console bootstrap (README) plus
+  `UPTEST_FEDERATION_ORGANIZATION_ID` / `UPTEST_FEDERATION_RULE_ID`; the Kind cluster signs tokens
+  with the persistent key in `cluster/local/pki/` (gitignored, restored in CI from the
+  `KIND_SA_KEY` secret) so the organization's trust in its issuer survives recreation. See
+  **`docs/overlays/serviceaccount.md`**, **`federationissuer.md`**, and **`federationrule.md`**.
 - **`MemoryStoreMemory`** and **`VaultCredential`** are *sub-resources*: each maps onto a service
   nested under a parent (`Beta.MemoryStores.Memories`, `Beta.Vaults.Credentials`) whose methods take
   the parent ID as a **positional argument** on `New` and inside the params struct on
@@ -161,7 +173,9 @@ make e2e
 - `cluster/test/setup.sh` runs before the suite: when `UPTEST_CLOUD_CREDENTIALS` is set it creates
   the `provider-secret` Secret and a `default` `ClusterProviderConfig` so examples reconcile; when
   `UPTEST_ADMIN_CREDENTIALS` is set it also creates the `admin` `ClusterProviderConfig` the
-  `examples/organization/` manifests reference. `WorkspaceMember` and `Invite` additionally need
+  `examples/organization/` manifests reference; when `UPTEST_FEDERATION_RULE_ID` (with
+  `UPTEST_FEDERATION_ORGANIZATION_ID`) is set it mounts a projected token into the provider and
+  creates the `admin-federation` `ClusterProviderConfig`. `WorkspaceMember` and `Invite` additionally need
   `UPTEST_DATASOURCE_PATH` pointing at a YAML file with `anthropic_user_id: user_...` (a member
   with the `user` or `developer` role) and `anthropic_invite_email: ...` (a throwaway inbox); CI
   writes the whole file from the `UPTEST_DATASOURCE` repository secret into

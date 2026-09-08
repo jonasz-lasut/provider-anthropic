@@ -24,6 +24,9 @@ and management of resources on the [Anthropic platform](https://docs.anthropic.c
 | `WorkspaceMember` | `organization.anthropic.crossplane.io/v1beta1` | A user's membership and role in a workspace (Admin API) |
 | `Invite` | `organization.anthropic.crossplane.io/v1beta1` | Invitations of users into the organization; create-only (Admin API) |
 | `ExternalKey` | `organization.anthropic.crossplane.io/v1beta1` | Customer-managed encryption key configurations (Admin API, needs CMEK) |
+| `ServiceAccount` | `organization.anthropic.crossplane.io/v1beta1` | Workload identities that federation rules target (Admin API, needs federation) |
+| `FederationIssuer` | `organization.anthropic.crossplane.io/v1beta1` | OIDC issuers trusted for workload identity federation (Admin API, needs federation) |
+| `FederationRule` | `organization.anthropic.crossplane.io/v1beta1` | Which issuer tokens may act as which service account (Admin API, needs federation) |
 
 ## Install
 
@@ -142,6 +145,88 @@ See [Required configuration](#required-configuration) for how to set up credenti
     `examples/anthropic/v1beta1/clusterproviderconfig-admin.yaml`. An admin key cannot call the
     Messages or Managed Agents APIs, so never share one `ProviderConfig` between the two families.
 
+1. **Workload identity federation** (`ServiceAccount`, `FederationIssuer`, `FederationRule`): these
+   endpoints accept only `org:admin` OAuth tokens, never API keys. With
+   `spec.identity.type: WorkloadIdentityFederation` the provider exchanges its own projected
+   Kubernetes ServiceAccount token for short-lived Anthropic access tokens through a federation
+   rule; the SDK caches and refreshes them, and no Secret is involved:
+
+    ```yaml
+    apiVersion: anthropic.crossplane.io/v1beta1
+    kind: ClusterProviderConfig
+    metadata:
+      name: admin-federation
+    spec:
+      credentials:
+        source: None
+      workspaceID: default
+      identity:
+        type: WorkloadIdentityFederation
+        federation:
+          organizationID: <uuid from GET /v1/organizations/me>
+          federationRuleID: fdrl_...
+    ```
+
+    Federation tokens are minted for one workspace, so `spec.workspaceID` goes into the exchange
+    rather than a request header. A rule enabled for all workspaces (or more than one) needs the
+    binding or the exchange answers `401 Authentication failed`; the `org:admin` endpoints then
+    ignore it, so `default` is fine for the organization resources.
+
+    The token is read from `/var/run/secrets/anthropic/token` (override with
+    `spec.identity.federation.tokenFile`). Mount it with a `DeploymentRuntimeConfig` referenced by
+    the `Provider`, using the audience the rule matches:
+
+    ```yaml
+    apiVersion: pkg.crossplane.io/v1beta1
+    kind: DeploymentRuntimeConfig
+    metadata:
+      name: provider-anthropic
+    spec:
+      deploymentTemplate:
+        spec:
+          selector: {}
+          template:
+            spec:
+              containers:
+                - name: package-runtime
+                  volumeMounts:
+                    - name: anthropic-identity
+                      mountPath: /var/run/secrets/anthropic
+                      readOnly: true
+              volumes:
+                - name: anthropic-identity
+                  projected:
+                    sources:
+                      - serviceAccountToken:
+                          audience: https://api.anthropic.com
+                          expirationSeconds: 600
+                          path: token
+    ```
+
+    Keep the token lifetime short: projected tokens carry a `jti` claim and Anthropic accepts each
+    one once, so the file has to rotate (the kubelet does so at 80 % of the lifetime) before the
+    provider re-exchanges it shortly before its minted token expires. The provider keeps one SDK
+    client per federation identity for that reason. 600 s is the shortest lifetime Kubernetes
+    allows.
+
+    Anthropic has to trust the cluster first, once, by hand: create a federation issuer for the
+    cluster's OIDC issuer (`kubectl get --raw /.well-known/openid-configuration`; use `inline` keys
+    from `kubectl get --raw /openid/v1/jwks` when Anthropic cannot reach the cluster, Kind
+    included), a service account with the `admin` organization role, and a federation rule that
+    targets it with `oauth_scope: org:admin`, `match.subject_prefix:
+    system:serviceaccount:crossplane-system:provider-anthropic-*`, and `match.audience` equal to
+    the projected token's audience. The API refuses `org:admin` for OAuth callers, so that first
+    rule is created from a Console session. Every further issuer, rule, and `developer`-role
+    service account can then be managed with the resources above.
+
+    The local Kind cluster keeps that trust across recreations: `make controlplane.up` (and
+    everything built on it) creates the cluster with a ServiceAccount signing keypair generated
+    once into `cluster/local/pki/` (gitignored; the private key can mint tokens the organization
+    trusts, so share it only with CI), so the issuer URL and JWKS stay the same after
+    `make controlplane.down`. The E2E workflow restores the same key from the `KIND_SA_KEY`
+    repository secret, so one bootstrap serves local runs and CI alike. Delete
+    `cluster/local/pki/` to rotate the key, then update the issuer's inline keys and the secret.
+
 1. **RBAC — managed resources**: If the provider is running inside the cluster (e.g. installed
    with Crossplane or via `make local-deploy`), Crossplane manages the provider's service account
    and automatically generates RBAC for its own CRDs. No manual role binding is required in this case.
@@ -204,6 +289,28 @@ make e2e
 In CI the datasource comes from the `UPTEST_DATASOURCE` repository secret, which holds the whole
 YAML file. `ExternalKey` is excluded from E2E (`upjet.upbound.io/manual-intervention`): it needs
 CMEK enabled for the organization and a real KMS key.
+
+The federation examples (`serviceaccount.yaml`, `federationissuer.yaml`, `federationrule.yaml`)
+need an organization that trusts the cluster's OIDC issuer through an `org:admin` rule created in
+the Console (a one-time bootstrap, see the workload identity federation section above). The Kind
+cluster signs tokens with the persistent keypair in `cluster/local/pki/`, so that trust survives
+`make controlplane.down` and extends to CI, which restores the same private key from the
+`KIND_SA_KEY` repository secret. With the rule in place, `cluster/test/setup.sh` mounts a projected
+token into the provider and creates the `admin-federation` ClusterProviderConfig:
+
+```console
+UPTEST_FEDERATION_ORGANIZATION_ID=<org uuid> \
+UPTEST_FEDERATION_RULE_ID=fdrl_... \
+UPTEST_FEDERATION_SERVICE_ACCOUNT_ID=svac_... \
+UPTEST_EXAMPLE_LIST="examples/organization/v1beta1/serviceaccount.yaml" \
+make e2e
+```
+
+In CI the three values come from repository secrets of the same names. Projected tokens carry a
+`jti` claim that Anthropic accepts once, so the provider keeps one SDK client per federation
+identity and the token volume rotates every 10 minutes, well inside the minted token's lifetime.
+A restarted provider may hit a `jti_reused` rejection until the next rotation; the reconciler
+retries and recovers on its own.
 
 ### Verifying before a pull request
 

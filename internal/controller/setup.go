@@ -27,11 +27,14 @@ import (
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/dream"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/environment"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/externalkey"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/federationissuer"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/federationrule"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/invite"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/memorystore"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/memorystorememory"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/skill"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/providerconfig"
+	"github.com/jonasz-lasut/provider-anthropic/internal/controller/serviceaccount"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/session"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/vault"
 	"github.com/jonasz-lasut/provider-anthropic/internal/controller/vaultcredential"
@@ -90,6 +93,15 @@ func SetupProviders(mgr ctrl.Manager, o controller.Options, skipDefaultMetadata 
 		return err
 	}
 	if err := externalkey.SetupGated(mgr, o); err != nil {
+		return err
+	}
+	if err := serviceaccount.SetupGated(mgr, o); err != nil {
+		return err
+	}
+	if err := federationissuer.SetupGated(mgr, o); err != nil {
+		return err
+	}
+	if err := federationrule.SetupGated(mgr, o); err != nil {
 		return err
 	}
 	return nil
