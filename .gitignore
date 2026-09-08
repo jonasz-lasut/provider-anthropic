@@ -5,4 +5,5 @@ bin/
 vendor/
 _output/
 .cache/
+.work/
 docs/superpowers/**

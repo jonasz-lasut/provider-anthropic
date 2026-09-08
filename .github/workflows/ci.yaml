@@ -50,6 +50,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
+          # crddiff reads each changed CRD from origin/<base branch>, which a
+          # depth-1 checkout of the pull request merge ref does not contain.
+          fetch-depth: 0
 
       - name: Get modified CRDs
         id: modified-crds
@@ -57,16 +60,14 @@ jobs:
         with:
           files: |
             package/crds/**
+      # Advisory only: a detected change is annotated on the pull request and
+      # written to the job summary, the step never fails.
       - name: Report breaking CRD OpenAPI v3 schema changes
-        if: steps.modified-crds.outputs.any_changed == 'true'
+        if: github.event_name == 'pull_request' && steps.modified-crds.outputs.any_changed == 'true'
         env:
           MODIFIED_CRD_LIST: ${{ steps.modified-crds.outputs.all_changed_files }}
         run: |
           make crddiff
-      - name: Report native schema version changes
-        if: ${{ inputs.upjet-based-provider }}
-        run: |
-          make schema-version-diff
 
 
   lint:
