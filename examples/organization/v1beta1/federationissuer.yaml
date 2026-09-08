@@ -1,0 +1,28 @@
+---
+apiVersion: organization.anthropic.crossplane.io/v1beta1
+kind: FederationIssuer
+metadata:
+  name: example-federation-issuer
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: organization/v1beta1/federationissuer
+spec:
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: admin-federation
+  forProvider:
+    # Slug names are unique per organization, archived issuers included, so
+    # the example randomises them for repeated E2E runs.
+    name: crossplane-example-${Rand.RFC1123Subdomain}
+    issuerUrl: https://${Rand.RFC1123Subdomain}.example.com
+    checkJti: true
+    maxJwtLifetimeSeconds: 3600
+    # Inline keys let Anthropic verify tokens from an issuer it cannot reach,
+    # such as a private Kubernetes cluster (kubectl get --raw /openid/v1/jwks).
+    # This key is a throwaway example key.
+    jwks:
+      type: inline
+      keys:
+        - {"alg":"RS256","e":"AQAB","kid":"example","kty":"RSA","n":"p6_HxQ5VTmcOurMS1KAVp7TN2DTzr_s6XX51Atr1SQwJPQPB-P-jES742GvUedOagz9_cG8YuavVS3_zMELAORYmkhF7mphq-8Qz0-7BO3f0-KiWf9X2r6p1L-6TxUSzuKx_a57vIQetZtNYdlrvdRc_9jdzg-XCEkohfVJTc5etfSwEUCKYVH0ueQn2eUn-ZGs_M8E4bDuMM0xnak_gE2OmZL1fmh-r0FsaMDrdyq_I_mDMEMdiR8XVh1Kw-P88b9abg3U8ZFiy8fO3m6OKyKYD-JwcE2k3-mn-7dIlKAGqueC7QUTyaSk4pZZPRgj3DHhLwOYhppdcmeQHPNBOgQ","use":"sig"}

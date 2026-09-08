@@ -52,3 +52,70 @@ spec:
   forProvider:
     email: ${data.anthropic_invite_email}
     role: user
+---
+# The service-account and federation kinds accept only org:admin OAuth tokens,
+# so they use the admin-federation ClusterProviderConfig that
+# cluster/test/setup.sh creates from UPTEST_FEDERATION_*.
+apiVersion: organization.anthropic.crossplane.io/v1beta1
+kind: ServiceAccount
+metadata:
+  name: full-e2e-service-account
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+spec:
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: admin-federation
+  forProvider:
+    name: crossplane-full-e2e-${Rand.RFC1123Subdomain}
+    description: Created by the provider-anthropic full E2E example
+    organizationRole: developer
+---
+apiVersion: organization.anthropic.crossplane.io/v1beta1
+kind: FederationIssuer
+metadata:
+  name: full-e2e-federation-issuer
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+spec:
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: admin-federation
+  forProvider:
+    name: crossplane-full-e2e-${Rand.RFC1123Subdomain}
+    issuerUrl: https://full-e2e-${Rand.RFC1123Subdomain}.example.com
+    jwks:
+      type: inline
+      keys:
+        - {"alg":"RS256","e":"AQAB","kid":"example","kty":"RSA","n":"p6_HxQ5VTmcOurMS1KAVp7TN2DTzr_s6XX51Atr1SQwJPQPB-P-jES742GvUedOagz9_cG8YuavVS3_zMELAORYmkhF7mphq-8Qz0-7BO3f0-KiWf9X2r6p1L-6TxUSzuKx_a57vIQetZtNYdlrvdRc_9jdzg-XCEkohfVJTc5etfSwEUCKYVH0ueQn2eUn-ZGs_M8E4bDuMM0xnak_gE2OmZL1fmh-r0FsaMDrdyq_I_mDMEMdiR8XVh1Kw-P88b9abg3U8ZFiy8fO3m6OKyKYD-JwcE2k3-mn-7dIlKAGqueC7QUTyaSk4pZZPRgj3DHhLwOYhppdcmeQHPNBOgQ","use":"sig"}
+---
+apiVersion: organization.anthropic.crossplane.io/v1beta1
+kind: FederationRule
+metadata:
+  name: full-e2e-federation-rule
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: full-e2e
+spec:
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: admin-federation
+  forProvider:
+    name: crossplane-full-e2e-${Rand.RFC1123Subdomain}
+    description: Lets the full E2E workload act as the full E2E service account
+    issuerIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: full-e2e
+    serviceAccountIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: full-e2e
+    workspaceIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: full-e2e
+    oauthScope: workspace:developer
+    match:
+      subjectPrefix: "system:serviceaccount:crossplane-system:*"
+      audience: https://api.anthropic.com
+    tokenLifetimeSeconds: 3600

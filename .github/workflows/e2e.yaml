@@ -142,12 +142,32 @@ jobs:
       - name: Vendor Dependencies
         run: make vendor vendor.check
 
+      # The Kind cluster signs ServiceAccount tokens with this key, so its OIDC
+      # issuer and JWKS match the federation issuer the organization already
+      # trusts (see the README on workload identity federation). Without the
+      # secret the cluster gets a throwaway key and the federation examples
+      # cannot authenticate.
+      - name: Restore The Kind Signing Key
+        env:
+          KIND_SA_KEY: ${{ secrets.KIND_SA_KEY }}
+        run: |
+          if [ -n "$KIND_SA_KEY" ]; then
+            mkdir -p cluster/local/pki
+            printf '%s\n' "$KIND_SA_KEY" > cluster/local/pki/sa.key
+            chmod 600 cluster/local/pki/sa.key
+          fi
+
       - name: Run Uptest
         id: run-uptest
         env:
           UPTEST_CLOUD_CREDENTIALS: ${{ secrets.UPTEST_CLOUD_CREDENTIALS }}
           # Admin API key for the organization.anthropic.crossplane.io examples.
           UPTEST_ADMIN_CREDENTIALS: ${{ secrets.UPTEST_ADMIN_CREDENTIALS }}
+          # Workload identity federation for the service-account and federation
+          # examples: the org:admin rule that trusts the Kind cluster's issuer.
+          UPTEST_FEDERATION_ORGANIZATION_ID: ${{ secrets.UPTEST_FEDERATION_ORGANIZATION_ID }}
+          UPTEST_FEDERATION_RULE_ID: ${{ secrets.UPTEST_FEDERATION_RULE_ID }}
+          UPTEST_FEDERATION_SERVICE_ACCOUNT_ID: ${{ secrets.UPTEST_FEDERATION_SERVICE_ACCOUNT_ID }}
           UPTEST_EXAMPLE_LIST: ${{ needs.get-example-list.outputs.example_list }}
           UPTEST_TEST_DIR: ./_output/controlplane-dump
           UPTEST_DATASOURCE_PATH: .work/uptest-datasource.yaml

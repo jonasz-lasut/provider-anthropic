@@ -26,6 +26,67 @@ import (
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// ResolveReferences of this FederationRule.
+func (mg *FederationRule) ResolveReferences(ctx context.Context, c client.Reader) error {
+	r := reference.NewAPINamespacedResolver(c, mg)
+
+	var rsp reference.NamespacedResolutionResponse
+	var err error
+
+	rsp, err = r.Resolve(ctx, reference.NamespacedResolutionRequest{
+		CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.IssuerID),
+		Extract:      extractors.ComputedFieldExtractor("id"),
+		Namespace:    mg.GetNamespace(),
+		Reference:    mg.Spec.ForProvider.IssuerIDRef,
+		Selector:     mg.Spec.ForProvider.IssuerIDSelector,
+		To: reference.To{
+			List:    &FederationIssuerList{},
+			Managed: &FederationIssuer{},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "mg.Spec.ForProvider.IssuerID")
+	}
+	mg.Spec.ForProvider.IssuerID = reference.ToPtrValue(rsp.ResolvedValue)
+	mg.Spec.ForProvider.IssuerIDRef = rsp.ResolvedReference
+
+	rsp, err = r.Resolve(ctx, reference.NamespacedResolutionRequest{
+		CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.ServiceAccountID),
+		Extract:      extractors.ComputedFieldExtractor("id"),
+		Namespace:    mg.GetNamespace(),
+		Reference:    mg.Spec.ForProvider.ServiceAccountIDRef,
+		Selector:     mg.Spec.ForProvider.ServiceAccountIDSelector,
+		To: reference.To{
+			List:    &ServiceAccountList{},
+			Managed: &ServiceAccount{},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "mg.Spec.ForProvider.ServiceAccountID")
+	}
+	mg.Spec.ForProvider.ServiceAccountID = reference.ToPtrValue(rsp.ResolvedValue)
+	mg.Spec.ForProvider.ServiceAccountIDRef = rsp.ResolvedReference
+
+	rsp, err = r.Resolve(ctx, reference.NamespacedResolutionRequest{
+		CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.WorkspaceID),
+		Extract:      extractors.ComputedFieldExtractor("id"),
+		Namespace:    mg.GetNamespace(),
+		Reference:    mg.Spec.ForProvider.WorkspaceIDRef,
+		Selector:     mg.Spec.ForProvider.WorkspaceIDSelector,
+		To: reference.To{
+			List:    &WorkspaceList{},
+			Managed: &Workspace{},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "mg.Spec.ForProvider.WorkspaceID")
+	}
+	mg.Spec.ForProvider.WorkspaceID = reference.ToPtrValue(rsp.ResolvedValue)
+	mg.Spec.ForProvider.WorkspaceIDRef = rsp.ResolvedReference
+
+	return nil
+}
+
 // ResolveReferences of this WorkspaceMember.
 func (mg *WorkspaceMember) ResolveReferences(ctx context.Context, c client.Reader) error {
 	r := reference.NewAPINamespacedResolver(c, mg)

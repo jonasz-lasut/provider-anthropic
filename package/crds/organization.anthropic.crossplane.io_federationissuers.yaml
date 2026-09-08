@@ -1,0 +1,352 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    anthropic.crossplane.io/sdk-version: v1.71.0
+  name: federationissuers.organization.anthropic.crossplane.io
+spec:
+  group: organization.anthropic.crossplane.io
+  names:
+    categories:
+      - crossplane
+      - managed
+      - anthropic
+    kind: FederationIssuer
+    listKind: FederationIssuerList
+    plural: federationissuers
+    shortNames:
+      - fdis
+    singular: federationissuer
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .status.conditions[?(@.type=='Ready')].status
+          name: READY
+          type: string
+        - jsonPath: .status.conditions[?(@.type=='Synced')].status
+          name: SYNCED
+          type: string
+        - jsonPath: .metadata.annotations.crossplane\.io/external-name
+          name: EXTERNAL-NAME
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: AGE
+          type: date
+      name: v1beta1
+      schema:
+        openAPIV3Schema:
+          description: |-
+            FederationIssuer is a managed resource representing an OIDC issuer that an
+            Anthropic organization trusts for workload identity federation (Admin
+            API). The endpoint accepts only org:admin OAuth tokens, so it requires a
+            ProviderConfig with the WorkloadIdentityFederation identity.
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: FederationIssuerSpec defines the desired state of FederationIssuer.
+              properties:
+                forProvider:
+                  description: |-
+                    ForProvider holds the configuration the provider reconciles against the
+                    Anthropic API on every loop.
+                  properties:
+                    checkJti:
+                      description: |-
+                        CheckJTI enforces single use of assertions that carry a jti claim. The
+                        API default is true.
+                      type: boolean
+                    issuerUrl:
+                      description: |-
+                        Required: IssuerURL is the iss claim value tokens must carry, for
+                        example https://kubernetes.default.svc.cluster.local for a Kubernetes
+                        cluster.
+                      type: string
+                    jwks:
+                      description: |-
+                        JWKS configures how signing keys are obtained. Defaults to OIDC
+                        discovery.
+                      properties:
+                        caCertPem:
+                          description: |-
+                            CACertPEM is an optional custom CA for TLS verification of the JWKS
+                            fetch (discovery, explicit_url).
+                          type: string
+                        discoveryBase:
+                          description: |-
+                            DiscoveryBase overrides the discovery URL when it differs from the
+                            issuer URL (discovery).
+                          type: string
+                        keys:
+                          description: |-
+                            Keys are the JWK objects (inline), for example the output of
+                            `kubectl get --raw /openid/v1/jwks`.
+                          items:
+                            x-kubernetes-preserve-unknown-fields: true
+                          type: array
+                          x-kubernetes-preserve-unknown-fields: true
+                        type:
+                          description: |-
+                            Type is discovery (OIDC discovery from the issuer URL, the API default),
+                            explicit_url (a fixed JWKS URL), or inline (keys given here, for
+                            issuers Anthropic cannot reach, such as a private Kubernetes cluster).
+                          enum:
+                            - discovery
+                            - explicit_url
+                            - inline
+                          type: string
+                        url:
+                          description: URL is the JWKS document URL (explicit_url).
+                          type: string
+                      type: object
+                    jwksPollingDisabled:
+                      description: JWKSPollingDisabled stops periodic JWKS re-fetching. Update only.
+                      type: boolean
+                    maxJwtLifetimeSeconds:
+                      description: |-
+                        MaxJWTLifetimeSeconds bounds the iat to exp spread of assertions
+                        (1 to 176400). The API default is 3600.
+                      format: int64
+                      maximum: 176400
+                      minimum: 1
+                      type: integer
+                    name:
+                      description: |-
+                        Required: Name is a slug (lowercase, digits, hyphens), unique within
+                        the organization; a duplicate returns 409.
+                      pattern: ^[a-z0-9][a-z0-9-]*$
+                      type: string
+                  type: object
+                managementPolicies:
+                  default:
+                    - '*'
+                  description: |-
+                    THIS IS A BETA FIELD. It is on by default but can be opted out
+                    through a Crossplane feature flag.
+                    ManagementPolicies specify the array of actions Crossplane is allowed to
+                    take on the managed and external resources.
+                    See the design doc for more information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223
+                    and this one: https://github.com/crossplane/crossplane/blob/444267e84783136daa93568b364a5f01228cacbe/design/one-pager-ignore-changes.md
+                  items:
+                    description: |-
+                      A ManagementAction represents an action that the Crossplane controllers
+                      can take on an external resource.
+                    enum:
+                      - Observe
+                      - Create
+                      - Update
+                      - Delete
+                      - LateInitialize
+                      - '*'
+                    type: string
+                  type: array
+                providerConfigRef:
+                  default:
+                    kind: ClusterProviderConfig
+                    name: default
+                  description: |-
+                    ProviderConfigReference specifies how the provider that will be used to
+                    create, observe, update, and delete this managed resource should be
+                    configured.
+                  properties:
+                    kind:
+                      description: Kind of the referenced object.
+                      type: string
+                    name:
+                      description: Name of the referenced object.
+                      type: string
+                  required:
+                    - kind
+                    - name
+                  type: object
+                writeConnectionSecretToRef:
+                  description: |-
+                    WriteConnectionSecretToReference specifies the namespace and name of a
+                    Secret to which any connection details for this managed resource should
+                    be written. Connection details frequently include the endpoint, username,
+                    and password required to connect to the managed resource.
+                  properties:
+                    name:
+                      description: Name of the secret.
+                      type: string
+                  required:
+                    - name
+                  type: object
+              required:
+                - forProvider
+              type: object
+            status:
+              description: FederationIssuerStatus defines the observed state of FederationIssuer.
+              properties:
+                atProvider:
+                  description: AtProvider holds the observed state as returned by the Anthropic API.
+                  properties:
+                    archivedAt:
+                      description: ArchivedAt is set when the issuer has been archived.
+                      type: string
+                    checkJti:
+                      description: CheckJTI is the observed replay-protection setting.
+                      type: boolean
+                    createdAt:
+                      description: CreatedAt is the RFC 3339 timestamp when the issuer was created.
+                      type: string
+                    createdByActorId:
+                      description: CreatedByActorID identifies who created the issuer.
+                      type: string
+                    id:
+                      description: |-
+                        ID is the Anthropic-assigned issuer identifier (fdis_...). Also stored
+                        in the external-name annotation, which the reconciler uses as the
+                        primary key.
+                      type: string
+                    issuerUrl:
+                      description: IssuerURL is the observed iss value.
+                      type: string
+                    jwks:
+                      description: JWKS is the observed key source configuration.
+                      properties:
+                        caCertPem:
+                          description: |-
+                            CACertPEM is an optional custom CA for TLS verification of the JWKS
+                            fetch (discovery, explicit_url).
+                          type: string
+                        discoveryBase:
+                          description: |-
+                            DiscoveryBase overrides the discovery URL when it differs from the
+                            issuer URL (discovery).
+                          type: string
+                        keys:
+                          description: |-
+                            Keys are the JWK objects (inline), for example the output of
+                            `kubectl get --raw /openid/v1/jwks`.
+                          items:
+                            x-kubernetes-preserve-unknown-fields: true
+                          type: array
+                          x-kubernetes-preserve-unknown-fields: true
+                        type:
+                          description: |-
+                            Type is discovery (OIDC discovery from the issuer URL, the API default),
+                            explicit_url (a fixed JWKS URL), or inline (keys given here, for
+                            issuers Anthropic cannot reach, such as a private Kubernetes cluster).
+                          enum:
+                            - discovery
+                            - explicit_url
+                            - inline
+                          type: string
+                        url:
+                          description: URL is the JWKS document URL (explicit_url).
+                          type: string
+                      type: object
+                    jwksPollingDisabledAt:
+                      description: JWKSPollingDisabledAt is set when polling has been disabled.
+                      type: string
+                    maxJwtLifetimeSeconds:
+                      description: MaxJWTLifetimeSeconds is the observed assertion lifetime bound.
+                      format: int64
+                      type: integer
+                    name:
+                      description: Name is the observed slug.
+                      type: string
+                    pollStatus:
+                      description: PollStatus reports the JWKS polling state.
+                      properties:
+                        consecutiveFailures:
+                          description: ConsecutiveFailures counts failed JWKS fetches in a row.
+                          format: int64
+                          type: integer
+                        lastFetchedAt:
+                          description: LastFetchedAt is the RFC 3339 timestamp of the last successful fetch.
+                          type: string
+                        nextPollAt:
+                          description: NextPollAt is the RFC 3339 timestamp of the next scheduled fetch.
+                          type: string
+                      type: object
+                    updatedAt:
+                      description: UpdatedAt is the RFC 3339 timestamp of the last modification.
+                      type: string
+                    updatedByActorId:
+                      description: UpdatedByActorID identifies who last modified the issuer.
+                      type: string
+                  type: object
+                conditions:
+                  description: Conditions of the resource.
+                  items:
+                    description: A Condition that may apply to a resource.
+                    properties:
+                      lastTransitionTime:
+                        description: |-
+                          LastTransitionTime is the last time this condition transitioned from one
+                          status to another.
+                        format: date-time
+                        type: string
+                      message:
+                        description: |-
+                          A Message containing details about this condition's last transition from
+                          one status to another, if any.
+                        type: string
+                      observedGeneration:
+                        description: |-
+                          ObservedGeneration represents the .metadata.generation that the condition was set based upon.
+                          For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                          with respect to the current state of the instance.
+                        format: int64
+                        type: integer
+                      reason:
+                        description: A Reason for this condition's last transition from one status to another.
+                        type: string
+                      status:
+                        description: Status of this condition; is it currently True, False, or Unknown?
+                        type: string
+                      type:
+                        description: |-
+                          Type of this condition. At most one of each condition type may apply to
+                          a resource at any point in time.
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                  x-kubernetes-list-map-keys:
+                    - type
+                  x-kubernetes-list-type: map
+                lastHandledReconcileAt:
+                  description: |-
+                    LastHandledReconcileAt holds the value of the most recent
+                    reconcile-requested-at annotation token that the controller has
+                    processed. Users can compare this to the annotation to determine
+                    whether a reconcile request has been handled.
+                  type: string
+                observedGeneration:
+                  description: |-
+                    ObservedGeneration is the latest metadata.generation
+                    which resulted in either a ready state, or stalled due to error
+                    it can not recover from without human intervention.
+                  format: int64
+                  type: integer
+              type: object
+          required:
+            - spec
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}

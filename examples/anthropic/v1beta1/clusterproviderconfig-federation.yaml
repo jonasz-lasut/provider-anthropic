@@ -1,0 +1,34 @@
+---
+# ClusterProviderConfig that authenticates through workload identity
+# federation: the provider exchanges its own projected Kubernetes
+# ServiceAccount token for short-lived Anthropic access tokens, so no
+# credentials Secret exists. Required by the service-account and federation
+# resources, whose endpoints accept only org:admin OAuth tokens.
+#
+# Prerequisites (one-time, see the README): a FederationIssuer trusting the
+# cluster's OIDC issuer, a ServiceAccount with the admin organization role,
+# a FederationRule created in the Console granting org:admin to it, and a
+# DeploymentRuntimeConfig that mounts a projected token with the rule's
+# audience at /var/run/secrets/anthropic/token.
+apiVersion: anthropic.crossplane.io/v1beta1
+kind: ClusterProviderConfig
+metadata:
+  name: admin-federation
+  labels:
+    testing.upbound.io/example-name: admin-federation
+  annotations:
+    meta.upbound.io/example-id: anthropic/v1beta1/clusterproviderconfig-federation
+spec:
+  credentials:
+    source: None
+  # Federation tokens are minted for one workspace. A rule enabled for all
+  # workspaces needs this binding on the exchange (401 otherwise); the
+  # org:admin endpoints then ignore it.
+  workspaceID: default
+  identity:
+    type: WorkloadIdentityFederation
+    federation:
+      organizationID: 00000000-0000-0000-0000-000000000000
+      federationRuleID: fdrl_01AbCdEfGhIjKlMnOpQrStUv
+      # serviceAccountID: svac_01AbCdEfGhIjKlMnOpQrStUv
+      # tokenFile: /var/run/secrets/anthropic/token

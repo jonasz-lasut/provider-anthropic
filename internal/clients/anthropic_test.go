@@ -18,9 +18,14 @@ package clients
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
@@ -155,6 +160,156 @@ func TestClientOptions(t *testing.T) {
 
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("request headers: -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+// exchangeServer answers the federation exchange with a minted token and
+// every other request with an empty JSON body, recording what it saw. The SDK
+// exchanges tokens with its own HTTP client, so only a real listener behind
+// WithBaseURL can intercept both calls.
+type exchangeServer struct {
+	mu            sync.Mutex
+	exchange      map[string]any
+	authorization string
+}
+
+func (s *exchangeServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	w.Header().Set("Content-Type", "application/json")
+	if req.URL.Path == "/v1/oauth/token" {
+		raw, _ := io.ReadAll(req.Body)
+		_ = json.Unmarshal(raw, &s.exchange)
+		_, _ = w.Write([]byte(`{"access_token":"minted","token_type":"Bearer","expires_in":3600}`))
+		return
+	}
+	s.authorization = req.Header.Get("Authorization")
+	_, _ = w.Write([]byte("{}"))
+}
+
+func TestFederationOptions(t *testing.T) {
+	type args struct {
+		federation  pcv1beta1.FederationIdentity
+		workspaceID *string
+	}
+	type want struct {
+		Authorization string
+		Exchange      map[string]any
+	}
+	cases := map[string]struct {
+		args args
+		want want
+	}{
+		"RuleOrgServiceAccountWorkspace": {
+			args: args{
+				federation:  pcv1beta1.FederationIdentity{OrganizationID: "3ea445bd-41de-4b81-8def-29f091636bca", FederationRuleID: "fdrl_1", ServiceAccountID: new("svac_1")},
+				workspaceID: new("wrkspc_1"),
+			},
+			want: want{
+				Authorization: "Bearer minted",
+				Exchange: map[string]any{
+					"grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer", "assertion": "jwt-from-file",
+					"federation_rule_id": "fdrl_1", "organization_id": "3ea445bd-41de-4b81-8def-29f091636bca", "service_account_id": "svac_1", "workspace_id": "wrkspc_1",
+				},
+			},
+		},
+		"RuleAndOrgOnly": {
+			args: args{federation: pcv1beta1.FederationIdentity{OrganizationID: "3ea445bd-41de-4b81-8def-29f091636bca", FederationRuleID: "fdrl_1"}},
+			want: want{
+				Authorization: "Bearer minted",
+				Exchange: map[string]any{
+					"grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer", "assertion": "jwt-from-file",
+					"federation_rule_id": "fdrl_1", "organization_id": "3ea445bd-41de-4b81-8def-29f091636bca",
+				},
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			// The SDK's auth middleware yields to any static credential, so
+			// leave the environment without one and point the profile lookup
+			// at an empty home so a developer's local profile cannot interfere.
+			t.Setenv("ANTHROPIC_API_KEY", "")
+			t.Setenv("ANTHROPIC_AUTH_TOKEN", "")
+			t.Setenv("HOME", t.TempDir())
+			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+			tokenFile := filepath.Join(t.TempDir(), "token")
+			if err := os.WriteFile(tokenFile, []byte("jwt-from-file\n"), 0o600); err != nil {
+				t.Fatalf("write token file: %v", err)
+			}
+			fed := tc.args.federation
+			fed.TokenFile = &tokenFile
+			server := &exchangeServer{}
+			srv := httptest.NewServer(server)
+			defer srv.Close()
+
+			c := anthropic.NewClient(append(federationOptions(&fed, tc.args.workspaceID), option.WithBaseURL(srv.URL))...)
+			if _, err := c.Beta.Organization.Workspaces.Get(context.Background(), "wrkspc_1"); err != nil {
+				t.Fatalf("Workspaces.Get(): %v", err)
+			}
+
+			got := want{Authorization: server.authorization, Exchange: server.exchange}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("federation exchange: -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestFederationClient(t *testing.T) {
+	const (
+		org  = "3ea445bd-41de-4b81-8def-29f091636bca"
+		rule = "fdrl_01AbCdEfGhIjKlMnOpQrStUv"
+	)
+	base := pcv1beta1.FederationIdentity{OrganizationID: org, FederationRuleID: rule}
+
+	type args struct {
+		a          pcv1beta1.FederationIdentity
+		aWorkspace *string
+		b          pcv1beta1.FederationIdentity
+		bWorkspace *string
+	}
+	type want struct {
+		shared bool
+	}
+	cases := map[string]struct {
+		args args
+		want want
+	}{
+		"SameIdentitySharesOneClient": {
+			args: args{a: base, b: base},
+			want: want{shared: true},
+		},
+		"ExplicitDefaultTokenFileSharesOneClient": {
+			args: args{a: base, b: pcv1beta1.FederationIdentity{OrganizationID: org, FederationRuleID: rule, TokenFile: new(defaultFederationTokenFile)}},
+			want: want{shared: true},
+		},
+		"DifferentRuleGetsOwnClient": {
+			args: args{a: base, b: pcv1beta1.FederationIdentity{OrganizationID: org, FederationRuleID: "fdrl_01Other"}},
+			want: want{shared: false},
+		},
+		"DifferentServiceAccountGetsOwnClient": {
+			args: args{a: base, b: pcv1beta1.FederationIdentity{OrganizationID: org, FederationRuleID: rule, ServiceAccountID: new("svac_01AbCdEfGhIjKlMnOpQrStUv")}},
+			want: want{shared: false},
+		},
+		"DifferentWorkspaceGetsOwnClient": {
+			args: args{a: base, aWorkspace: new("wrkspc_01JwQvzr7rXLA5AGx3HKfFUJ"), b: base, bWorkspace: new("default")},
+			want: want{shared: false},
+		},
+		"DifferentTokenFileGetsOwnClient": {
+			args: args{a: base, b: pcv1beta1.FederationIdentity{OrganizationID: org, FederationRuleID: rule, TokenFile: new("/var/run/secrets/other/token")}},
+			want: want{shared: false},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			got := federationClient(&tc.args.a, tc.args.aWorkspace) == federationClient(&tc.args.b, tc.args.bWorkspace)
+			if diff := cmp.Diff(tc.want.shared, got); diff != "" {
+				t.Errorf("federationClient(...) shared client: -want, +got:\n%s", diff)
 			}
 		})
 	}

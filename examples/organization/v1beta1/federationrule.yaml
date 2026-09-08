@@ -1,0 +1,69 @@
+---
+apiVersion: organization.anthropic.crossplane.io/v1beta1
+kind: FederationRule
+metadata:
+  name: example-federation-rule
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: organization/v1beta1/federationrule
+spec:
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: admin-federation
+  forProvider:
+    name: crossplane-example-${Rand.RFC1123Subdomain}
+    description: Lets the example workload act as the example service account
+    issuerIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: example
+    serviceAccountIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: example
+    # Rules created through the API may grant workspace:developer or
+    # workspace:inference; org:admin rules are created in the Console.
+    oauthScope: workspace:developer
+    match:
+      subjectPrefix: "system:serviceaccount:crossplane-system:*"
+      audience: https://api.anthropic.com
+    appliesToAllWorkspaces: true
+    tokenLifetimeSeconds: 3600
+---
+apiVersion: organization.anthropic.crossplane.io/v1beta1
+kind: FederationIssuer
+metadata:
+  name: example-rule-issuer
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: organization/v1beta1/federationrule
+spec:
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: admin-federation
+  forProvider:
+    name: crossplane-example-rule-${Rand.RFC1123Subdomain}
+    issuerUrl: https://rule-${Rand.RFC1123Subdomain}.example.com
+    jwks:
+      type: inline
+      keys:
+        - {"alg":"RS256","e":"AQAB","kid":"example","kty":"RSA","n":"p6_HxQ5VTmcOurMS1KAVp7TN2DTzr_s6XX51Atr1SQwJPQPB-P-jES742GvUedOagz9_cG8YuavVS3_zMELAORYmkhF7mphq-8Qz0-7BO3f0-KiWf9X2r6p1L-6TxUSzuKx_a57vIQetZtNYdlrvdRc_9jdzg-XCEkohfVJTc5etfSwEUCKYVH0ueQn2eUn-ZGs_M8E4bDuMM0xnak_gE2OmZL1fmh-r0FsaMDrdyq_I_mDMEMdiR8XVh1Kw-P88b9abg3U8ZFiy8fO3m6OKyKYD-JwcE2k3-mn-7dIlKAGqueC7QUTyaSk4pZZPRgj3DHhLwOYhppdcmeQHPNBOgQ","use":"sig"}
+---
+apiVersion: organization.anthropic.crossplane.io/v1beta1
+kind: ServiceAccount
+metadata:
+  name: example-rule-service-account
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: example
+  annotations:
+    meta.upbound.io/example-id: organization/v1beta1/federationrule
+spec:
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: admin-federation
+  forProvider:
+    name: crossplane-example-rule-${Rand.RFC1123Subdomain}
+    organizationRole: developer

@@ -64,16 +64,64 @@ const (
 	// IdentityTypeAPIKey authenticates using a static API key read from the
 	// "api_key" field of the JSON credentials payload.
 	IdentityTypeAPIKey IdentityType = "APIKey"
+
+	// IdentityTypeWorkloadIdentityFederation authenticates with short-lived
+	// access tokens that the provider mints by exchanging a Kubernetes
+	// projected ServiceAccount token through an Anthropic federation rule.
+	// No credentials Secret is involved; set credentials.source to None.
+	IdentityTypeWorkloadIdentityFederation IdentityType = "WorkloadIdentityFederation"
 )
 
 // Identity specifies the authentication identity configuration.
+// +kubebuilder:validation:XValidation:rule="self.type != 'WorkloadIdentityFederation' || has(self.federation)",message="spec.identity.federation is required when type is WorkloadIdentityFederation"
 type Identity struct {
 	// Type of identity used to authenticate to the Anthropic API.
-	// APIKey: authenticate using a static API key read from the "api_key"
-	// field of the JSON credentials payload.
+	// APIKey: a static API key read from the "api_key" field of the JSON
+	// credentials payload (regular, organization-scoped, or Admin API key).
+	// WorkloadIdentityFederation: short-lived access tokens exchanged from a
+	// projected Kubernetes ServiceAccount token through the federation rule
+	// in spec.identity.federation; the only identity accepted by the Admin
+	// API's service-account and federation endpoints.
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=APIKey
+	// +kubebuilder:validation:Enum=APIKey;WorkloadIdentityFederation
 	Type IdentityType `json:"type"`
+
+	// Federation configures the WorkloadIdentityFederation identity. Required
+	// for that type and ignored for the others.
+	// +optional
+	Federation *FederationIdentity `json:"federation,omitempty"`
+}
+
+// FederationIdentity describes how the provider exchanges its Kubernetes
+// identity for Anthropic access tokens. The SDK performs the jwt-bearer
+// exchange at /v1/oauth/token, caches the access token, and re-exchanges it
+// near expiry, so nothing long-lived is ever stored.
+type FederationIdentity struct {
+	// OrganizationID is the UUID of the Anthropic organization the federation
+	// rule belongs to (the id returned by GET /v1/organizations/me).
+	// +kubebuilder:validation:MinLength=1
+	OrganizationID string `json:"organizationID"`
+
+	// FederationRuleID is the federation rule (fdrl_...) whose issuer trusts
+	// the cluster's ServiceAccount tokens and whose target decides the role
+	// and scope of the minted access tokens.
+	// +kubebuilder:validation:Pattern=`^fdrl_[A-Za-z0-9]+$`
+	FederationRuleID string `json:"federationRuleID"`
+
+	// ServiceAccountID is an optional expected-target check (svac_...) for
+	// rules that target a service account; the exchange fails if the rule
+	// targets a different account.
+	// +optional
+	// +kubebuilder:validation:Pattern=`^svac_[A-Za-z0-9]+$`
+	ServiceAccountID *string `json:"serviceAccountID,omitempty"`
+
+	// TokenFile is the path of the identity token inside the provider pod,
+	// normally a projected ServiceAccount token volume that the
+	// DeploymentRuntimeConfig mounts with the audience the federation rule
+	// expects; the kubelet rotates it and every exchange reads it fresh.
+	// +optional
+	// +kubebuilder:default="/var/run/secrets/anthropic/token"
+	TokenFile *string `json:"tokenFile,omitempty"`
 }
 
 // ProviderConfigStatus represents the observed state of a ProviderConfig.

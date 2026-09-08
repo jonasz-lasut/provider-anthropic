@@ -143,6 +143,38 @@ uptest: $(UPTEST) $(KUBECTL) $(CHAINSAW) $(CROSSPLANE_CLI)
 	@KUBECTL=$(KUBECTL) CHAINSAW=$(CHAINSAW) CROSSPLANE_CLI=$(CROSSPLANE_CLI) CROSSPLANE_NAMESPACE=$(CROSSPLANE_NAMESPACE) $(UPTEST) e2e "${UPTEST_EXAMPLE_LIST}" --data-source="${UPTEST_DATASOURCE_PATH}" --setup-script=cluster/test/setup.sh --default-conditions="Ready,Synced" || $(FAIL)
 	@$(OK) running automated tests
 
+# The Kind cluster signs ServiceAccount tokens with a keypair kept outside the
+# cluster so its OIDC issuer and JWKS survive recreation: an Anthropic
+# federation issuer registered once (see README, workload identity federation)
+# keeps trusting the provider after `make controlplane.down` and in CI, which
+# writes the same key from a repository secret. The private key can mint tokens
+# the organization trusts, so it is gitignored.
+KIND_SA_KEY_DIR ?= cluster/local/pki
+KIND_CONFIG_TEMPLATE ?= cluster/local/kind.yaml
+
+$(KIND_SA_KEY_DIR)/sa.key:
+	@$(INFO) generating the Kind ServiceAccount signing key in $(KIND_SA_KEY_DIR)
+	@mkdir -p $(KIND_SA_KEY_DIR)
+	@openssl genrsa -out $@ 2048 2>/dev/null
+	@$(OK) generating the Kind ServiceAccount signing key in $(KIND_SA_KEY_DIR)
+
+# The public half is derived, so CI only needs the private key (written from
+# the KIND_SA_KEY repository secret before make e2e).
+$(KIND_SA_KEY_DIR)/sa.pub: $(KIND_SA_KEY_DIR)/sa.key
+	@openssl rsa -in $< -pubout -out $@ 2>/dev/null
+
+# Creates the Kind cluster with the persistent signing keypair before the
+# makelib's controlplane.up runs, which then only installs Crossplane.
+kind.up: $(KIND) $(KIND_SA_KEY_DIR)/sa.pub
+	@$(KIND) get kubeconfig --name $(KIND_CLUSTER_NAME) >/dev/null 2>&1 || { \
+		$(INFO) creating Kind cluster $(KIND_CLUSTER_NAME) with the persistent signing keypair; \
+		mkdir -p $(WORK_DIR); \
+		sed "s|__PKI_DIR__|$(abspath $(KIND_SA_KEY_DIR))|g" $(KIND_CONFIG_TEMPLATE) > $(WORK_DIR)/kind.yaml; \
+		$(KIND) create cluster --name=$(KIND_CLUSTER_NAME) --config $(WORK_DIR)/kind.yaml; \
+	}
+
+controlplane.up: kind.up
+
 local-deploy: build controlplane.up local.xpkg.deploy.provider.$(PROJECT_NAME)
 	@$(INFO) running locally built provider
 	@$(KUBECTL) wait provider.pkg $(PROJECT_NAME) --for condition=Healthy --timeout 5m
@@ -181,7 +213,7 @@ crddiff:
 	done
 	@$(OK) Checking breaking CRD schema changes
 
-.PHONY: cobertura submodules fallthrough run crds.clean crddiff
+.PHONY: cobertura submodules fallthrough run crds.clean crddiff kind.up
 
 # ====================================================================================
 # Special Targets
