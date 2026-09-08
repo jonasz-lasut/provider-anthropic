@@ -18,102 +18,174 @@ package v1beta1_test
 
 import (
 	"testing"
+	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
+	"github.com/anthropics/anthropic-sdk-go/packages/param"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+
 	. "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 )
 
-func TestToAnthropicNew(t *testing.T) {
-	sk := &Skill{}
-	sk.Spec.ForProvider.DisplayTitle = ptr("My Skill")
+// optString compares param.Opt[string] by validity and value; the SDK keeps
+// the omitted-or-valid state in unexported fields.
+var optString = cmp.Comparer(func(a, b param.Opt[string]) bool {
+	return a.Valid() == b.Valid() && a.Value == b.Value
+})
 
-	params := sk.ToAnthropicNew()
-
-	if !params.DisplayTitle.Valid() || params.DisplayTitle.Value != "My Skill" {
-		t.Errorf("expected DisplayTitle=My Skill, got %+v", params.DisplayTitle)
+func TestSkillToAnthropicNew(t *testing.T) {
+	cases := map[string]struct {
+		args SkillParameters
+		want anthropic.BetaSkillNewParams
+	}{
+		"DisplayTitleSentAsDisplayName": {
+			args: SkillParameters{DisplayTitle: new("My Skill")},
+			want: anthropic.BetaSkillNewParams{DisplayName: anthropic.String("My Skill")},
+		},
+		"NoDisplayTitle": {
+			args: SkillParameters{},
+			want: anthropic.BetaSkillNewParams{},
+		},
 	}
-	// Files are NOT set here — they are assembled by the reconciler.
-	if len(params.Files) != 0 {
-		t.Errorf("expected no Files in params, got %d", len(params.Files))
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			sk := &Skill{Spec: SkillSpec{ForProvider: tc.args}}
+
+			got := sk.ToAnthropicNew()
+
+			// Files are never set by the conversion layer; the reconciler appends them.
+			if diff := cmp.Diff(tc.want, got, optString, cmpopts.IgnoreUnexported(anthropic.BetaSkillNewParams{})); diff != "" {
+				t.Errorf("ToAnthropicNew(): -want, +got:\n%s", diff)
+			}
+		})
 	}
 }
 
-func TestToAnthropicNew_NoDisplayTitle(t *testing.T) {
-	sk := &Skill{}
-	params := sk.ToAnthropicNew()
-	if params.DisplayTitle.Valid() {
-		t.Error("expected DisplayTitle to be unset")
+func TestSkillToAnthropicNewVersion(t *testing.T) {
+	got := (&Skill{}).ToAnthropicNewVersion()
+
+	// Files are never set by the conversion layer; the reconciler appends them.
+	if diff := cmp.Diff(anthropic.BetaSkillVersionNewParams{}, got, optString, cmpopts.IgnoreUnexported(anthropic.BetaSkillVersionNewParams{})); diff != "" {
+		t.Errorf("ToAnthropicNewVersion(): -want, +got:\n%s", diff)
 	}
 }
 
-func TestToAnthropicNewVersion(t *testing.T) {
-	sk := &Skill{}
-	params := sk.ToAnthropicNewVersion()
-	// Files are NOT set here — assembled by reconciler.
-	if len(params.Files) != 0 {
-		t.Errorf("expected no Files in params, got %d", len(params.Files))
+func TestSkillFromAnthropicSkillObservation(t *testing.T) {
+	cases := map[string]struct {
+		args anthropic.BetaSkill
+		want SkillObservation
+	}{
+		"AllFields": {
+			args: anthropic.BetaSkill{
+				ID:              "skl_123",
+				DisplayName:     "My Skill",
+				Source:          anthropic.BetaSkillSource{Type: anthropic.BetaSkillSourceTypeCustom},
+				CreatedAt:       time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+				UpdatedAt:       time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC),
+				LatestVersionID: "skver_456",
+			},
+			want: SkillObservation{
+				ID:              new("skl_123"),
+				DisplayTitle:    new("My Skill"),
+				Source:          new("custom"),
+				CreatedAt:       new("2026-01-01T00:00:00Z"),
+				UpdatedAt:       new("2026-01-02T00:00:00Z"),
+				LatestVersionID: new("skver_456"),
+			},
+		},
+		"PluginSource": {
+			args: anthropic.BetaSkill{
+				ID:     "skl_789",
+				Source: anthropic.BetaSkillSource{Type: anthropic.BetaSkillSourceTypePlugin},
+			},
+			want: SkillObservation{
+				ID:              new("skl_789"),
+				DisplayTitle:    new(""),
+				Source:          new("plugin"),
+				CreatedAt:       new(time.Time{}.Format(time.RFC3339)),
+				UpdatedAt:       new(time.Time{}.Format(time.RFC3339)),
+				LatestVersionID: new(""),
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			sk := &Skill{}
+
+			sk.FromAnthropicSkillObservation(tc.args)
+
+			if diff := cmp.Diff(tc.want, sk.Status.AtProvider); diff != "" {
+				t.Errorf("FromAnthropicSkillObservation(): -want, +got:\n%s", diff)
+			}
+		})
 	}
 }
 
-func TestFromAnthropicSkillObservation(t *testing.T) {
-	sk := &Skill{}
-	resp := anthropic.BetaSkillGetResponse{
-		ID:            "skl_123",
-		DisplayTitle:  "My Skill",
-		Source:        "custom",
-		CreatedAt:     "2026-01-01T00:00:00Z",
-		UpdatedAt:     "2026-01-02T00:00:00Z",
-		LatestVersion: "1759178010641129",
-	}
-
-	sk.FromAnthropicSkillObservation(resp)
-
-	if sk.Status.AtProvider.ID == nil || *sk.Status.AtProvider.ID != "skl_123" {
-		t.Errorf("ID mismatch: %v", sk.Status.AtProvider.ID)
-	}
-	if sk.Status.AtProvider.DisplayTitle == nil || *sk.Status.AtProvider.DisplayTitle != "My Skill" {
-		t.Errorf("DisplayTitle mismatch")
-	}
-	if sk.Status.AtProvider.Source == nil || *sk.Status.AtProvider.Source != "custom" {
-		t.Errorf("Source mismatch")
-	}
-	if sk.Status.AtProvider.LatestVersion == nil || *sk.Status.AtProvider.LatestVersion != "1759178010641129" {
-		t.Errorf("LatestVersion mismatch")
-	}
-	if sk.Status.AtProvider.CreatedAt == nil || *sk.Status.AtProvider.CreatedAt != "2026-01-01T00:00:00Z" {
-		t.Errorf("CreatedAt mismatch")
-	}
-	if sk.Status.AtProvider.UpdatedAt == nil || *sk.Status.AtProvider.UpdatedAt != "2026-01-02T00:00:00Z" {
-		t.Errorf("UpdatedAt mismatch")
-	}
-}
-
-func TestFromAnthropicVersionObservation(t *testing.T) {
-	sk := &Skill{}
-	resp := anthropic.BetaSkillVersionGetResponse{
-		ID:          "skv_456",
+func TestSkillFromAnthropicVersionObservation(t *testing.T) {
+	version := anthropic.BetaSkillVersion{
+		ID:          "skver_456",
+		SkillID:     "skl_123",
 		Name:        "my-skill",
 		Description: "Does something useful",
-		Directory:   "myskill",
-		Version:     "1759178010641129",
-		CreatedAt:   "2026-01-01T00:00:00Z",
+		CreatedAt:   time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
-	sk.FromAnthropicVersionObservation(resp)
+	cases := map[string]struct {
+		args struct {
+			initial SkillObservation
+			resp    anthropic.BetaSkillVersion
+		}
+		want SkillObservation
+	}{
+		"AllFields": {
+			args: struct {
+				initial SkillObservation
+				resp    anthropic.BetaSkillVersion
+			}{resp: version},
+			want: SkillObservation{
+				LatestVersionID:          new("skver_456"),
+				LatestVersionName:        new("my-skill"),
+				LatestVersionDescription: new("Does something useful"),
+				LatestVersionCreatedAt:   new("2026-01-01T00:00:00Z"),
+			},
+		},
+		"PreservesSkillLevelFields": {
+			args: struct {
+				initial SkillObservation
+				resp    anthropic.BetaSkillVersion
+			}{
+				initial: SkillObservation{
+					ID:              new("skl_123"),
+					DisplayTitle:    new("My Skill"),
+					LatestVersionID: new("skver_old"),
+					FilesSha256:     new("deadbeef"),
+				},
+				resp: version,
+			},
+			want: SkillObservation{
+				ID:                       new("skl_123"),
+				DisplayTitle:             new("My Skill"),
+				LatestVersionID:          new("skver_456"),
+				LatestVersionName:        new("my-skill"),
+				LatestVersionDescription: new("Does something useful"),
+				LatestVersionCreatedAt:   new("2026-01-01T00:00:00Z"),
+				FilesSha256:              new("deadbeef"),
+			},
+		},
+	}
 
-	if sk.Status.AtProvider.LatestVersionID == nil || *sk.Status.AtProvider.LatestVersionID != "skv_456" {
-		t.Errorf("LatestVersionID mismatch")
-	}
-	if sk.Status.AtProvider.LatestVersionName == nil || *sk.Status.AtProvider.LatestVersionName != "my-skill" {
-		t.Errorf("LatestVersionName mismatch")
-	}
-	if sk.Status.AtProvider.LatestVersionDescription == nil || *sk.Status.AtProvider.LatestVersionDescription != "Does something useful" {
-		t.Errorf("LatestVersionDescription mismatch")
-	}
-	if sk.Status.AtProvider.LatestVersionDirectory == nil || *sk.Status.AtProvider.LatestVersionDirectory != "myskill" {
-		t.Errorf("LatestVersionDirectory mismatch")
-	}
-	if sk.Status.AtProvider.LatestVersionCreatedAt == nil || *sk.Status.AtProvider.LatestVersionCreatedAt != "2026-01-01T00:00:00Z" {
-		t.Errorf("LatestVersionCreatedAt mismatch")
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			sk := &Skill{Status: SkillStatus{AtProvider: tc.args.initial}}
+
+			sk.FromAnthropicVersionObservation(tc.args.resp)
+
+			if diff := cmp.Diff(tc.want, sk.Status.AtProvider); diff != "" {
+				t.Errorf("FromAnthropicVersionObservation(): -want, +got:\n%s", diff)
+			}
+		})
 	}
 }

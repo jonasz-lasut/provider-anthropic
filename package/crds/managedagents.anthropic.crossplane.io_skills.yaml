@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    anthropic.crossplane.io/sdk-version: v1.67.0
+    anthropic.crossplane.io/sdk-version: v1.71.0
   name: skills.managedagents.anthropic.crossplane.io
 spec:
   group: managedagents.anthropic.crossplane.io
@@ -67,9 +67,11 @@ spec:
                   properties:
                     displayTitle:
                       description: |-
-                        DisplayTitle is the human-readable label for the skill.
-                        Immutable after creation — the Anthropic API provides no endpoint to
-                        update BetaSkill. Changes require delete and recreate.
+                        DisplayTitle is the human-readable, single-line label for the skill,
+                        sent to the Anthropic API as display_name (maximum 255 characters, not
+                        unique). When omitted the API derives it from the SKILL.md frontmatter
+                        name. Immutable after creation - the Anthropic API provides no endpoint
+                        to update a Skill. Changes require delete and recreate.
                       type: string
                     filesSecretRef:
                       description: |-
@@ -79,7 +81,9 @@ spec:
                         key at minimum. The reconciler automatically places all files under a
                         top-level directory named after the Skill resource (e.g. the Skill named
                         "my-skill" uploads files as "my-skill/SKILL.md"). Content changes trigger
-                        a new SkillVersion.
+                        a new SkillVersion. The skill name (the SKILL.md frontmatter name, or the
+                        directory when omitted) is fixed by the first upload and every later
+                        upload must resolve to the same value.
                       properties:
                         name:
                           description: Name of the secret.
@@ -158,7 +162,7 @@ spec:
                       description: CreatedAt is the ISO 8601 timestamp when the skill was created.
                       type: string
                     displayTitle:
-                      description: DisplayTitle is the observed human-readable label.
+                      description: DisplayTitle is the observed human-readable label (the API's display_name).
                       type: string
                     filesSha256:
                       description: |-
@@ -171,11 +175,6 @@ spec:
                         ID is the Anthropic-assigned skill identifier (skl_...). Also stored in
                         the external-name annotation, which the reconciler uses as the primary key.
                       type: string
-                    latestVersion:
-                      description: |-
-                        LatestVersion is the version string of the most recent SkillVersion
-                        (a Unix epoch timestamp, e.g. "1759178010641129").
-                      type: string
                     latestVersionCreatedAt:
                       description: |-
                         LatestVersionCreatedAt is the ISO 8601 timestamp when the latest version
@@ -184,19 +183,23 @@ spec:
                     latestVersionDescription:
                       description: LatestVersionDescription is extracted from SKILL.md by the Anthropic API.
                       type: string
-                    latestVersionDirectory:
-                      description: |-
-                        LatestVersionDirectory is the top-level directory name extracted from the
-                        uploaded file paths (e.g. "myskill").
-                      type: string
                     latestVersionId:
-                      description: LatestVersionID is the Anthropic-assigned ID of the latest SkillVersion.
+                      description: |-
+                        LatestVersionID is the Anthropic-assigned ID of the newest SkillVersion.
+                        It addresses the version in API paths and is what "latest" references
+                        resolve to.
                       type: string
                     latestVersionName:
-                      description: LatestVersionName is extracted from SKILL.md by the Anthropic API.
+                      description: |-
+                        LatestVersionName is the skill's immutable kebab-case slug, set at
+                        creation from the first upload's SKILL.md frontmatter name (or its
+                        enclosing directory). It is also the top-level directory of the skill's
+                        mounted files.
                       type: string
                     source:
-                      description: Source is either "custom" (user-created) or "anthropic".
+                      description: |-
+                        Source is where the skill comes from: "custom" (user-created),
+                        "anthropic", "anthropic_example", or "plugin".
                       type: string
                     updatedAt:
                       description: UpdatedAt is the ISO 8601 timestamp of the last modification.

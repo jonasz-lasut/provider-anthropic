@@ -125,8 +125,8 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	sk.FromAnthropicSkillObservation(*skillResp)
 
-	if skillResp.LatestVersion != "" {
-		verResp, err := e.client.Beta.Skills.Versions.Get(ctx, skillResp.LatestVersion, anthropic.BetaSkillVersionGetParams{
+	if skillResp.LatestVersionID != "" {
+		verResp, err := e.client.Beta.Skills.Versions.Get(ctx, skillResp.LatestVersionID, anthropic.BetaSkillVersionGetParams{
 			SkillID: skillID,
 		})
 		if err == nil {
@@ -200,7 +200,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	sk.Status.AtProvider.ID = &skillID
 
 	// Skills.New already created the initial version; fetch its details.
-	if verResp, err := e.client.Beta.Skills.Versions.Get(ctx, skillResp.LatestVersion, anthropic.BetaSkillVersionGetParams{
+	if verResp, err := e.client.Beta.Skills.Versions.Get(ctx, skillResp.LatestVersionID, anthropic.BetaSkillVersionGetParams{
 		SkillID: skillID,
 	}); err == nil {
 		sk.FromAnthropicVersionObservation(*verResp)
@@ -247,7 +247,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
 
-	populateVersionStatus(sk, verResp)
+	sk.FromAnthropicVersionObservation(*verResp)
 	sk.Status.AtProvider.FilesSha256 = &fullHex
 
 	return managed.ExternalUpdate{}, nil
@@ -264,25 +264,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalDelete{}, nil
 	}
 
-	// The API rejects Skills.Delete when versions exist; delete them all first.
-	pager := e.client.Beta.Skills.Versions.ListAutoPaging(ctx, skillID, anthropic.BetaSkillVersionListParams{})
-	for pager.Next() {
-		ver := pager.Current()
-		_, err := e.client.Beta.Skills.Versions.Delete(ctx, ver.Version, anthropic.BetaSkillVersionDeleteParams{
-			SkillID: skillID,
-		})
-		if err != nil {
-			var apiErr *anthropic.Error
-			if errors.As(err, &apiErr) && apiErr.StatusCode == 404 {
-				continue
-			}
-			return managed.ExternalDelete{}, xperrors.Wrap(err, errDelete)
-		}
-	}
-	if err := pager.Err(); err != nil {
-		return managed.ExternalDelete{}, xperrors.Wrap(err, errDelete)
-	}
-
+	// Skills.Delete removes the Skill together with all of its versions.
 	_, err := e.client.Beta.Skills.Delete(ctx, skillID, anthropic.BetaSkillDeleteParams{})
 	if err != nil {
 		var apiErr *anthropic.Error
@@ -296,18 +278,6 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 func (e *external) Disconnect(_ context.Context) error { return nil }
-
-// populateVersionStatus copies fields from a BetaSkillVersionNewResponse into
-// the Skill's AtProvider status. It mirrors FromAnthropicVersionObservation but
-// accepts the New-variant response type (which has identical exported fields).
-func populateVersionStatus(sk *v1beta1.Skill, resp *anthropic.BetaSkillVersionNewResponse) {
-	sk.Status.AtProvider.LatestVersion = &resp.Version
-	sk.Status.AtProvider.LatestVersionID = &resp.ID
-	sk.Status.AtProvider.LatestVersionName = &resp.Name
-	sk.Status.AtProvider.LatestVersionDescription = &resp.Description
-	sk.Status.AtProvider.LatestVersionDirectory = &resp.Directory
-	sk.Status.AtProvider.LatestVersionCreatedAt = &resp.CreatedAt
-}
 
 // prefixKeys returns a copy of data with every key prefixed by "<name>/".
 // Secret keys are flat filenames (e.g. "SKILL.md"); the Anthropic API requires

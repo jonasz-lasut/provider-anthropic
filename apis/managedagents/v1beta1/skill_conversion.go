@@ -17,42 +17,48 @@ limitations under the License.
 package v1beta1
 
 import (
+	"time"
+
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 )
 
-// ToAnthropicNew converts ForProvider to BetaSkillNewParams.
-// Files are NOT included — they are assembled by the reconciler from the
+// ToAnthropicNew converts ForProvider to BetaSkillNewParams. DisplayTitle is
+// sent as the API's display_name.
+// Files are NOT included - they are assembled by the reconciler from the
 // staged filesystem and appended to params.Files before calling the SDK.
 func (r *Skill) ToAnthropicNew() anthropic.BetaSkillNewParams {
 	params := anthropic.BetaSkillNewParams{}
 	if r.Spec.ForProvider.DisplayTitle != nil {
-		params.DisplayTitle = anthropic.String(*r.Spec.ForProvider.DisplayTitle)
+		params.DisplayName = anthropic.String(*r.Spec.ForProvider.DisplayTitle)
 	}
 	return params
 }
 
 // ToAnthropicNewVersion returns BetaSkillVersionNewParams.
-// Files are NOT included — assembled by the reconciler before calling the SDK.
+// Files are NOT included - assembled by the reconciler before calling the SDK.
 func (r *Skill) ToAnthropicNewVersion() anthropic.BetaSkillVersionNewParams {
 	return anthropic.BetaSkillVersionNewParams{}
 }
 
-// FromAnthropicSkillObservation populates AtProvider from a BetaSkillGetResponse.
-func (r *Skill) FromAnthropicSkillObservation(resp anthropic.BetaSkillGetResponse) {
+// FromAnthropicSkillObservation populates AtProvider from a BetaSkill.
+func (r *Skill) FromAnthropicSkillObservation(resp anthropic.BetaSkill) {
 	r.Status.AtProvider.ID = &resp.ID
-	r.Status.AtProvider.DisplayTitle = &resp.DisplayTitle
-	r.Status.AtProvider.Source = &resp.Source
-	r.Status.AtProvider.CreatedAt = &resp.CreatedAt
-	r.Status.AtProvider.UpdatedAt = &resp.UpdatedAt
-	r.Status.AtProvider.LatestVersion = &resp.LatestVersion
+	r.Status.AtProvider.DisplayTitle = &resp.DisplayName
+	source := string(resp.Source.Type)
+	r.Status.AtProvider.Source = &source
+	createdAt := resp.CreatedAt.Format(time.RFC3339)
+	r.Status.AtProvider.CreatedAt = &createdAt
+	updatedAt := resp.UpdatedAt.Format(time.RFC3339)
+	r.Status.AtProvider.UpdatedAt = &updatedAt
+	r.Status.AtProvider.LatestVersionID = &resp.LatestVersionID
 }
 
 // FromAnthropicVersionObservation populates AtProvider version fields from a
-// BetaSkillVersionGetResponse.
-func (r *Skill) FromAnthropicVersionObservation(resp anthropic.BetaSkillVersionGetResponse) {
+// BetaSkillVersion.
+func (r *Skill) FromAnthropicVersionObservation(resp anthropic.BetaSkillVersion) {
 	r.Status.AtProvider.LatestVersionID = &resp.ID
 	r.Status.AtProvider.LatestVersionName = &resp.Name
 	r.Status.AtProvider.LatestVersionDescription = &resp.Description
-	r.Status.AtProvider.LatestVersionDirectory = &resp.Directory
-	r.Status.AtProvider.LatestVersionCreatedAt = &resp.CreatedAt
+	createdAt := resp.CreatedAt.Format(time.RFC3339)
+	r.Status.AtProvider.LatestVersionCreatedAt = &createdAt
 }

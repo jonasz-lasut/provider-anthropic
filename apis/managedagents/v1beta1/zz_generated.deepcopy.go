@@ -2837,11 +2837,6 @@ func (in *SkillObservation) DeepCopyInto(out *SkillObservation) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.LatestVersion != nil {
-		in, out := &in.LatestVersion, &out.LatestVersion
-		*out = new(string)
-		**out = **in
-	}
 	if in.LatestVersionID != nil {
 		in, out := &in.LatestVersionID, &out.LatestVersionID
 		*out = new(string)
@@ -2854,11 +2849,6 @@ func (in *SkillObservation) DeepCopyInto(out *SkillObservation) {
 	}
 	if in.LatestVersionDescription != nil {
 		in, out := &in.LatestVersionDescription, &out.LatestVersionDescription
-		*out = new(string)
-		**out = **in
-	}
-	if in.LatestVersionDirectory != nil {
-		in, out := &in.LatestVersionDirectory, &out.LatestVersionDirectory
 		*out = new(string)
 		**out = **in
 	}
