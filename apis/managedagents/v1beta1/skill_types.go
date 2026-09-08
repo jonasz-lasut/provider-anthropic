@@ -25,9 +25,11 @@ import (
 
 // SkillParameters defines the desired state of an Anthropic Skill.
 type SkillParameters struct {
-	// DisplayTitle is the human-readable label for the skill.
-	// Immutable after creation — the Anthropic API provides no endpoint to
-	// update BetaSkill. Changes require delete and recreate.
+	// DisplayTitle is the human-readable, single-line label for the skill,
+	// sent to the Anthropic API as display_name (maximum 255 characters, not
+	// unique). When omitted the API derives it from the SKILL.md frontmatter
+	// name. Immutable after creation - the Anthropic API provides no endpoint
+	// to update a Skill. Changes require delete and recreate.
 	// +optional
 	DisplayTitle *string `json:"displayTitle,omitempty"`
 
@@ -37,7 +39,9 @@ type SkillParameters struct {
 	// key at minimum. The reconciler automatically places all files under a
 	// top-level directory named after the Skill resource (e.g. the Skill named
 	// "my-skill" uploads files as "my-skill/SKILL.md"). Content changes trigger
-	// a new SkillVersion.
+	// a new SkillVersion. The skill name (the SKILL.md frontmatter name, or the
+	// directory when omitted) is fixed by the first upload and every later
+	// upload must resolve to the same value.
 	FilesSecretRef xpv2.LocalSecretReference `json:"filesSecretRef"`
 }
 
@@ -48,11 +52,12 @@ type SkillObservation struct {
 	// +optional
 	ID *string `json:"id,omitempty"`
 
-	// DisplayTitle is the observed human-readable label.
+	// DisplayTitle is the observed human-readable label (the API's display_name).
 	// +optional
 	DisplayTitle *string `json:"displayTitle,omitempty"`
 
-	// Source is either "custom" (user-created) or "anthropic".
+	// Source is where the skill comes from: "custom" (user-created),
+	// "anthropic", "anthropic_example", or "plugin".
 	// +optional
 	Source *string `json:"source,omitempty"`
 
@@ -64,27 +69,22 @@ type SkillObservation struct {
 	// +optional
 	UpdatedAt *string `json:"updatedAt,omitempty"`
 
-	// LatestVersion is the version string of the most recent SkillVersion
-	// (a Unix epoch timestamp, e.g. "1759178010641129").
-	// +optional
-	LatestVersion *string `json:"latestVersion,omitempty"`
-
-	// LatestVersionID is the Anthropic-assigned ID of the latest SkillVersion.
+	// LatestVersionID is the Anthropic-assigned ID of the newest SkillVersion.
+	// It addresses the version in API paths and is what "latest" references
+	// resolve to.
 	// +optional
 	LatestVersionID *string `json:"latestVersionId,omitempty"`
 
-	// LatestVersionName is extracted from SKILL.md by the Anthropic API.
+	// LatestVersionName is the skill's immutable kebab-case slug, set at
+	// creation from the first upload's SKILL.md frontmatter name (or its
+	// enclosing directory). It is also the top-level directory of the skill's
+	// mounted files.
 	// +optional
 	LatestVersionName *string `json:"latestVersionName,omitempty"`
 
 	// LatestVersionDescription is extracted from SKILL.md by the Anthropic API.
 	// +optional
 	LatestVersionDescription *string `json:"latestVersionDescription,omitempty"`
-
-	// LatestVersionDirectory is the top-level directory name extracted from the
-	// uploaded file paths (e.g. "myskill").
-	// +optional
-	LatestVersionDirectory *string `json:"latestVersionDirectory,omitempty"`
 
 	// LatestVersionCreatedAt is the ISO 8601 timestamp when the latest version
 	// was created.

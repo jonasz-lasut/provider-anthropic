@@ -7,6 +7,30 @@ contains the full rationale.
 
 ---
 
+## 0. GA-shaped beta service (anthropic-sdk-go >= v1.68.0)
+
+Since SDK v1.68.0 `client.Beta.Skills` no longer sends the `skills-2025-10-02`
+beta header and returns the GA Skills shapes with `Beta`-prefixed type names
+(`BetaSkill`, `BetaSkillVersion`, `BetaDeletedSkill`, `BetaDeletedSkillVersion`).
+The provider stays on `client.Beta.Skills`; what changed underneath:
+
+| Beta shape (SDK <= v1.67.0) | GA shape (SDK >= v1.68.0) | Provider mapping |
+|---|---|---|
+| `display_title` | `display_name` (max 255, not unique, derived from `SKILL.md` `name` when omitted) | `spec.forProvider.displayTitle` keeps its CRD name and is sent as `DisplayName`; the CRD rename is tracked in issue #119 |
+| `latest_version` (epoch-microsecond string) | `latest_version_id` (`skver_...`) | `atProvider.latestVersion` removed; `atProvider.latestVersionId` populated from the Skill object and used to address versions |
+| `source` string (`custom` \| `anthropic`) | `source.type` enum (`custom`, `anthropic`, `anthropic_example`, `plugin`) | `atProvider.source` holds `source.type` |
+| Version `directory` field | dropped; `name` is the immutable kebab-case slug and the mount directory | `atProvider.latestVersionDirectory` removed; `atProvider.latestVersionName` doc updated |
+| `created_at` / `updated_at` strings | `time.Time` | formatted as RFC 3339 like every other resource |
+| `Skills.Delete` returns 400 while versions exist | deletes the Skill together with all versions | reconciler `Delete()` calls `Skills.Delete` directly, no version loop |
+| deleting the only version allowed | returns 400 | not exercised: the provider never deletes versions |
+
+The skill `name` is fixed by the first upload (frontmatter `name`, or the
+enclosing directory when omitted) and every later upload must resolve to the
+same value, so changing the frontmatter `name` in the referenced Secret makes
+`Versions.New` fail.
+
+---
+
 ## 1. Two SDK resources, one CRD
 
 **Standard:** one CRD maps to one `Beta<Resource>` SDK service.
@@ -15,10 +39,10 @@ contains the full rationale.
 
 | CRD operation | SDK calls |
 |---|---|
-| Create | `Beta.Skills.New` then `Beta.Skills.Versions.New` |
+| Create | `Beta.Skills.New` (creates the first version) then `Beta.Skills.Versions.Get(resp.LatestVersionID)` |
 | Update | `Beta.Skills.Versions.New` only (no Skill-level update) |
-| Delete | `Beta.Skills.Delete` (cascades all versions) |
-| Observe | `Beta.Skills.Get` then `Beta.Skills.Versions.Get(resp.LatestVersion)` |
+| Delete | `Beta.Skills.Delete` (deletes the Skill together with all of its versions) |
+| Observe | `Beta.Skills.Get` then `Beta.Skills.Versions.Get(resp.LatestVersionID)` |
 
 The external-name annotation stores the **Skill ID** (`skl_...`).
 
@@ -40,11 +64,13 @@ Conversion methods only produce the non-file params:
 // skill_conversion.go
 func (r *Skill) ToAnthropicNew() anthropic.BetaSkillNewParams
 func (r *Skill) ToAnthropicNewVersion() anthropic.BetaSkillVersionNewParams
-func (r *Skill) FromAnthropicSkillObservation(resp anthropic.BetaSkillGetResponse)
-func (r *Skill) FromAnthropicVersionObservation(resp anthropic.BetaSkillVersionGetResponse)
+func (r *Skill) FromAnthropicSkillObservation(resp anthropic.BetaSkill)
+func (r *Skill) FromAnthropicVersionObservation(resp anthropic.BetaSkillVersion)
 ```
 
 There is no `ToAnthropicUpdate` — use `ToAnthropicNewVersion` instead.
+`Versions.New` and `Versions.Get` both return `BetaSkillVersion`, so the
+reconciler feeds either response to `FromAnthropicVersionObservation`.
 
 ---
 
@@ -55,10 +81,12 @@ There is no `ToAnthropicUpdate` — use `ToAnthropicNewVersion` instead.
 **Skill:** the Anthropic API has no update endpoint for `BetaSkill` or
 `BetaSkillVersion`. `Update()` in the reconciler calls
 `Beta.Skills.Versions.New(ctx, skillID, params)` and then updates
-`AtProvider` version fields and `AtProvider.FilesSha256`.
+`AtProvider` version fields (via `FromAnthropicVersionObservation`) and
+`AtProvider.FilesSha256`.
 
-`displayTitle` is effectively immutable after creation — drift on it is not
-detected and changes require delete+recreate.
+`displayTitle` (sent as the API's `display_name`) is effectively immutable
+after creation — drift on it is not detected and changes require
+delete+recreate.
 
 ---
 
