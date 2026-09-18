@@ -29,7 +29,7 @@ env:
 
 jobs:
   detect-noop:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     outputs:
       noop: ${{ steps.noop.outputs.should_skip }}
     steps:
@@ -42,7 +42,7 @@ jobs:
           do_not_skip: '["workflow_dispatch", "schedule", "push"]'
 
   report-breaking-changes:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
     steps:
@@ -71,7 +71,7 @@ jobs:
 
 
   lint:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
 
@@ -115,7 +115,7 @@ jobs:
           version: ${{ env.GOLANGCI_VERSION }}
 
   check-diff:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
 
@@ -158,7 +158,7 @@ jobs:
         run: make check-diff
 
   unit-tests:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
 
@@ -207,7 +207,7 @@ jobs:
           files: _output/tests/linux_amd64/coverage.txt
 
   local-deploy:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
 
