@@ -41,6 +41,95 @@
       depNameTemplate: 'go',
       datasourceTemplate: 'golang-version',
     },
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^Makefile$/',
+      ],
+      matchStrings: [
+        'KIND_VERSION \\??= (?<currentValue>\\S+)',
+      ],
+      depNameTemplate: 'kubernetes-sigs/kind',
+      datasourceTemplate: 'github-tags',
+    },
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^Makefile$/',
+      ],
+      matchStrings: [
+        'UPTEST_VERSION \\??= (?<currentValue>\\S+)',
+      ],
+      depNameTemplate: 'crossplane/uptest',
+      datasourceTemplate: 'github-releases',
+    },
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^Makefile$/',
+      ],
+      matchStrings: [
+        'CRDDIFF_VERSION \\??= (?<currentValue>\\S+)',
+      ],
+      depNameTemplate: 'upbound/uptest',
+      datasourceTemplate: 'github-tags',
+    },
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^Makefile$/',
+      ],
+      matchStrings: [
+        'CROSSPLANE_VERSION \\??= (?<currentValue>\\S+)',
+      ],
+      depNameTemplate: 'crossplane/crossplane',
+      datasourceTemplate: 'github-releases',
+      extractVersionTemplate: '^v(?<version>.+)$',
+    },
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^Makefile$/',
+      ],
+      matchStrings: [
+        'CROSSPLANE_CLI_VERSION \\??= (?<currentValue>\\S+)',
+      ],
+      depNameTemplate: 'crossplane/cli',
+      datasourceTemplate: 'github-releases',
+    },
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^Makefile$/',
+      ],
+      matchStrings: [
+        'KUBECTL_VALIDATE_VERSION \\??= (?<currentValue>\\S+)',
+      ],
+      depNameTemplate: 'kubernetes-sigs/kubectl-validate',
+      datasourceTemplate: 'github-releases',
+    },
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^\\.github/workflows/ci\\.yaml$/',
+      ],
+      matchStrings: [
+        "DOCKER_BUILDX_VERSION: '(?<currentValue>[^']+)'",
+      ],
+      depNameTemplate: 'docker/buildx',
+      datasourceTemplate: 'github-releases',
+    },
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^\\.github/workflows/supplychain\\.yaml$/',
+      ],
+      matchStrings: [
+        'UP_VERSION: (?<currentValue>v\\S+)',
+      ],
+      depNameTemplate: 'upbound/up',
+      datasourceTemplate: 'github-releases',
+    },
   ],
   packageRules: [
     {
