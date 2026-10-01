@@ -79,8 +79,9 @@ type SessionResource struct {
 
 	// AuthorizationTokenSecretRef references a Secret in the MR's namespace
 	// holding the GitHub authorization token used to clone the repository
-	// (github_repository type). The token is resolved at reconcile time and
-	// never stored in status.atProvider.
+	// (github_repository type). Omit it to mount a public repository. The
+	// token is resolved at reconcile time and never stored in
+	// status.atProvider.
 	// +optional
 	AuthorizationTokenSecretRef *xpv2.LocalSecretKeySelector `json:"authorizationTokenSecretRef,omitempty"`
 

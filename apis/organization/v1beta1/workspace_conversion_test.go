@@ -199,9 +199,9 @@ func TestWorkspaceFromAnthropicObservation(t *testing.T) {
 				CreatedAt:     created,
 				ArchivedAt:    created,
 				DataResidency: anthropic.BetaDataResidency{
-					WorkspaceGeo:         "us",
-					DefaultInferenceGeo:  "us",
-					AllowedInferenceGeos: anthropic.BetaDataResidencyAllowedInferenceGeosUnion{OfGeos: []string{"us"}},
+					WorkspaceGeo:         anthropic.BetaDataResidencyWorkspaceGeoUs,
+					DefaultInferenceGeo:  anthropic.BetaDataResidencyDefaultInferenceGeoUs,
+					AllowedInferenceGeos: anthropic.BetaDataResidencyAllowedInferenceGeosUnion{OfGeos: []anthropic.BetaAllowedInferenceGeo{anthropic.BetaAllowedInferenceGeoUs}},
 				},
 			},
 			want: WorkspaceObservation{
@@ -227,8 +227,8 @@ func TestWorkspaceFromAnthropicObservation(t *testing.T) {
 				Tags:          map[string]string{},
 				CreatedAt:     created,
 				DataResidency: anthropic.BetaDataResidency{
-					WorkspaceGeo:         "us",
-					DefaultInferenceGeo:  "global",
+					WorkspaceGeo:         anthropic.BetaDataResidencyWorkspaceGeoUs,
+					DefaultInferenceGeo:  anthropic.BetaDataResidencyDefaultInferenceGeoGlobal,
 					AllowedInferenceGeos: anthropic.BetaDataResidencyAllowedInferenceGeosUnion{OfUnrestricted: constant.ValueOf[constant.Unrestricted]()},
 				},
 			},
