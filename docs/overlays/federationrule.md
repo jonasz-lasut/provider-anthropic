@@ -42,7 +42,10 @@ value with 400, so the CRD omits it.
 `FederationRuleWorkspace`, `ServiceAccountWorkspace`, and
 `WorkspaceServiceAccount` (add/list/remove bindings) are not modeled; a rule
 binds one workspace through `workspaceId` or all of them through
-`appliesToAllWorkspaces`.
+`appliesToAllWorkspaces`. The GA response no longer returns the legacy
+`workspace_id`, so `atProvider.workspaceId` is derived from `workspaceIds` when
+that list holds exactly one ID, which keeps drift detection on
+`spec.forProvider.workspaceId`.
 
 ---
 
@@ -50,5 +53,5 @@ binds one workspace through `workspaceId` or all of them through
 
 - [ ] `apis/organization/v1beta1/federationrule_types.go` — `FederationRuleMatch`, three references, slug pattern on `name`
 - [ ] `apis/organization/v1beta1/federationrule_conversion.go` — `target` from `serviceAccountId`, `matchParam`
-- [ ] `internal/controller/federationrule/reconciler.go` — `Beta.Organization.Federation.Rules.*`, archived observed as absent
+- [ ] `internal/controller/federationrule/reconciler.go` — `Organization.Federation.Rules.*`, archived observed as absent
 - [ ] `examples/organization/v1beta1/federationrule.yaml` — companion issuer and service account selected by label, `appliesToAllWorkspaces: true`

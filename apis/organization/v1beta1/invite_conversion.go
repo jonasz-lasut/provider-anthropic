@@ -22,15 +22,15 @@ import (
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 )
 
-// ToAnthropicNew converts ForProvider to BetaOrganizationInviteNewParams.
-func (r *Invite) ToAnthropicNew() anthropic.BetaOrganizationInviteNewParams {
+// ToAnthropicNew converts ForProvider to OrganizationInviteNewParams.
+func (r *Invite) ToAnthropicNew() anthropic.OrganizationInviteNewParams {
 	p := r.Spec.ForProvider
-	params := anthropic.BetaOrganizationInviteNewParams{}
+	params := anthropic.OrganizationInviteNewParams{}
 	if p.Email != nil {
 		params.Email = *p.Email
 	}
 	if p.Role != nil {
-		params.Role = anthropic.BetaOrganizationInviteNewParamsRole(*p.Role)
+		params.Role = anthropic.OrganizationInviteNewParamsRole(*p.Role)
 	}
 	if p.RBACGroupIDs != nil {
 		params.RBACGroupIDs = p.RBACGroupIDs
@@ -38,8 +38,8 @@ func (r *Invite) ToAnthropicNew() anthropic.BetaOrganizationInviteNewParams {
 	return params
 }
 
-// FromAnthropicObservation populates AtProvider from a BetaOrganizationInvite.
-func (r *Invite) FromAnthropicObservation(resp anthropic.BetaOrganizationInvite) {
+// FromAnthropicObservation populates AtProvider from a OrganizationInvite.
+func (r *Invite) FromAnthropicObservation(resp anthropic.OrganizationInvite) {
 	r.Status.AtProvider.ID = &resp.ID
 	r.Status.AtProvider.Email = &resp.Email
 	role := string(resp.Role)

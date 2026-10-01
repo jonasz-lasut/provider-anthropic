@@ -11,7 +11,7 @@ that applies when implementing the `Invite` managed resource. It lives in the
 
 **Standard:** `ToAnthropicUpdate` plus an `Update()` that calls the SDK.
 
-**Invite:** `BetaOrganizationInviteService` has `New`, `Get`, `List`, and
+**Invite:** `OrganizationInviteService` has `New`, `Get`, `List`, and
 `Delete` only. There is no `ToAnthropicUpdate`; `Update()` is a no-op and
 `Observe` reports `ResourceUpToDate: true` unconditionally, the same shape as
 `Dream`. Every spec field (`email`, `role`, `rbacGroupIds`) is immutable;

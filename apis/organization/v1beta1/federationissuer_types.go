@@ -73,8 +73,8 @@ type FederationIssuerPollStatus struct {
 
 // FederationIssuerParameters defines the desired state of an Anthropic
 // FederationIssuer. These fields map to
-// BetaOrganizationFederationIssuerNewParams /
-// BetaOrganizationFederationIssuerUpdateParams from the Anthropic SDK.
+// OrganizationFederationIssuerNewParams /
+// OrganizationFederationIssuerUpdateParams from the Anthropic SDK.
 type FederationIssuerParameters struct {
 	// Required: Name is a slug (lowercase, digits, hyphens), unique within
 	// the organization; a duplicate returns 409.

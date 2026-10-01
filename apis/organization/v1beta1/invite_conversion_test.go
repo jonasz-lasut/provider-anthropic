@@ -30,19 +30,19 @@ import (
 func TestInviteToAnthropicNew(t *testing.T) {
 	cases := map[string]struct {
 		args InviteParameters
-		want anthropic.BetaOrganizationInviteNewParams
+		want anthropic.OrganizationInviteNewParams
 	}{
 		"EmailRoleGroups": {
 			args: InviteParameters{Email: new("dev@example.com"), Role: new("developer"), RBACGroupIDs: []string{"grp_1"}},
-			want: anthropic.BetaOrganizationInviteNewParams{
+			want: anthropic.OrganizationInviteNewParams{
 				Email:        "dev@example.com",
-				Role:         anthropic.BetaOrganizationInviteNewParamsRoleDeveloper,
+				Role:         anthropic.OrganizationInviteNewParamsRoleDeveloper,
 				RBACGroupIDs: []string{"grp_1"},
 			},
 		},
 		"Empty": {
 			args: InviteParameters{},
-			want: anthropic.BetaOrganizationInviteNewParams{},
+			want: anthropic.OrganizationInviteNewParams{},
 		},
 	}
 
@@ -52,7 +52,7 @@ func TestInviteToAnthropicNew(t *testing.T) {
 
 			got := r.ToAnthropicNew()
 
-			if diff := cmp.Diff(tc.want, got, cmpopts.IgnoreUnexported(anthropic.BetaOrganizationInviteNewParams{})); diff != "" {
+			if diff := cmp.Diff(tc.want, got, cmpopts.IgnoreUnexported(anthropic.OrganizationInviteNewParams{})); diff != "" {
 				t.Errorf("ToAnthropicNew(): -want, +got:\n%s", diff)
 			}
 		})
@@ -64,13 +64,13 @@ func TestInviteFromAnthropicObservation(t *testing.T) {
 	expires := invited.Add(21 * 24 * time.Hour)
 
 	cases := map[string]struct {
-		args anthropic.BetaOrganizationInvite
+		args anthropic.OrganizationInvite
 		want InviteObservation
 	}{
 		"Pending": {
-			args: anthropic.BetaOrganizationInvite{
-				ID: "invite_1", Email: "dev@example.com", Role: anthropic.BetaOrganizationRoleDeveloper,
-				Status: anthropic.BetaOrganizationInviteStatusPending, InvitedAt: invited, ExpiresAt: expires,
+			args: anthropic.OrganizationInvite{
+				ID: "invite_1", Email: "dev@example.com", Role: anthropic.OrganizationRoleDeveloper,
+				Status: anthropic.OrganizationInviteStatusPending, InvitedAt: invited, ExpiresAt: expires,
 			},
 			want: InviteObservation{
 				ID: new("invite_1"), Email: new("dev@example.com"), Role: new("developer"), Status: new("pending"),
@@ -78,9 +78,9 @@ func TestInviteFromAnthropicObservation(t *testing.T) {
 			},
 		},
 		"AcceptedWithGroups": {
-			args: anthropic.BetaOrganizationInvite{
-				ID: "invite_2", Email: "dev@example.com", Role: anthropic.BetaOrganizationRoleUser,
-				Status: anthropic.BetaOrganizationInviteStatusAccepted, InvitedAt: invited, ExpiresAt: expires,
+			args: anthropic.OrganizationInvite{
+				ID: "invite_2", Email: "dev@example.com", Role: anthropic.OrganizationRoleUser,
+				Status: anthropic.OrganizationInviteStatusAccepted, InvitedAt: invited, ExpiresAt: expires,
 				AcceptedAt: invited.Add(time.Hour), RBACGroupIDs: []string{"grp_1"},
 			},
 			want: InviteObservation{

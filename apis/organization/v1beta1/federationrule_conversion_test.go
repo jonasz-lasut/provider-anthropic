@@ -28,16 +28,16 @@ import (
 )
 
 var ignoreRuleParamInternals = cmpopts.IgnoreUnexported(
-	anthropic.BetaOrganizationFederationRuleNewParams{},
-	anthropic.BetaOrganizationFederationRuleUpdateParams{},
-	anthropic.BetaFederationRuleMatchParam{},
-	anthropic.BetaServiceAccountTargetParam{},
+	anthropic.OrganizationFederationRuleNewParams{},
+	anthropic.OrganizationFederationRuleUpdateParams{},
+	anthropic.FederationRuleMatchParam{},
+	anthropic.ServiceAccountTargetParam{},
 )
 
 func TestFederationRuleToAnthropicNew(t *testing.T) {
 	cases := map[string]struct {
 		args FederationRuleParameters
-		want anthropic.BetaOrganizationFederationRuleNewParams
+		want anthropic.OrganizationFederationRuleNewParams
 	}{
 		"AllFields": {
 			args: FederationRuleParameters{
@@ -46,10 +46,10 @@ func TestFederationRuleToAnthropicNew(t *testing.T) {
 				Match:      &FederationRuleMatch{SubjectPrefix: new("repo:org/repo:*"), Claims: map[string]string{"repository": "org/repo"}, Audience: new("https://api.anthropic.com")},
 				WorkspaceID: new("wrkspc_1"), AppliesToAllWorkspaces: new(false), TokenLifetimeSeconds: new(int64(600)),
 			},
-			want: anthropic.BetaOrganizationFederationRuleNewParams{
+			want: anthropic.OrganizationFederationRuleNewParams{
 				Name: "ci-rule", Description: anthropic.String("CI"), IssuerID: "fdis_1", OAuthScope: "workspace:developer",
-				Target: anthropic.BetaServiceAccountTargetParam{ServiceAccountID: "svac_1"},
-				Match: anthropic.BetaFederationRuleMatchParam{
+				Target: anthropic.ServiceAccountTargetParam{ServiceAccountID: "svac_1"},
+				Match: anthropic.FederationRuleMatchParam{
 					SubjectPrefix: anthropic.String("repo:org/repo:*"), Claims: map[string]string{"repository": "org/repo"}, Audience: anthropic.String("https://api.anthropic.com"),
 				},
 				WorkspaceID: anthropic.String("wrkspc_1"), AppliesToAllWorkspaces: anthropic.Bool(false), TokenLifetimeSeconds: anthropic.Int(600),
@@ -60,10 +60,10 @@ func TestFederationRuleToAnthropicNew(t *testing.T) {
 				Name: new("ci-rule"), IssuerID: new("fdis_1"), ServiceAccountID: new("svac_1"), OAuthScope: new("workspace:inference"),
 				Match: &FederationRuleMatch{Condition: new("claims.env == 'prod'")}, AppliesToAllWorkspaces: new(true),
 			},
-			want: anthropic.BetaOrganizationFederationRuleNewParams{
+			want: anthropic.OrganizationFederationRuleNewParams{
 				Name: "ci-rule", IssuerID: "fdis_1", OAuthScope: "workspace:inference",
-				Target: anthropic.BetaServiceAccountTargetParam{ServiceAccountID: "svac_1"},
-				Match:  anthropic.BetaFederationRuleMatchParam{Condition: anthropic.String("claims.env == 'prod'")},
+				Target: anthropic.ServiceAccountTargetParam{ServiceAccountID: "svac_1"},
+				Match:  anthropic.FederationRuleMatchParam{Condition: anthropic.String("claims.env == 'prod'")},
 				AppliesToAllWorkspaces: anthropic.Bool(true),
 			},
 		},
@@ -87,10 +87,10 @@ func TestFederationRuleToAnthropicUpdate(t *testing.T) {
 		Name: new("renamed"), IssuerID: new("fdis_1"), ServiceAccountID: new("svac_2"), OAuthScope: new("workspace:developer"),
 		Match: &FederationRuleMatch{SubjectPrefix: new("repo:org/repo:*")}, TokenLifetimeSeconds: new(int64(900)),
 	}}}
-	want := anthropic.BetaOrganizationFederationRuleUpdateParams{
+	want := anthropic.OrganizationFederationRuleUpdateParams{
 		Name: anthropic.String("renamed"), OAuthScope: anthropic.String("workspace:developer"),
-		Target: anthropic.BetaServiceAccountTargetParam{ServiceAccountID: "svac_2"},
-		Match:  anthropic.BetaFederationRuleMatchParam{SubjectPrefix: anthropic.String("repo:org/repo:*")},
+		Target: anthropic.ServiceAccountTargetParam{ServiceAccountID: "svac_2"},
+		Match:  anthropic.FederationRuleMatchParam{SubjectPrefix: anthropic.String("repo:org/repo:*")},
 		TokenLifetimeSeconds: anthropic.Int(900),
 	}
 
@@ -103,25 +103,52 @@ func TestFederationRuleToAnthropicUpdate(t *testing.T) {
 
 func TestFederationRuleFromAnthropicObservation(t *testing.T) {
 	created := time.Date(2026, 9, 8, 10, 0, 0, 0, time.UTC)
-	r := &FederationRule{}
-	resp := anthropic.BetaFederationRule{
-		ID: "fdrl_1", Name: "ci-rule", Description: "CI", IssuerID: "fdis_1", IssuerName: "gh", OAuthScope: "workspace:developer",
-		Target: anthropic.BetaServiceAccountTarget{ServiceAccountID: "svac_1", ServiceAccountName: "ci-worker"},
-		Match:  anthropic.BetaFederationRuleMatch{SubjectPrefix: "repo:org/repo:*", Claims: map[string]string{"repository": "org/repo"}},
-		WorkspaceID: "wrkspc_1", WorkspaceIDs: []string{"wrkspc_1"}, AppliesToAllWorkspaces: false, TokenLifetimeSeconds: 3600,
-		CreatedAt: created, UpdatedAt: created, ArchivedAt: created, CreatedByActorID: "user_1",
+	rule := func(workspaceIDs []string, allWorkspaces bool) anthropic.FederationRule {
+		return anthropic.FederationRule{
+			ID: "fdrl_1", Name: "ci-rule", Description: "CI", IssuerID: "fdis_1", IssuerName: "gh", OAuthScope: "workspace:developer",
+			Target: anthropic.ServiceAccountTarget{ServiceAccountID: "svac_1", ServiceAccountName: "ci-worker"},
+			Match:  anthropic.FederationRuleMatch{SubjectPrefix: "repo:org/repo:*", Claims: map[string]string{"repository": "org/repo"}},
+			WorkspaceIDs: workspaceIDs, AppliesToAllWorkspaces: allWorkspaces, TokenLifetimeSeconds: 3600,
+			CreatedAt: created, UpdatedAt: created, ArchivedAt: created, CreatedByActorID: "user_1",
+		}
 	}
-	want := FederationRuleObservation{
-		ID: new("fdrl_1"), Name: new("ci-rule"), Description: new("CI"), IssuerID: new("fdis_1"), IssuerName: new("gh"),
-		ServiceAccountID: new("svac_1"), ServiceAccountName: new("ci-worker"), OAuthScope: new("workspace:developer"),
-		Match:       &FederationRuleMatch{SubjectPrefix: new("repo:org/repo:*"), Claims: map[string]string{"repository": "org/repo"}},
-		WorkspaceID: new("wrkspc_1"), WorkspaceIDs: []string{"wrkspc_1"}, AppliesToAllWorkspaces: new(false), TokenLifetimeSeconds: new(int64(3600)),
-		CreatedAt: new("2026-09-08T10:00:00Z"), UpdatedAt: new("2026-09-08T10:00:00Z"), CreatedByActorID: new("user_1"),
+	observation := func(workspaceID *string, workspaceIDs []string, allWorkspaces bool) FederationRuleObservation {
+		return FederationRuleObservation{
+			ID: new("fdrl_1"), Name: new("ci-rule"), Description: new("CI"), IssuerID: new("fdis_1"), IssuerName: new("gh"),
+			ServiceAccountID: new("svac_1"), ServiceAccountName: new("ci-worker"), OAuthScope: new("workspace:developer"),
+			Match:       &FederationRuleMatch{SubjectPrefix: new("repo:org/repo:*"), Claims: map[string]string{"repository": "org/repo"}},
+			WorkspaceID: workspaceID, WorkspaceIDs: workspaceIDs, AppliesToAllWorkspaces: new(allWorkspaces), TokenLifetimeSeconds: new(int64(3600)),
+			CreatedAt: new("2026-09-08T10:00:00Z"), UpdatedAt: new("2026-09-08T10:00:00Z"), CreatedByActorID: new("user_1"),
+		}
 	}
 
-	r.FromAnthropicObservation(resp)
+	cases := map[string]struct {
+		args anthropic.FederationRule
+		want FederationRuleObservation
+	}{
+		"SingleWorkspaceDerivesWorkspaceID": {
+			args: rule([]string{"wrkspc_1"}, false),
+			want: observation(new("wrkspc_1"), []string{"wrkspc_1"}, false),
+		},
+		"SeveralWorkspacesLeaveWorkspaceIDUnset": {
+			args: rule([]string{"wrkspc_1", "wrkspc_2"}, false),
+			want: observation(nil, []string{"wrkspc_1", "wrkspc_2"}, false),
+		},
+		"AllWorkspacesLeaveWorkspaceIDUnset": {
+			args: rule(nil, true),
+			want: observation(nil, nil, true),
+		},
+	}
 
-	if diff := cmp.Diff(want, r.Status.AtProvider); diff != "" {
-		t.Errorf("FromAnthropicObservation(): -want, +got:\n%s", diff)
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			r := &FederationRule{}
+
+			r.FromAnthropicObservation(tc.args)
+
+			if diff := cmp.Diff(tc.want, r.Status.AtProvider); diff != "" {
+				t.Errorf("FromAnthropicObservation(): -want, +got:\n%s", diff)
+			}
+		})
 	}
 }

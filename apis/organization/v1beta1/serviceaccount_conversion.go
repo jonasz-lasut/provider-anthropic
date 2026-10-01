@@ -22,10 +22,10 @@ import (
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 )
 
-// ToAnthropicNew converts ForProvider to BetaOrganizationServiceAccountNewParams.
-func (r *ServiceAccount) ToAnthropicNew() anthropic.BetaOrganizationServiceAccountNewParams {
+// ToAnthropicNew converts ForProvider to OrganizationServiceAccountNewParams.
+func (r *ServiceAccount) ToAnthropicNew() anthropic.OrganizationServiceAccountNewParams {
 	p := r.Spec.ForProvider
-	params := anthropic.BetaOrganizationServiceAccountNewParams{}
+	params := anthropic.OrganizationServiceAccountNewParams{}
 	if p.Name != nil {
 		params.Name = *p.Name
 	}
@@ -33,29 +33,29 @@ func (r *ServiceAccount) ToAnthropicNew() anthropic.BetaOrganizationServiceAccou
 		params.Description = anthropic.String(*p.Description)
 	}
 	if p.OrganizationRole != nil {
-		params.OrganizationRole = anthropic.BetaOrganizationServiceAccountNewParamsOrganizationRole(*p.OrganizationRole)
+		params.OrganizationRole = anthropic.OrganizationServiceAccountNewParamsOrganizationRole(*p.OrganizationRole)
 	}
 	return params
 }
 
 // ToAnthropicUpdate converts ForProvider to
-// BetaOrganizationServiceAccountUpdateParams. Name is immutable and not sent.
-func (r *ServiceAccount) ToAnthropicUpdate() anthropic.BetaOrganizationServiceAccountUpdateParams {
+// OrganizationServiceAccountUpdateParams. Name is immutable and not sent.
+func (r *ServiceAccount) ToAnthropicUpdate() anthropic.OrganizationServiceAccountUpdateParams {
 	p := r.Spec.ForProvider
-	params := anthropic.BetaOrganizationServiceAccountUpdateParams{}
+	params := anthropic.OrganizationServiceAccountUpdateParams{}
 	if p.Description != nil {
 		params.Description = anthropic.String(*p.Description)
 	}
 	if p.OrganizationRole != nil {
-		params.OrganizationRole = anthropic.BetaOrganizationServiceAccountUpdateParamsOrganizationRole(*p.OrganizationRole)
+		params.OrganizationRole = anthropic.OrganizationServiceAccountUpdateParamsOrganizationRole(*p.OrganizationRole)
 	}
 	return params
 }
 
-// FromAnthropicObservation populates AtProvider from a BetaServiceAccount.
+// FromAnthropicObservation populates AtProvider from a ServiceAccount.
 // ArchivedAt is intentionally omitted: the reconciler treats an archived
 // service account as absent.
-func (r *ServiceAccount) FromAnthropicObservation(resp anthropic.BetaServiceAccount) {
+func (r *ServiceAccount) FromAnthropicObservation(resp anthropic.ServiceAccount) {
 	r.Status.AtProvider.ID = &resp.ID
 	r.Status.AtProvider.Name = &resp.Name
 	r.Status.AtProvider.Description = &resp.Description

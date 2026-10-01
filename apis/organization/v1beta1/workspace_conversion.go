@@ -27,10 +27,10 @@ import (
 // that maps to the API's "unrestricted" union variant.
 const AllowedInferenceGeosUnrestricted = "unrestricted"
 
-// ToAnthropicNew converts ForProvider to BetaOrganizationWorkspaceNewParams.
-func (r *Workspace) ToAnthropicNew() anthropic.BetaOrganizationWorkspaceNewParams {
+// ToAnthropicNew converts ForProvider to OrganizationWorkspaceNewParams.
+func (r *Workspace) ToAnthropicNew() anthropic.OrganizationWorkspaceNewParams {
 	p := r.Spec.ForProvider
-	params := anthropic.BetaOrganizationWorkspaceNewParams{}
+	params := anthropic.OrganizationWorkspaceNewParams{}
 	if p.Name != nil {
 		params.Name = *p.Name
 	}
@@ -45,10 +45,10 @@ func (r *Workspace) ToAnthropicNew() anthropic.BetaOrganizationWorkspaceNewParam
 	}
 	if dr := p.DataResidency; dr != nil {
 		if dr.WorkspaceGeo != nil {
-			params.DataResidency.WorkspaceGeo = anthropic.BetaDataResidencyCreateConfigWorkspaceGeo(*dr.WorkspaceGeo)
+			params.DataResidency.WorkspaceGeo = anthropic.DataResidencyCreateConfigWorkspaceGeo(*dr.WorkspaceGeo)
 		}
 		if dr.DefaultInferenceGeo != nil {
-			params.DataResidency.DefaultInferenceGeo = anthropic.BetaDataResidencyCreateConfigDefaultInferenceGeo(*dr.DefaultInferenceGeo)
+			params.DataResidency.DefaultInferenceGeo = anthropic.DataResidencyCreateConfigDefaultInferenceGeo(*dr.DefaultInferenceGeo)
 		}
 		if dr.AllowedInferenceGeos != nil {
 			if isUnrestricted(dr.AllowedInferenceGeos) {
@@ -61,12 +61,12 @@ func (r *Workspace) ToAnthropicNew() anthropic.BetaOrganizationWorkspaceNewParam
 	return params
 }
 
-// ToAnthropicUpdate converts ForProvider to BetaOrganizationWorkspaceUpdateParams.
+// ToAnthropicUpdate converts ForProvider to OrganizationWorkspaceUpdateParams.
 // WorkspaceGeo is immutable and never sent. ExternalKeyID is write-once, so it
 // is only sent when it differs from the observed value.
-func (r *Workspace) ToAnthropicUpdate() anthropic.BetaOrganizationWorkspaceUpdateParams {
+func (r *Workspace) ToAnthropicUpdate() anthropic.OrganizationWorkspaceUpdateParams {
 	p := r.Spec.ForProvider
-	params := anthropic.BetaOrganizationWorkspaceUpdateParams{}
+	params := anthropic.OrganizationWorkspaceUpdateParams{}
 	if p.Name != nil {
 		params.Name = anthropic.String(*p.Name)
 	}
@@ -84,7 +84,7 @@ func (r *Workspace) ToAnthropicUpdate() anthropic.BetaOrganizationWorkspaceUpdat
 	}
 	if dr := p.DataResidency; dr != nil {
 		if dr.DefaultInferenceGeo != nil {
-			params.DataResidency.DefaultInferenceGeo = anthropic.BetaDataResidencyUpdateConfigDefaultInferenceGeo(*dr.DefaultInferenceGeo)
+			params.DataResidency.DefaultInferenceGeo = anthropic.DataResidencyUpdateConfigDefaultInferenceGeo(*dr.DefaultInferenceGeo)
 		}
 		if dr.AllowedInferenceGeos != nil {
 			if isUnrestricted(dr.AllowedInferenceGeos) {
@@ -97,10 +97,10 @@ func (r *Workspace) ToAnthropicUpdate() anthropic.BetaOrganizationWorkspaceUpdat
 	return params
 }
 
-// FromAnthropicObservation populates AtProvider from a BetaWorkspace.
+// FromAnthropicObservation populates AtProvider from a Workspace.
 // ArchivedAt is intentionally omitted: the reconciler treats an archived
 // workspace as absent.
-func (r *Workspace) FromAnthropicObservation(resp anthropic.BetaWorkspace) {
+func (r *Workspace) FromAnthropicObservation(resp anthropic.Workspace) {
 	r.Status.AtProvider.ID = &resp.ID
 	r.Status.AtProvider.Name = &resp.Name
 	r.Status.AtProvider.DisplayColor = &resp.DisplayColor
@@ -115,7 +115,7 @@ func (r *Workspace) FromAnthropicObservation(resp anthropic.BetaWorkspace) {
 	r.Status.AtProvider.CreatedAt = &createdAt
 }
 
-func dataResidencyObservation(dr anthropic.BetaDataResidency) *WorkspaceDataResidency {
+func dataResidencyObservation(dr anthropic.DataResidency) *WorkspaceDataResidency {
 	out := &WorkspaceDataResidency{}
 	if dr.WorkspaceGeo != "" {
 		out.WorkspaceGeo = new(string(dr.WorkspaceGeo))
@@ -132,7 +132,7 @@ func dataResidencyObservation(dr anthropic.BetaDataResidency) *WorkspaceDataResi
 	return out
 }
 
-func observedGeos(geos []anthropic.BetaAllowedInferenceGeo) []string {
+func observedGeos(geos []anthropic.AllowedInferenceGeo) []string {
 	out := make([]string, 0, len(geos))
 	for _, g := range geos {
 		out = append(out, string(g))
@@ -144,10 +144,10 @@ func isUnrestricted(geos []string) bool {
 	return len(geos) == 1 && geos[0] == AllowedInferenceGeosUnrestricted
 }
 
-func allowedGeos(geos []string) []anthropic.BetaAllowedInferenceGeo {
-	out := make([]anthropic.BetaAllowedInferenceGeo, 0, len(geos))
+func allowedGeos(geos []string) []anthropic.AllowedInferenceGeo {
+	out := make([]anthropic.AllowedInferenceGeo, 0, len(geos))
 	for _, g := range geos {
-		out = append(out, anthropic.BetaAllowedInferenceGeo(g))
+		out = append(out, anthropic.AllowedInferenceGeo(g))
 	}
 	return out
 }

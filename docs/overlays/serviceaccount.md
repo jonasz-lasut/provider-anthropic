@@ -23,13 +23,12 @@ section on workload identity federation for the bootstrap.
 
 ---
 
-## 2. Standard Archive-only pattern with params structs
+## 2. Archive-only pattern with parameterless calls
 
-`Get(ctx, id, BetaOrganizationServiceAccountGetParams{})` and
-`Archive(ctx, id, BetaOrganizationServiceAccountArchiveParams{})` take params
-structs (unlike `Workspace`). No `Delete`, so no `AnthropicDeletionPolicy`.
-`name` is immutable (absent from the update params) and only `description`
-and `organizationRole` are sent on update.
+`Get(ctx, id)` and `Archive(ctx, id)` take the ID only, like `Workspace`: the
+GA service has no params struct for them. No `Delete`, so no
+`AnthropicDeletionPolicy`. `name` is immutable (absent from the update params)
+and only `description` and `organizationRole` are sent on update.
 
 ---
 
@@ -54,5 +53,5 @@ short name.
 
 - [ ] `apis/organization/v1beta1/serviceaccount_types.go` — `Name`, `Description`, `OrganizationRole` (enum developer;admin)
 - [ ] `apis/organization/v1beta1/serviceaccount_conversion.go` — `Name` omitted from update; shared `optionalString`/`optionalTime` helpers
-- [ ] `internal/controller/serviceaccount/reconciler.go` — `Beta.Organization.ServiceAccounts.*`, archived observed as absent
+- [ ] `internal/controller/serviceaccount/reconciler.go` — `Organization.ServiceAccounts.*`, archived observed as absent
 - [ ] `examples/organization/v1beta1/serviceaccount.yaml` — `providerConfigRef` to `admin-federation`, random name

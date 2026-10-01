@@ -25,8 +25,8 @@ import (
 
 // WorkspaceMemberParameters defines the desired state of an Anthropic
 // WorkspaceMember. These fields map to
-// BetaOrganizationWorkspaceMemberAddParams /
-// BetaOrganizationWorkspaceMemberUpdateParams from the Anthropic SDK.
+// OrganizationWorkspaceMemberAddParams /
+// OrganizationWorkspaceMemberUpdateParams from the Anthropic SDK.
 type WorkspaceMemberParameters struct {
 	// WorkspaceID is the ID of the workspace the user is a member of.
 	// Populate directly or via WorkspaceIDRef / WorkspaceIDSelector.

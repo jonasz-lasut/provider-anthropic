@@ -50,5 +50,5 @@ other.
 
 - [ ] `apis/organization/v1beta1/federationissuer_types.go` — `FederationIssuerJWKS` union struct, `FederationIssuerPollStatus`, slug pattern on `name`
 - [ ] `apis/organization/v1beta1/federationissuer_conversion.go` — variant switch, `jwksKeysToSDK` / `jwksKeysFromSDK`
-- [ ] `internal/controller/federationissuer/reconciler.go` — `Beta.Organization.Federation.Issuers.*`, archived observed as absent
+- [ ] `internal/controller/federationissuer/reconciler.go` — `Organization.Federation.Issuers.*`, archived observed as absent
 - [ ] `examples/organization/v1beta1/federationissuer.yaml` — inline JWKS, random slug

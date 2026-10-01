@@ -109,7 +109,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	resp, err := e.client.Beta.Organization.Invites.Get(ctx, invID)
+	resp, err := e.client.Organization.Invites.Get(ctx, invID)
 	if err != nil {
 		var apiErr *anthropic.Error
 		if errors.As(err, &apiErr) && apiErr.StatusCode == 404 {
@@ -120,7 +120,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 	// A revoked invite is gone as far as the desired state is concerned;
 	// Crossplane re-issues it. Accepted and expired invites stay observed.
-	if resp.Status == anthropic.BetaOrganizationInviteStatusDeleted {
+	if resp.Status == anthropic.OrganizationInviteStatusDeleted {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
@@ -140,7 +140,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, xperrors.New(errNotInvite)
 	}
 
-	resp, err := e.client.Beta.Organization.Invites.New(ctx, inv.ToAnthropicNew())
+	resp, err := e.client.Organization.Invites.New(ctx, inv.ToAnthropicNew())
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
 	}
@@ -169,7 +169,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalDelete{}, nil
 	}
 
-	_, err := e.client.Beta.Organization.Invites.Delete(ctx, invID)
+	_, err := e.client.Organization.Invites.Delete(ctx, invID)
 	if err == nil {
 		return managed.ExternalDelete{}, nil
 	}
@@ -179,7 +179,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 	// Only a pending invite can be revoked. If the invite has already been
 	// accepted, expired, or revoked there is nothing left to delete.
-	if cur, getErr := e.client.Beta.Organization.Invites.Get(ctx, invID); getErr == nil && cur.Status != anthropic.BetaOrganizationInviteStatusPending {
+	if cur, getErr := e.client.Organization.Invites.Get(ctx, invID); getErr == nil && cur.Status != anthropic.OrganizationInviteStatusPending {
 		return managed.ExternalDelete{}, nil
 	}
 	return managed.ExternalDelete{}, xperrors.Wrap(err, errDelete)

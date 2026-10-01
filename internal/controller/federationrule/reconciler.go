@@ -110,7 +110,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	resp, err := e.client.Beta.Organization.Federation.Rules.Get(ctx, id, anthropic.BetaOrganizationFederationRuleGetParams{})
+	resp, err := e.client.Organization.Federation.Rules.Get(ctx, id)
 	if err != nil {
 		var apiErr *anthropic.Error
 		if errors.As(err, &apiErr) && apiErr.StatusCode == 404 {
@@ -140,7 +140,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, xperrors.New(errNotFederationRule)
 	}
 
-	resp, err := e.client.Beta.Organization.Federation.Rules.New(ctx, fr.ToAnthropicNew())
+	resp, err := e.client.Organization.Federation.Rules.New(ctx, fr.ToAnthropicNew())
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
 	}
@@ -162,7 +162,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
-	if _, err := e.client.Beta.Organization.Federation.Rules.Update(ctx, id, fr.ToAnthropicUpdate()); err != nil {
+	if _, err := e.client.Organization.Federation.Rules.Update(ctx, id, fr.ToAnthropicUpdate()); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
 
@@ -181,7 +181,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	// The Admin API has no delete for this kind; archiving is permanent.
-	if _, err := e.client.Beta.Organization.Federation.Rules.Archive(ctx, id, anthropic.BetaOrganizationFederationRuleArchiveParams{}); err != nil {
+	if _, err := e.client.Organization.Federation.Rules.Archive(ctx, id); err != nil {
 		var apiErr *anthropic.Error
 		if errors.As(err, &apiErr) && apiErr.StatusCode == 404 {
 			return managed.ExternalDelete{}, nil

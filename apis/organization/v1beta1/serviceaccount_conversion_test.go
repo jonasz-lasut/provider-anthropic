@@ -30,19 +30,19 @@ import (
 func TestServiceAccountToAnthropicNew(t *testing.T) {
 	cases := map[string]struct {
 		args ServiceAccountParameters
-		want anthropic.BetaOrganizationServiceAccountNewParams
+		want anthropic.OrganizationServiceAccountNewParams
 	}{
 		"AllFields": {
 			args: ServiceAccountParameters{Name: new("ci-worker"), Description: new("CI"), OrganizationRole: new("developer")},
-			want: anthropic.BetaOrganizationServiceAccountNewParams{
+			want: anthropic.OrganizationServiceAccountNewParams{
 				Name:             "ci-worker",
 				Description:      anthropic.String("CI"),
-				OrganizationRole: anthropic.BetaOrganizationServiceAccountNewParamsOrganizationRoleDeveloper,
+				OrganizationRole: anthropic.OrganizationServiceAccountNewParamsOrganizationRoleDeveloper,
 			},
 		},
 		"NameOnly": {
 			args: ServiceAccountParameters{Name: new("ci-worker")},
-			want: anthropic.BetaOrganizationServiceAccountNewParams{Name: "ci-worker"},
+			want: anthropic.OrganizationServiceAccountNewParams{Name: "ci-worker"},
 		},
 	}
 
@@ -52,7 +52,7 @@ func TestServiceAccountToAnthropicNew(t *testing.T) {
 
 			got := r.ToAnthropicNew()
 
-			if diff := cmp.Diff(tc.want, got, optString, cmpopts.IgnoreUnexported(anthropic.BetaOrganizationServiceAccountNewParams{})); diff != "" {
+			if diff := cmp.Diff(tc.want, got, optString, cmpopts.IgnoreUnexported(anthropic.OrganizationServiceAccountNewParams{})); diff != "" {
 				t.Errorf("ToAnthropicNew(): -want, +got:\n%s", diff)
 			}
 		})
@@ -63,14 +63,14 @@ func TestServiceAccountToAnthropicUpdate(t *testing.T) {
 	r := &ServiceAccount{Spec: ServiceAccountSpec{ForProvider: ServiceAccountParameters{
 		Name: new("ci-worker"), Description: new("renamed"), OrganizationRole: new("admin"),
 	}}}
-	want := anthropic.BetaOrganizationServiceAccountUpdateParams{
+	want := anthropic.OrganizationServiceAccountUpdateParams{
 		Description:      anthropic.String("renamed"),
-		OrganizationRole: anthropic.BetaOrganizationServiceAccountUpdateParamsOrganizationRoleAdmin,
+		OrganizationRole: anthropic.OrganizationServiceAccountUpdateParamsOrganizationRoleAdmin,
 	}
 
 	got := r.ToAnthropicUpdate()
 
-	if diff := cmp.Diff(want, got, optString, cmpopts.IgnoreUnexported(anthropic.BetaOrganizationServiceAccountUpdateParams{})); diff != "" {
+	if diff := cmp.Diff(want, got, optString, cmpopts.IgnoreUnexported(anthropic.OrganizationServiceAccountUpdateParams{})); diff != "" {
 		t.Errorf("ToAnthropicUpdate(): -want, +got:\n%s", diff)
 	}
 }
@@ -78,8 +78,8 @@ func TestServiceAccountToAnthropicUpdate(t *testing.T) {
 func TestServiceAccountFromAnthropicObservation(t *testing.T) {
 	created := time.Date(2026, 9, 8, 10, 0, 0, 0, time.UTC)
 	r := &ServiceAccount{}
-	resp := anthropic.BetaServiceAccount{
-		ID: "svac_1", Name: "ci-worker", Description: "CI", OrganizationRole: anthropic.BetaServiceAccountOrganizationRoleDeveloper,
+	resp := anthropic.ServiceAccount{
+		ID: "svac_1", Name: "ci-worker", Description: "CI", OrganizationRole: anthropic.ServiceAccountOrganizationRoleDeveloper,
 		CreatedAt: created, UpdatedAt: created, ArchivedAt: created, CreatedByActorID: "user_1",
 	}
 	want := ServiceAccountObservation{

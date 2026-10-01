@@ -28,19 +28,19 @@ import (
 )
 
 var ignoreExternalKeyParamInternals = cmpopts.IgnoreUnexported(
-	anthropic.BetaOrganizationExternalKeyNewParams{},
-	anthropic.BetaOrganizationExternalKeyUpdateParams{},
-	anthropic.BetaOrganizationExternalKeyNewParamsProviderConfigUnion{},
-	anthropic.BetaOrganizationExternalKeyUpdateParamsProviderConfigUnion{},
-	anthropic.BetaAWSExternalKeyConfigParam{},
-	anthropic.BetaGCPExternalKeyConfigParam{},
-	anthropic.BetaAzureExternalKeyConfigParam{},
+	anthropic.OrganizationExternalKeyNewParams{},
+	anthropic.OrganizationExternalKeyUpdateParams{},
+	anthropic.OrganizationExternalKeyNewParamsProviderConfigUnion{},
+	anthropic.OrganizationExternalKeyUpdateParamsProviderConfigUnion{},
+	anthropic.AWSExternalKeyConfigParam{},
+	anthropic.GCPExternalKeyConfigParam{},
+	anthropic.AzureExternalKeyConfigParam{},
 )
 
 func TestExternalKeyToAnthropicNew(t *testing.T) {
 	cases := map[string]struct {
 		args ExternalKeyParameters
-		want anthropic.BetaOrganizationExternalKeyNewParams
+		want anthropic.OrganizationExternalKeyNewParams
 	}{
 		"AWS": {
 			args: ExternalKeyParameters{
@@ -48,27 +48,27 @@ func TestExternalKeyToAnthropicNew(t *testing.T) {
 				Geo:            new("us"),
 				ProviderConfig: &ExternalKeyProviderConfig{Type: new("aws"), KMSARN: new("arn:aws:kms:us-east-1:123456789012:key/abc"), Region: new("us-east-1")},
 			},
-			want: anthropic.BetaOrganizationExternalKeyNewParams{
+			want: anthropic.OrganizationExternalKeyNewParams{
 				DisplayName: anthropic.String("prod-cmek"),
-				Geo:         anthropic.BetaOrganizationExternalKeyNewParamsGeoUs,
-				ProviderConfig: anthropic.BetaOrganizationExternalKeyNewParamsProviderConfigUnion{
-					OfAWS: &anthropic.BetaAWSExternalKeyConfigParam{KMSARN: "arn:aws:kms:us-east-1:123456789012:key/abc", Region: anthropic.String("us-east-1")},
+				Geo:         anthropic.OrganizationExternalKeyNewParamsGeoUs,
+				ProviderConfig: anthropic.OrganizationExternalKeyNewParamsProviderConfigUnion{
+					OfAWS: &anthropic.AWSExternalKeyConfigParam{KMSARN: "arn:aws:kms:us-east-1:123456789012:key/abc", Region: anthropic.String("us-east-1")},
 				},
 			},
 		},
 		"GCP": {
 			args: ExternalKeyParameters{ProviderConfig: &ExternalKeyProviderConfig{Type: new("gcp"), KeyName: new("projects/p/locations/us/keyRings/r/cryptoKeys/k")}},
-			want: anthropic.BetaOrganizationExternalKeyNewParams{
-				ProviderConfig: anthropic.BetaOrganizationExternalKeyNewParamsProviderConfigUnion{
-					OfGCP: &anthropic.BetaGCPExternalKeyConfigParam{KeyName: "projects/p/locations/us/keyRings/r/cryptoKeys/k"},
+			want: anthropic.OrganizationExternalKeyNewParams{
+				ProviderConfig: anthropic.OrganizationExternalKeyNewParamsProviderConfigUnion{
+					OfGCP: &anthropic.GCPExternalKeyConfigParam{KeyName: "projects/p/locations/us/keyRings/r/cryptoKeys/k"},
 				},
 			},
 		},
 		"Azure": {
 			args: ExternalKeyParameters{ProviderConfig: &ExternalKeyProviderConfig{Type: new("azure"), KeyName: new("k"), TenantID: new("tenant"), VaultURI: new("https://v.vault.azure.net"), ClientID: new("client")}},
-			want: anthropic.BetaOrganizationExternalKeyNewParams{
-				ProviderConfig: anthropic.BetaOrganizationExternalKeyNewParamsProviderConfigUnion{
-					OfAzure: &anthropic.BetaAzureExternalKeyConfigParam{KeyName: "k", TenantID: "tenant", VaultURI: "https://v.vault.azure.net", ClientID: anthropic.String("client")},
+			want: anthropic.OrganizationExternalKeyNewParams{
+				ProviderConfig: anthropic.OrganizationExternalKeyNewParamsProviderConfigUnion{
+					OfAzure: &anthropic.AzureExternalKeyConfigParam{KeyName: "k", TenantID: "tenant", VaultURI: "https://v.vault.azure.net", ClientID: anthropic.String("client")},
 				},
 			},
 		},
@@ -92,10 +92,10 @@ func TestExternalKeyToAnthropicUpdate(t *testing.T) {
 		DisplayName:    new("renamed"),
 		ProviderConfig: &ExternalKeyProviderConfig{Type: new("aws"), KMSARN: new("arn:aws:kms:us-east-1:123456789012:key/abc")},
 	}}}
-	want := anthropic.BetaOrganizationExternalKeyUpdateParams{
+	want := anthropic.OrganizationExternalKeyUpdateParams{
 		DisplayName: anthropic.String("renamed"),
-		ProviderConfig: anthropic.BetaOrganizationExternalKeyUpdateParamsProviderConfigUnion{
-			OfAWS: &anthropic.BetaAWSExternalKeyConfigParam{KMSARN: "arn:aws:kms:us-east-1:123456789012:key/abc"},
+		ProviderConfig: anthropic.OrganizationExternalKeyUpdateParamsProviderConfigUnion{
+			OfAWS: &anthropic.AWSExternalKeyConfigParam{KMSARN: "arn:aws:kms:us-east-1:123456789012:key/abc"},
 		},
 	}
 
@@ -109,10 +109,10 @@ func TestExternalKeyToAnthropicUpdate(t *testing.T) {
 func TestExternalKeyFromAnthropicObservation(t *testing.T) {
 	created := time.Date(2026, 9, 8, 10, 0, 0, 0, time.UTC)
 	r := &ExternalKey{}
-	resp := anthropic.BetaExternalKey{
+	resp := anthropic.ExternalKey{
 		ID: "ekey_1", DisplayName: "prod-cmek", Geo: "us", CreatedAt: created, UpdatedAt: created,
-		ProviderConfig: anthropic.BetaExternalKeyProviderConfigUnion{Type: "aws", KMSARN: "arn:aws:kms:us-east-1:123456789012:key/abc", Region: "us-east-1"},
-		Attachment:     anthropic.BetaExternalKeyAttachmentUnion{Type: "unattached"},
+		ProviderConfig: anthropic.ExternalKeyProviderConfigUnion{Type: "aws", KMSARN: "arn:aws:kms:us-east-1:123456789012:key/abc", Region: "us-east-1"},
+		Attachment:     anthropic.ExternalKeyAttachmentUnion{Type: "unattached"},
 	}
 	want := ExternalKeyObservation{
 		ID: new("ekey_1"), DisplayName: new("prod-cmek"), Geo: new("us"), Attachment: new("unattached"),

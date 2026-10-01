@@ -12,8 +12,8 @@ resource of the Admin API organization family.
 `apis/managedagents/v1beta1` under `managedagents.anthropic.crossplane.io`.
 
 **Workspace:** organization resources live in `apis/organization/v1beta1`
-under **`organization.anthropic.crossplane.io/v1beta1`**, mirroring the SDK's
-`client.Beta.Organization` namespace. The group has its own
+under **`organization.anthropic.crossplane.io/v1beta1`**, mirroring the SDK's GA
+`client.Organization` namespace. The group has its own
 `groupversion_info.go` (registered in `apis/register.go`), its own CRD file
 prefix (`organization.anthropic.crossplane.io_*.yaml`), and its own examples
 directory (`examples/organization/v1beta1/`). Substitute
@@ -42,11 +42,11 @@ the unchanged `APIKey`.
 **Standard:** `client.Beta.<Resource>s.Get(ctx, id, Beta<Resource>GetParams{})`
 and `Archive(ctx, id, Beta<Resource>ArchiveParams{})`.
 
-**Workspace:** the service is `client.Beta.Organization.Workspaces`; `Get` and
-`Archive` take the ID only, with no params struct. The SDK file is
-`betaorganizationworkspace.go`, the params are
-`BetaOrganizationWorkspaceNewParams` / `BetaOrganizationWorkspaceUpdateParams`,
-and the response type is `BetaWorkspace`.
+**Workspace:** the service is the GA `client.Organization.Workspaces`, not a
+`client.Beta` one; `Get` and `Archive` take the ID only, with no params struct.
+The SDK file is `organizationworkspace.go`, the params are
+`OrganizationWorkspaceNewParams` / `OrganizationWorkspaceUpdateParams`, and the
+response type is `Workspace`.
 
 ---
 
@@ -97,6 +97,6 @@ field nil when the API returns an empty string.
 
 - [ ] `apis/organization/v1beta1/workspace_types.go` — `Tags` (not `Metadata`), `DataResidency *WorkspaceDataResidency`, no `AnthropicDeletionPolicy`
 - [ ] `apis/organization/v1beta1/workspace_conversion.go` — union mapping, write-once `ExternalKeyID`, `ArchivedAt` omitted
-- [ ] `internal/controller/workspace/reconciler.go` — `Beta.Organization.Workspaces.*`, parameterless `Get`/`Archive`, initializer on `tags`
+- [ ] `internal/controller/workspace/reconciler.go` — `Organization.Workspaces.*`, parameterless `Get`/`Archive`, initializer on `tags`
 - [ ] `internal/controller/setup.go` — `workspace.SetupGated(mgr, o, skipDefaultMetadata)`
 - [ ] `examples/organization/v1beta1/workspace.yaml` — `providerConfigRef` to the `admin` ClusterProviderConfig
