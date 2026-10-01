@@ -118,16 +118,24 @@ func (r *Workspace) FromAnthropicObservation(resp anthropic.BetaWorkspace) {
 func dataResidencyObservation(dr anthropic.BetaDataResidency) *WorkspaceDataResidency {
 	out := &WorkspaceDataResidency{}
 	if dr.WorkspaceGeo != "" {
-		out.WorkspaceGeo = &dr.WorkspaceGeo
+		out.WorkspaceGeo = new(string(dr.WorkspaceGeo))
 	}
 	if dr.DefaultInferenceGeo != "" {
-		out.DefaultInferenceGeo = &dr.DefaultInferenceGeo
+		out.DefaultInferenceGeo = new(string(dr.DefaultInferenceGeo))
 	}
 	switch {
 	case dr.AllowedInferenceGeos.OfUnrestricted != "":
 		out.AllowedInferenceGeos = []string{AllowedInferenceGeosUnrestricted}
 	case len(dr.AllowedInferenceGeos.OfGeos) > 0:
-		out.AllowedInferenceGeos = dr.AllowedInferenceGeos.OfGeos
+		out.AllowedInferenceGeos = observedGeos(dr.AllowedInferenceGeos.OfGeos)
+	}
+	return out
+}
+
+func observedGeos(geos []anthropic.BetaAllowedInferenceGeo) []string {
+	out := make([]string, 0, len(geos))
+	for _, g := range geos {
+		out = append(out, string(g))
 	}
 	return out
 }

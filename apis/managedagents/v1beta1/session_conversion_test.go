@@ -1,11 +1,13 @@
 package v1beta1_test
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
+	"github.com/google/go-cmp/cmp"
 
 	. "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 )
@@ -75,6 +77,53 @@ func TestSessionToAnthropicNew_NoTokenWhenContextEmpty(t *testing.T) {
 	}
 	if gh.AuthorizationToken != "" {
 		t.Errorf("AuthorizationToken = %q, want empty", gh.AuthorizationToken)
+	}
+}
+
+func TestSessionToAnthropicNew_GitHubRepositoryWire(t *testing.T) {
+	cases := map[string]struct {
+		args SessionConversionContext
+		want map[string]any
+	}{
+		"PublicRepositoryOmitsToken": {
+			args: SessionConversionContext{ResourceTokens: []string{""}},
+			want: map[string]any{
+				"type": "github_repository",
+				"url":  "https://github.com/acme/repo",
+			},
+		},
+		"PrivateRepositorySendsToken": {
+			args: SessionConversionContext{ResourceTokens: []string{"ghp_resolved"}},
+			want: map[string]any{
+				"type":                "github_repository",
+				"url":                 "https://github.com/acme/repo",
+				"authorization_token": "ghp_resolved",
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			r := &Session{Spec: SessionSpec{ForProvider: SessionParameters{
+				Resources: []SessionResource{{
+					Type: new("github_repository"),
+					URL:  new("https://github.com/acme/repo"),
+				}},
+			}}}
+
+			raw, err := json.Marshal(r.ToAnthropicNew(&tc.args).Resources[0])
+			if err != nil {
+				t.Fatalf("json.Marshal(): %v", err)
+			}
+			var got map[string]any
+			if err := json.Unmarshal(raw, &got); err != nil {
+				t.Fatalf("json.Unmarshal(): %v", err)
+			}
+
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("ToAnthropicNew() github_repository JSON: -want, +got:\n%s", diff)
+			}
+		})
 	}
 }
 

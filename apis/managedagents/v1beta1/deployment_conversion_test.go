@@ -1,10 +1,12 @@
 package v1beta1_test
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
+	"github.com/google/go-cmp/cmp"
 
 	. "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
 )
@@ -154,6 +156,55 @@ func TestDeploymentToAnthropicNewResources(t *testing.T) {
 	gh := p.Resources[0].OfGitHubRepository
 	if gh.URL != "https://github.com/acme/repo" || gh.AuthorizationToken != "ghtok" {
 		t.Errorf("github resource = %+v", gh)
+	}
+}
+
+func TestDeploymentToAnthropicNewGitHubRepositoryWire(t *testing.T) {
+	cases := map[string]struct {
+		args DeploymentConversionContext
+		want map[string]any
+	}{
+		"PublicRepositoryOmitsToken": {
+			args: DeploymentConversionContext{ResourceTokens: []string{""}},
+			want: map[string]any{
+				"type": "github_repository",
+				"url":  "https://github.com/acme/repo",
+			},
+		},
+		"PrivateRepositorySendsToken": {
+			args: DeploymentConversionContext{ResourceTokens: []string{"ghtok"}},
+			want: map[string]any{
+				"type":                "github_repository",
+				"url":                 "https://github.com/acme/repo",
+				"authorization_token": "ghtok",
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			r := &Deployment{Spec: DeploymentSpec{ForProvider: DeploymentParameters{
+				Name:          new("d"),
+				EnvironmentID: new("env_1"),
+				Resources: []SessionResource{{
+					Type: new("github_repository"),
+					URL:  new("https://github.com/acme/repo"),
+				}},
+			}}}
+
+			raw, err := json.Marshal(r.ToAnthropicNew(&tc.args).Resources[0])
+			if err != nil {
+				t.Fatalf("json.Marshal(): %v", err)
+			}
+			var got map[string]any
+			if err := json.Unmarshal(raw, &got); err != nil {
+				t.Fatalf("json.Unmarshal(): %v", err)
+			}
+
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("ToAnthropicNew() github_repository JSON: -want, +got:\n%s", diff)
+			}
+		})
 	}
 }
 
