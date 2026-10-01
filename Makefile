@@ -43,7 +43,7 @@ KIND_VERSION = v0.31.0
 UPTEST_VERSION = v2.2.0
 # crddiff ships in the upbound/uptest module; crossplane/uptest does not carry it.
 CRDDIFF_VERSION = v0.12.1
-CROSSPLANE_CLI_VERSION = v2.2.1
+CROSSPLANE_CLI_VERSION = v2.5.0
 # for e2e testing
 CROSSPLANE_VERSION = 2.2.1
 KUBECTL_VALIDATE_VERSION ?= v0.0.4
