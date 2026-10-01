@@ -23,6 +23,7 @@ import (
 	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
+	"github.com/anthropics/anthropic-sdk-go/packages/param"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -197,28 +198,7 @@ func (r *Agent) FromAnthropicObservation(resp anthropic.BetaManagedAgentsAgent) 
 
 	r.Status.AtProvider.Tools = nil
 	for _, t := range resp.Tools {
-		toolType := t.Type
-		cfg := AgentToolConfig{Type: &toolType}
-		switch toolType {
-		case "mcp_toolset":
-			mcpName := t.MCPServerName
-			cfg.MCPServerName = &mcpName
-		case "custom":
-			name, desc := t.Name, t.Description
-			cfg.Name = &name
-			cfg.Description = &desc
-			if t.InputSchema.RawJSON() != "" {
-				schema := &AgentCustomToolInputSchema{
-					Required: t.InputSchema.Required,
-				}
-				if t.InputSchema.Properties != nil {
-					raw, _ := json.Marshal(t.InputSchema.Properties)
-					schema.Properties = runtime.RawExtension{Raw: raw}
-				}
-				cfg.InputSchema = schema
-			}
-		}
-		r.Status.AtProvider.Tools = append(r.Status.AtProvider.Tools, cfg)
+		r.Status.AtProvider.Tools = append(r.Status.AtProvider.Tools, agentToolFromObservation(t))
 	}
 
 	r.Status.AtProvider.Multiagent = agentMultiagentFromObservation(resp.Multiagent, resp.ID)
@@ -342,103 +322,283 @@ func agentMultiagentFromObservation(m anthropic.BetaManagedAgentsMultiagent, own
 }
 
 func agentToolToNewParam(t AgentToolConfig) anthropic.BetaAgentNewParamsToolUnion {
-	toolType := ""
-	if t.Type != nil {
-		toolType = *t.Type
-	}
-	switch toolType {
+	switch agentToolType(t) {
 	case "mcp_toolset":
-		mcpName := ""
-		if t.MCPServerName != nil {
-			mcpName = *t.MCPServerName
-		}
-		return anthropic.BetaAgentNewParamsToolUnion{
-			OfMCPToolset: &anthropic.BetaManagedAgentsMCPToolsetParams{
-				MCPServerName: mcpName,
-				Type:          anthropic.BetaManagedAgentsMCPToolsetParamsTypeMCPToolset,
-			},
-		}
+		return anthropic.BetaAgentNewParamsToolUnion{OfMCPToolset: mcpToolsetParam(t)}
 	case "custom":
-		name, desc := "", ""
-		if t.Name != nil {
-			name = *t.Name
-		}
-		if t.Description != nil {
-			desc = *t.Description
-		}
-		inputSchema := anthropic.BetaManagedAgentsCustomToolInputSchemaParam{}
-		if t.InputSchema != nil {
-			if len(t.InputSchema.Properties.Raw) > 0 {
-				var props map[string]any
-				_ = json.Unmarshal(t.InputSchema.Properties.Raw, &props)
-				inputSchema.Properties = props
-			}
-			inputSchema.Required = t.InputSchema.Required
-		}
-		return anthropic.BetaAgentNewParamsToolUnion{
-			OfCustom: &anthropic.BetaManagedAgentsCustomToolParams{
-				Name:        name,
-				Description: desc,
-				InputSchema: inputSchema,
-				Type:        anthropic.BetaManagedAgentsCustomToolParamsTypeCustom,
-			},
-		}
+		return anthropic.BetaAgentNewParamsToolUnion{OfCustom: customToolParam(t)}
 	default:
-		return anthropic.BetaAgentNewParamsToolUnion{
-			OfAgentToolset20260401: &anthropic.BetaManagedAgentsAgentToolset20260401Params{
-				Type: anthropic.BetaManagedAgentsAgentToolset20260401ParamsTypeAgentToolset20260401,
-			},
-		}
+		return anthropic.BetaAgentNewParamsToolUnion{OfAgentToolset20260401: agentToolsetParam(t)}
 	}
 }
 
 func agentToolToUpdateParam(t AgentToolConfig) anthropic.BetaAgentUpdateParamsToolUnion {
-	toolType := ""
-	if t.Type != nil {
-		toolType = *t.Type
-	}
-	switch toolType {
+	switch agentToolType(t) {
 	case "mcp_toolset":
-		mcpName := ""
-		if t.MCPServerName != nil {
-			mcpName = *t.MCPServerName
+		return anthropic.BetaAgentUpdateParamsToolUnion{OfMCPToolset: mcpToolsetParam(t)}
+	case "custom":
+		return anthropic.BetaAgentUpdateParamsToolUnion{OfCustom: customToolParam(t)}
+	default:
+		return anthropic.BetaAgentUpdateParamsToolUnion{OfAgentToolset20260401: agentToolsetParam(t)}
+	}
+}
+
+func agentToolType(t AgentToolConfig) string {
+	if t.Type != nil {
+		return *t.Type
+	}
+	return ""
+}
+
+func agentToolsetParam(t AgentToolConfig) *anthropic.BetaManagedAgentsAgentToolset20260401Params {
+	p := &anthropic.BetaManagedAgentsAgentToolset20260401Params{
+		Type: anthropic.BetaManagedAgentsAgentToolset20260401ParamsTypeAgentToolset20260401,
+	}
+	if d := t.DefaultConfig; d != nil {
+		p.DefaultConfig = anthropic.BetaManagedAgentsAgentToolsetDefaultConfigParams{
+			Enabled:          optionalBool(d.Enabled),
+			PermissionPolicy: toolPermissionPolicy(d.PermissionPolicy),
 		}
-		return anthropic.BetaAgentUpdateParamsToolUnion{
-			OfMCPToolset: &anthropic.BetaManagedAgentsMCPToolsetParams{
-				MCPServerName: mcpName,
-				Type:          anthropic.BetaManagedAgentsMCPToolsetParamsTypeMCPToolset,
-			},
+	}
+	for _, c := range t.Configs {
+		p.Configs = append(p.Configs, agentToolOverrideParam(c))
+	}
+	return p
+}
+
+func mcpToolsetParam(t AgentToolConfig) *anthropic.BetaManagedAgentsMCPToolsetParams {
+	p := &anthropic.BetaManagedAgentsMCPToolsetParams{
+		Type: anthropic.BetaManagedAgentsMCPToolsetParamsTypeMCPToolset,
+	}
+	if t.MCPServerName != nil {
+		p.MCPServerName = *t.MCPServerName
+	}
+	if d := t.DefaultConfig; d != nil {
+		p.DefaultConfig = anthropic.BetaManagedAgentsMCPToolsetDefaultConfigParams{
+			Enabled:          optionalBool(d.Enabled),
+			PermissionPolicy: anthropic.BetaManagedAgentsMCPToolsetDefaultConfigParamsPermissionPolicyUnion(toolPermissionPolicy(d.PermissionPolicy)),
+		}
+	}
+	for _, c := range t.Configs {
+		mc := anthropic.BetaManagedAgentsMCPToolConfigParams{
+			Enabled:          optionalBool(c.Enabled),
+			PermissionPolicy: anthropic.BetaManagedAgentsMCPToolConfigParamsPermissionPolicyUnion(toolPermissionPolicy(c.PermissionPolicy)),
+		}
+		if c.Name != nil {
+			mc.Name = *c.Name
+		}
+		p.Configs = append(p.Configs, mc)
+	}
+	return p
+}
+
+func customToolParam(t AgentToolConfig) *anthropic.BetaManagedAgentsCustomToolParams {
+	p := &anthropic.BetaManagedAgentsCustomToolParams{
+		Type: anthropic.BetaManagedAgentsCustomToolParamsTypeCustom,
+	}
+	if t.Name != nil {
+		p.Name = *t.Name
+	}
+	if t.Description != nil {
+		p.Description = *t.Description
+	}
+	if t.InputSchema != nil {
+		if len(t.InputSchema.Properties.Raw) > 0 {
+			var props map[string]any
+			_ = json.Unmarshal(t.InputSchema.Properties.Raw, &props)
+			p.InputSchema.Properties = props
+		}
+		p.InputSchema.Required = t.InputSchema.Required
+	}
+	return p
+}
+
+// agentToolOverrideParam builds the per-tool config variant selected by the
+// tool name. An unknown name yields a zero-value union, which the API rejects.
+func agentToolOverrideParam(c AgentToolOverride) anthropic.BetaManagedAgentsAgentToolConfigParamsUnion {
+	enabled := optionalBool(c.Enabled)
+	policy := toolPermissionPolicy(c.PermissionPolicy)
+	name := ""
+	if c.Name != nil {
+		name = *c.Name
+	}
+	switch name {
+	case "bash":
+		return anthropic.BetaManagedAgentsAgentToolConfigParamsUnion{OfBash: &anthropic.BetaManagedAgentsBashToolConfigParams{
+			Enabled:          enabled,
+			PermissionPolicy: anthropic.BetaManagedAgentsBashToolConfigParamsPermissionPolicyUnion(policy),
+			Type:             anthropic.BetaManagedAgentsBashToolConfigParamsTypeBash,
+		}}
+	case "edit":
+		return anthropic.BetaManagedAgentsAgentToolConfigParamsUnion{OfEdit: &anthropic.BetaManagedAgentsEditToolConfigParams{
+			Enabled:          enabled,
+			PermissionPolicy: anthropic.BetaManagedAgentsEditToolConfigParamsPermissionPolicyUnion(policy),
+			Type:             anthropic.BetaManagedAgentsEditToolConfigParamsTypeEdit,
+		}}
+	case "read":
+		return anthropic.BetaManagedAgentsAgentToolConfigParamsUnion{OfRead: &anthropic.BetaManagedAgentsReadToolConfigParams{
+			Enabled:          enabled,
+			PermissionPolicy: anthropic.BetaManagedAgentsReadToolConfigParamsPermissionPolicyUnion(policy),
+			Type:             anthropic.BetaManagedAgentsReadToolConfigParamsTypeRead,
+		}}
+	case "write":
+		return anthropic.BetaManagedAgentsAgentToolConfigParamsUnion{OfWrite: &anthropic.BetaManagedAgentsWriteToolConfigParams{
+			Enabled:          enabled,
+			PermissionPolicy: anthropic.BetaManagedAgentsWriteToolConfigParamsPermissionPolicyUnion(policy),
+			Type:             anthropic.BetaManagedAgentsWriteToolConfigParamsTypeWrite,
+		}}
+	case "glob":
+		return anthropic.BetaManagedAgentsAgentToolConfigParamsUnion{OfGlob: &anthropic.BetaManagedAgentsGlobToolConfigParams{
+			Enabled:          enabled,
+			PermissionPolicy: anthropic.BetaManagedAgentsGlobToolConfigParamsPermissionPolicyUnion(policy),
+			Type:             anthropic.BetaManagedAgentsGlobToolConfigParamsTypeGlob,
+		}}
+	case "grep":
+		return anthropic.BetaManagedAgentsAgentToolConfigParamsUnion{OfGrep: &anthropic.BetaManagedAgentsGrepToolConfigParams{
+			Enabled:          enabled,
+			PermissionPolicy: anthropic.BetaManagedAgentsGrepToolConfigParamsPermissionPolicyUnion(policy),
+			Type:             anthropic.BetaManagedAgentsGrepToolConfigParamsTypeGrep,
+		}}
+	case "web_fetch":
+		wf := &anthropic.BetaManagedAgentsWebFetchToolConfigParams{
+			Enabled:          enabled,
+			PermissionPolicy: anthropic.BetaManagedAgentsWebFetchToolConfigParamsPermissionPolicyUnion(policy),
+			AllowedDomains:   c.AllowedDomains,
+			BlockedDomains:   c.BlockedDomains,
+			Type:             anthropic.BetaManagedAgentsWebFetchToolConfigParamsTypeWebFetch,
+		}
+		if c.MaxContentTokens != nil {
+			wf.MaxContentTokens = anthropic.Int(*c.MaxContentTokens)
+		}
+		return anthropic.BetaManagedAgentsAgentToolConfigParamsUnion{OfWebFetch: wf}
+	case "web_search":
+		ws := &anthropic.BetaManagedAgentsWebSearchToolConfigParams{
+			Enabled:          enabled,
+			PermissionPolicy: anthropic.BetaManagedAgentsWebSearchToolConfigParamsPermissionPolicyUnion(policy),
+			AllowedDomains:   c.AllowedDomains,
+			BlockedDomains:   c.BlockedDomains,
+			Type:             anthropic.BetaManagedAgentsWebSearchToolConfigParamsTypeWebSearch,
+		}
+		if l := c.UserLocation; l != nil {
+			ws.UserLocation = anthropic.BetaManagedAgentsUserLocationParam{
+				City:     optionalString(l.City),
+				Country:  optionalString(l.Country),
+				Region:   optionalString(l.Region),
+				Timezone: optionalString(l.Timezone),
+			}
+		}
+		return anthropic.BetaManagedAgentsAgentToolConfigParamsUnion{OfWebSearch: ws}
+	}
+	return anthropic.BetaManagedAgentsAgentToolConfigParamsUnion{}
+}
+
+// toolPermissionPolicy builds the permission policy union. Every toolset and
+// per-tool config declares its own union type with the same fields, so callers
+// convert the result to theirs.
+func toolPermissionPolicy(p *string) anthropic.BetaManagedAgentsAgentToolsetDefaultConfigParamsPermissionPolicyUnion {
+	var u anthropic.BetaManagedAgentsAgentToolsetDefaultConfigParamsPermissionPolicyUnion
+	if p == nil {
+		return u
+	}
+	switch *p {
+	case "always_allow":
+		u.OfAlwaysAllow = &anthropic.BetaManagedAgentsAlwaysAllowPolicyParam{Type: anthropic.BetaManagedAgentsAlwaysAllowPolicyTypeAlwaysAllow}
+	case "always_ask":
+		u.OfAlwaysAsk = &anthropic.BetaManagedAgentsAlwaysAskPolicyParam{Type: anthropic.BetaManagedAgentsAlwaysAskPolicyTypeAlwaysAsk}
+	case "auto":
+		auto := anthropic.NewBetaManagedAgentsAutoPolicyParam()
+		u.OfAuto = &auto
+	}
+	return u
+}
+
+func agentToolFromObservation(t anthropic.BetaManagedAgentsAgentToolUnion) AgentToolConfig {
+	toolType := t.Type
+	cfg := AgentToolConfig{Type: &toolType}
+	switch toolType {
+	case "agent_toolset_20260401":
+		ts := t.AsAgentToolset20260401()
+		cfg.DefaultConfig = toolsetDefaultFromObservation(ts.DefaultConfig.Enabled, ts.DefaultConfig.PermissionPolicy.Type)
+		for _, c := range ts.Configs {
+			cfg.Configs = append(cfg.Configs, agentToolOverrideFromObservation(c))
+		}
+	case "mcp_toolset":
+		mcpName := t.MCPServerName
+		cfg.MCPServerName = &mcpName
+		ms := t.AsMCPToolset()
+		cfg.DefaultConfig = toolsetDefaultFromObservation(ms.DefaultConfig.Enabled, ms.DefaultConfig.PermissionPolicy.Type)
+		for _, c := range ms.Configs {
+			name, enabled, policy := c.Name, c.Enabled, c.PermissionPolicy.Type
+			cfg.Configs = append(cfg.Configs, AgentToolOverride{Name: &name, Enabled: &enabled, PermissionPolicy: &policy})
 		}
 	case "custom":
-		name, desc := "", ""
-		if t.Name != nil {
-			name = *t.Name
-		}
-		if t.Description != nil {
-			desc = *t.Description
-		}
-		inputSchema := anthropic.BetaManagedAgentsCustomToolInputSchemaParam{}
-		if t.InputSchema != nil {
-			if len(t.InputSchema.Properties.Raw) > 0 {
-				var props map[string]any
-				_ = json.Unmarshal(t.InputSchema.Properties.Raw, &props)
-				inputSchema.Properties = props
+		name, desc := t.Name, t.Description
+		cfg.Name = &name
+		cfg.Description = &desc
+		if t.InputSchema.RawJSON() != "" {
+			schema := &AgentCustomToolInputSchema{
+				Required: t.InputSchema.Required,
 			}
-			inputSchema.Required = t.InputSchema.Required
-		}
-		return anthropic.BetaAgentUpdateParamsToolUnion{
-			OfCustom: &anthropic.BetaManagedAgentsCustomToolParams{
-				Name:        name,
-				Description: desc,
-				InputSchema: inputSchema,
-				Type:        anthropic.BetaManagedAgentsCustomToolParamsTypeCustom,
-			},
-		}
-	default:
-		return anthropic.BetaAgentUpdateParamsToolUnion{
-			OfAgentToolset20260401: &anthropic.BetaManagedAgentsAgentToolset20260401Params{
-				Type: anthropic.BetaManagedAgentsAgentToolset20260401ParamsTypeAgentToolset20260401,
-			},
+			if t.InputSchema.Properties != nil {
+				raw, _ := json.Marshal(t.InputSchema.Properties)
+				schema.Properties = runtime.RawExtension{Raw: raw}
+			}
+			cfg.InputSchema = schema
 		}
 	}
+	return cfg
+}
+
+// toolsetDefaultFromObservation returns nil when the response carries no
+// default config, which leaves an omitted spec.defaultConfig drift-free.
+func toolsetDefaultFromObservation(enabled bool, policy string) *AgentToolsetDefaultConfig {
+	if policy == "" {
+		return nil
+	}
+	return &AgentToolsetDefaultConfig{Enabled: &enabled, PermissionPolicy: &policy}
+}
+
+func agentToolOverrideFromObservation(c anthropic.BetaManagedAgentsAgentToolConfigUnion) AgentToolOverride {
+	name, enabled, policy := c.Name, c.Enabled, c.PermissionPolicy.Type
+	o := AgentToolOverride{Name: &name, Enabled: &enabled, PermissionPolicy: &policy}
+	if len(c.AllowedDomains) > 0 {
+		o.AllowedDomains = c.AllowedDomains
+	}
+	if len(c.BlockedDomains) > 0 {
+		o.BlockedDomains = c.BlockedDomains
+	}
+	if c.MaxContentTokens != 0 {
+		maxTokens := c.MaxContentTokens
+		o.MaxContentTokens = &maxTokens
+	}
+	if l := c.UserLocation; l.City != "" || l.Country != "" || l.Region != "" || l.Timezone != "" {
+		o.UserLocation = &AgentToolUserLocation{
+			City:     nonEmpty(l.City),
+			Country:  nonEmpty(l.Country),
+			Region:   nonEmpty(l.Region),
+			Timezone: nonEmpty(l.Timezone),
+		}
+	}
+	return o
+}
+
+func optionalBool(b *bool) param.Opt[bool] {
+	if b == nil {
+		return param.Opt[bool]{}
+	}
+	return anthropic.Bool(*b)
+}
+
+func optionalString(s *string) param.Opt[string] {
+	if s == nil {
+		return param.Opt[string]{}
+	}
+	return anthropic.String(*s)
+}
+
+func nonEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
