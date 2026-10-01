@@ -23,14 +23,14 @@ import (
 // ToAnthropicNew converts ForProvider to the params of Members.Add. The
 // workspace ID is a positional argument of that call and is not part of the
 // params.
-func (r *WorkspaceMember) ToAnthropicNew() anthropic.BetaOrganizationWorkspaceMemberAddParams {
+func (r *WorkspaceMember) ToAnthropicNew() anthropic.OrganizationWorkspaceMemberAddParams {
 	p := r.Spec.ForProvider
-	params := anthropic.BetaOrganizationWorkspaceMemberAddParams{}
+	params := anthropic.OrganizationWorkspaceMemberAddParams{}
 	if p.UserID != nil {
 		params.UserID = *p.UserID
 	}
 	if p.WorkspaceRole != nil {
-		params.WorkspaceRole = anthropic.BetaNoBillingWorkspaceRole(*p.WorkspaceRole)
+		params.WorkspaceRole = anthropic.NoBillingWorkspaceRole(*p.WorkspaceRole)
 	}
 	return params
 }
@@ -38,20 +38,20 @@ func (r *WorkspaceMember) ToAnthropicNew() anthropic.BetaOrganizationWorkspaceMe
 // ToAnthropicUpdate converts ForProvider to the params of Members.Update,
 // which carries the workspace ID inside the params while the user ID is
 // positional.
-func (r *WorkspaceMember) ToAnthropicUpdate() anthropic.BetaOrganizationWorkspaceMemberUpdateParams {
+func (r *WorkspaceMember) ToAnthropicUpdate() anthropic.OrganizationWorkspaceMemberUpdateParams {
 	p := r.Spec.ForProvider
-	params := anthropic.BetaOrganizationWorkspaceMemberUpdateParams{}
+	params := anthropic.OrganizationWorkspaceMemberUpdateParams{}
 	if p.WorkspaceID != nil {
 		params.WorkspaceID = *p.WorkspaceID
 	}
 	if p.WorkspaceRole != nil {
-		params.WorkspaceRole = anthropic.BetaWorkspaceRole(*p.WorkspaceRole)
+		params.WorkspaceRole = anthropic.WorkspaceRole(*p.WorkspaceRole)
 	}
 	return params
 }
 
-// FromAnthropicObservation populates AtProvider from a BetaWorkspaceMember.
-func (r *WorkspaceMember) FromAnthropicObservation(resp anthropic.BetaWorkspaceMember) {
+// FromAnthropicObservation populates AtProvider from a WorkspaceMember.
+func (r *WorkspaceMember) FromAnthropicObservation(resp anthropic.WorkspaceMember) {
 	r.Status.AtProvider.WorkspaceID = &resp.WorkspaceID
 	r.Status.AtProvider.UserID = &resp.UserID
 	role := string(resp.WorkspaceRole)

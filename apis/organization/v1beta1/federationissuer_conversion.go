@@ -23,10 +23,10 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
-// ToAnthropicNew converts ForProvider to BetaOrganizationFederationIssuerNewParams.
-func (r *FederationIssuer) ToAnthropicNew() anthropic.BetaOrganizationFederationIssuerNewParams {
+// ToAnthropicNew converts ForProvider to OrganizationFederationIssuerNewParams.
+func (r *FederationIssuer) ToAnthropicNew() anthropic.OrganizationFederationIssuerNewParams {
 	p := r.Spec.ForProvider
-	params := anthropic.BetaOrganizationFederationIssuerNewParams{}
+	params := anthropic.OrganizationFederationIssuerNewParams{}
 	if p.IssuerURL != nil {
 		params.IssuerURL = *p.IssuerURL
 	}
@@ -52,10 +52,10 @@ func (r *FederationIssuer) ToAnthropicNew() anthropic.BetaOrganizationFederation
 	return params
 }
 
-// ToAnthropicUpdate converts ForProvider to BetaOrganizationFederationIssuerUpdateParams.
-func (r *FederationIssuer) ToAnthropicUpdate() anthropic.BetaOrganizationFederationIssuerUpdateParams {
+// ToAnthropicUpdate converts ForProvider to OrganizationFederationIssuerUpdateParams.
+func (r *FederationIssuer) ToAnthropicUpdate() anthropic.OrganizationFederationIssuerUpdateParams {
 	p := r.Spec.ForProvider
-	params := anthropic.BetaOrganizationFederationIssuerUpdateParams{}
+	params := anthropic.OrganizationFederationIssuerUpdateParams{}
 	if p.IssuerURL != nil {
 		params.IssuerURL = anthropic.String(*p.IssuerURL)
 	}
@@ -84,8 +84,8 @@ func (r *FederationIssuer) ToAnthropicUpdate() anthropic.BetaOrganizationFederat
 	return params
 }
 
-func jwksDiscoveryParam(j *FederationIssuerJWKS) *anthropic.BetaJWKSDiscoveryParam {
-	cfg := &anthropic.BetaJWKSDiscoveryParam{}
+func jwksDiscoveryParam(j *FederationIssuerJWKS) *anthropic.JWKSDiscoveryParam {
+	cfg := &anthropic.JWKSDiscoveryParam{}
 	if j.DiscoveryBase != nil {
 		cfg.DiscoveryBase = anthropic.String(*j.DiscoveryBase)
 	}
@@ -95,8 +95,8 @@ func jwksDiscoveryParam(j *FederationIssuerJWKS) *anthropic.BetaJWKSDiscoveryPar
 	return cfg
 }
 
-func jwksExplicitURLParam(j *FederationIssuerJWKS) *anthropic.BetaJWKSExplicitURLParam {
-	cfg := &anthropic.BetaJWKSExplicitURLParam{}
+func jwksExplicitURLParam(j *FederationIssuerJWKS) *anthropic.JWKSExplicitURLParam {
+	cfg := &anthropic.JWKSExplicitURLParam{}
 	if j.URL != nil {
 		cfg.URL = *j.URL
 	}
@@ -106,8 +106,8 @@ func jwksExplicitURLParam(j *FederationIssuerJWKS) *anthropic.BetaJWKSExplicitUR
 	return cfg
 }
 
-func jwksInlineParam(j *FederationIssuerJWKS) *anthropic.BetaJWKSInlineParam {
-	return &anthropic.BetaJWKSInlineParam{Keys: jwksKeysToSDK(j.Keys)}
+func jwksInlineParam(j *FederationIssuerJWKS) *anthropic.JWKSInlineParam {
+	return &anthropic.JWKSInlineParam{Keys: jwksKeysToSDK(j.Keys)}
 }
 
 // jwksKeysToSDK decodes the JWK objects held as raw JSON in the CRD. Entries
@@ -140,10 +140,10 @@ func jwksKeysFromSDK(keys []map[string]any) []apiextensionsv1.JSON {
 	return out
 }
 
-// FromAnthropicObservation populates AtProvider from a BetaFederationIssuer.
+// FromAnthropicObservation populates AtProvider from a FederationIssuer.
 // ArchivedAt is intentionally omitted: the reconciler treats an archived
 // issuer as absent.
-func (r *FederationIssuer) FromAnthropicObservation(resp anthropic.BetaFederationIssuer) {
+func (r *FederationIssuer) FromAnthropicObservation(resp anthropic.FederationIssuer) {
 	r.Status.AtProvider.ID = &resp.ID
 	r.Status.AtProvider.Name = &resp.Name
 	r.Status.AtProvider.IssuerURL = &resp.IssuerURL

@@ -20,10 +20,10 @@ import (
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 )
 
-// ToAnthropicNew converts ForProvider to BetaOrganizationFederationRuleNewParams.
-func (r *FederationRule) ToAnthropicNew() anthropic.BetaOrganizationFederationRuleNewParams {
+// ToAnthropicNew converts ForProvider to OrganizationFederationRuleNewParams.
+func (r *FederationRule) ToAnthropicNew() anthropic.OrganizationFederationRuleNewParams {
 	p := r.Spec.ForProvider
-	params := anthropic.BetaOrganizationFederationRuleNewParams{}
+	params := anthropic.OrganizationFederationRuleNewParams{}
 	if p.IssuerID != nil {
 		params.IssuerID = *p.IssuerID
 	}
@@ -34,7 +34,7 @@ func (r *FederationRule) ToAnthropicNew() anthropic.BetaOrganizationFederationRu
 		params.OAuthScope = *p.OAuthScope
 	}
 	if p.ServiceAccountID != nil {
-		params.Target = anthropic.BetaServiceAccountTargetParam{ServiceAccountID: *p.ServiceAccountID}
+		params.Target = anthropic.ServiceAccountTargetParam{ServiceAccountID: *p.ServiceAccountID}
 	}
 	if p.Match != nil {
 		params.Match = matchParam(p.Match)
@@ -54,10 +54,10 @@ func (r *FederationRule) ToAnthropicNew() anthropic.BetaOrganizationFederationRu
 	return params
 }
 
-// ToAnthropicUpdate converts ForProvider to BetaOrganizationFederationRuleUpdateParams.
-func (r *FederationRule) ToAnthropicUpdate() anthropic.BetaOrganizationFederationRuleUpdateParams {
+// ToAnthropicUpdate converts ForProvider to OrganizationFederationRuleUpdateParams.
+func (r *FederationRule) ToAnthropicUpdate() anthropic.OrganizationFederationRuleUpdateParams {
 	p := r.Spec.ForProvider
-	params := anthropic.BetaOrganizationFederationRuleUpdateParams{}
+	params := anthropic.OrganizationFederationRuleUpdateParams{}
 	if p.Name != nil {
 		params.Name = anthropic.String(*p.Name)
 	}
@@ -68,7 +68,7 @@ func (r *FederationRule) ToAnthropicUpdate() anthropic.BetaOrganizationFederatio
 		params.OAuthScope = anthropic.String(*p.OAuthScope)
 	}
 	if p.ServiceAccountID != nil {
-		params.Target = anthropic.BetaServiceAccountTargetParam{ServiceAccountID: *p.ServiceAccountID}
+		params.Target = anthropic.ServiceAccountTargetParam{ServiceAccountID: *p.ServiceAccountID}
 	}
 	if p.Match != nil {
 		params.Match = matchParam(p.Match)
@@ -85,8 +85,8 @@ func (r *FederationRule) ToAnthropicUpdate() anthropic.BetaOrganizationFederatio
 	return params
 }
 
-func matchParam(m *FederationRuleMatch) anthropic.BetaFederationRuleMatchParam {
-	out := anthropic.BetaFederationRuleMatchParam{}
+func matchParam(m *FederationRuleMatch) anthropic.FederationRuleMatchParam {
+	out := anthropic.FederationRuleMatchParam{}
 	if m.SubjectPrefix != nil {
 		out.SubjectPrefix = anthropic.String(*m.SubjectPrefix)
 	}
@@ -102,10 +102,10 @@ func matchParam(m *FederationRuleMatch) anthropic.BetaFederationRuleMatchParam {
 	return out
 }
 
-// FromAnthropicObservation populates AtProvider from a BetaFederationRule.
+// FromAnthropicObservation populates AtProvider from a FederationRule.
 // ArchivedAt is intentionally omitted: the reconciler treats an archived
 // rule as absent.
-func (r *FederationRule) FromAnthropicObservation(resp anthropic.BetaFederationRule) {
+func (r *FederationRule) FromAnthropicObservation(resp anthropic.FederationRule) {
 	r.Status.AtProvider.ID = &resp.ID
 	r.Status.AtProvider.Name = &resp.Name
 	r.Status.AtProvider.Description = &resp.Description
@@ -123,10 +123,13 @@ func (r *FederationRule) FromAnthropicObservation(resp anthropic.BetaFederationR
 		match.Claims = resp.Match.Claims
 	}
 	r.Status.AtProvider.Match = match
-	r.Status.AtProvider.WorkspaceID = optionalString(resp.WorkspaceID)
+	r.Status.AtProvider.WorkspaceID = nil
 	r.Status.AtProvider.WorkspaceIDs = nil
 	if len(resp.WorkspaceIDs) > 0 {
 		r.Status.AtProvider.WorkspaceIDs = resp.WorkspaceIDs
+	}
+	if len(resp.WorkspaceIDs) == 1 {
+		r.Status.AtProvider.WorkspaceID = &resp.WorkspaceIDs[0]
 	}
 	all := resp.AppliesToAllWorkspaces
 	r.Status.AtProvider.AppliesToAllWorkspaces = &all

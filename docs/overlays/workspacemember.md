@@ -12,7 +12,7 @@ sections 1 and 2 of `docs/overlays/workspace.md` apply as well.
 **Standard:** one CRD maps to one flat service.
 
 **WorkspaceMember:** the CRD maps onto
-`client.Beta.Organization.Workspaces.Members`, reached under the parent
+`client.Organization.Workspaces.Members`, reached under the parent
 workspace service. The parent ID travels inconsistently, as in
 `MemoryStoreMemory`:
 

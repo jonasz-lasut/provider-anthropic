@@ -16,7 +16,7 @@ key, CMEK) managed resource. It lives in the `organization` group, so sections
 (`aws` | `gcp` | `azure`). The CRD flattens every variant's fields into one
 `ExternalKeyProviderConfig` with a `type` discriminator, and the conversion
 switches on `type` to fill `OfAWS`, `OfGCP`, or `OfAzure`. The API response
-(`BetaExternalKeyProviderConfigUnion`) is already flat, so
+(`ExternalKeyProviderConfigUnion`) is already flat, so
 `FromAnthropicObservation` copies the non-empty fields back and the structured
 diff works key by key. The same struct serves ForProvider and AtProvider.
 

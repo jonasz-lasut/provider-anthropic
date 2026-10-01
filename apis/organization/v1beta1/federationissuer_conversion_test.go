@@ -38,19 +38,19 @@ var optInt = cmp.Comparer(func(a, b param.Opt[int64]) bool {
 })
 
 var ignoreIssuerParamInternals = cmpopts.IgnoreUnexported(
-	anthropic.BetaOrganizationFederationIssuerNewParams{},
-	anthropic.BetaOrganizationFederationIssuerUpdateParams{},
-	anthropic.BetaOrganizationFederationIssuerNewParamsJWKSUnion{},
-	anthropic.BetaOrganizationFederationIssuerUpdateParamsJWKSUnion{},
-	anthropic.BetaJWKSDiscoveryParam{},
-	anthropic.BetaJWKSExplicitURLParam{},
-	anthropic.BetaJWKSInlineParam{},
+	anthropic.OrganizationFederationIssuerNewParams{},
+	anthropic.OrganizationFederationIssuerUpdateParams{},
+	anthropic.OrganizationFederationIssuerNewParamsJWKSUnion{},
+	anthropic.OrganizationFederationIssuerUpdateParamsJWKSUnion{},
+	anthropic.JWKSDiscoveryParam{},
+	anthropic.JWKSExplicitURLParam{},
+	anthropic.JWKSInlineParam{},
 )
 
 func TestFederationIssuerToAnthropicNew(t *testing.T) {
 	cases := map[string]struct {
 		args FederationIssuerParameters
-		want anthropic.BetaOrganizationFederationIssuerNewParams
+		want anthropic.OrganizationFederationIssuerNewParams
 	}{
 		"InlineKeys": {
 			args: FederationIssuerParameters{
@@ -60,13 +60,13 @@ func TestFederationIssuerToAnthropicNew(t *testing.T) {
 				MaxJWTLifetimeSeconds: new(int64(7200)),
 				JWKS: &FederationIssuerJWKS{Type: new("inline"), Keys: []apiextensionsv1.JSON{{Raw: []byte(`{"kty":"RSA","kid":"k1","n":"abc","e":"AQAB"}`)}}},
 			},
-			want: anthropic.BetaOrganizationFederationIssuerNewParams{
+			want: anthropic.OrganizationFederationIssuerNewParams{
 				Name:                  "kind-cluster",
 				IssuerURL:             "https://kubernetes.default.svc.cluster.local",
 				CheckJTI:              anthropic.Bool(false),
 				MaxJWTLifetimeSeconds: anthropic.Int(7200),
-				JWKS: anthropic.BetaOrganizationFederationIssuerNewParamsJWKSUnion{
-					OfInline: &anthropic.BetaJWKSInlineParam{Keys: []map[string]any{{"kty": "RSA", "kid": "k1", "n": "abc", "e": "AQAB"}}},
+				JWKS: anthropic.OrganizationFederationIssuerNewParamsJWKSUnion{
+					OfInline: &anthropic.JWKSInlineParam{Keys: []map[string]any{{"kty": "RSA", "kid": "k1", "n": "abc", "e": "AQAB"}}},
 				},
 			},
 		},
@@ -75,16 +75,16 @@ func TestFederationIssuerToAnthropicNew(t *testing.T) {
 				Name: new("gh"), IssuerURL: new("https://token.actions.githubusercontent.com"),
 				JWKS: &FederationIssuerJWKS{Type: new("explicit_url"), URL: new("https://token.actions.githubusercontent.com/.well-known/jwks"), CACertPEM: new("PEM")},
 			},
-			want: anthropic.BetaOrganizationFederationIssuerNewParams{
+			want: anthropic.OrganizationFederationIssuerNewParams{
 				Name: "gh", IssuerURL: "https://token.actions.githubusercontent.com",
-				JWKS: anthropic.BetaOrganizationFederationIssuerNewParamsJWKSUnion{
-					OfExplicitURL: &anthropic.BetaJWKSExplicitURLParam{URL: "https://token.actions.githubusercontent.com/.well-known/jwks", CACertPEM: anthropic.String("PEM")},
+				JWKS: anthropic.OrganizationFederationIssuerNewParamsJWKSUnion{
+					OfExplicitURL: &anthropic.JWKSExplicitURLParam{URL: "https://token.actions.githubusercontent.com/.well-known/jwks", CACertPEM: anthropic.String("PEM")},
 				},
 			},
 		},
 		"DiscoveryDefault": {
 			args: FederationIssuerParameters{Name: new("gh"), IssuerURL: new("https://token.actions.githubusercontent.com")},
-			want: anthropic.BetaOrganizationFederationIssuerNewParams{Name: "gh", IssuerURL: "https://token.actions.githubusercontent.com"},
+			want: anthropic.OrganizationFederationIssuerNewParams{Name: "gh", IssuerURL: "https://token.actions.githubusercontent.com"},
 		},
 	}
 
@@ -106,11 +106,11 @@ func TestFederationIssuerToAnthropicUpdate(t *testing.T) {
 		Name: new("renamed"), JWKSPollingDisabled: new(true),
 		JWKS: &FederationIssuerJWKS{Type: new("discovery"), DiscoveryBase: new("https://example.com/oidc")},
 	}}}
-	want := anthropic.BetaOrganizationFederationIssuerUpdateParams{
+	want := anthropic.OrganizationFederationIssuerUpdateParams{
 		Name:                anthropic.String("renamed"),
 		JWKSPollingDisabled: anthropic.Bool(true),
-		JWKS: anthropic.BetaOrganizationFederationIssuerUpdateParamsJWKSUnion{
-			OfDiscovery: &anthropic.BetaJWKSDiscoveryParam{DiscoveryBase: anthropic.String("https://example.com/oidc")},
+		JWKS: anthropic.OrganizationFederationIssuerUpdateParamsJWKSUnion{
+			OfDiscovery: &anthropic.JWKSDiscoveryParam{DiscoveryBase: anthropic.String("https://example.com/oidc")},
 		},
 	}
 
@@ -124,11 +124,11 @@ func TestFederationIssuerToAnthropicUpdate(t *testing.T) {
 func TestFederationIssuerFromAnthropicObservation(t *testing.T) {
 	created := time.Date(2026, 9, 8, 10, 0, 0, 0, time.UTC)
 	r := &FederationIssuer{}
-	resp := anthropic.BetaFederationIssuer{
+	resp := anthropic.FederationIssuer{
 		ID: "fdis_1", Name: "kind-cluster", IssuerURL: "https://kubernetes.default.svc.cluster.local",
 		CheckJTI: true, MaxJWTLifetimeSeconds: 3600, CreatedAt: created, UpdatedAt: created, ArchivedAt: created,
-		JWKS:       anthropic.BetaFederationIssuerJWKSUnion{Type: "inline", Keys: []map[string]any{{"kty": "RSA", "kid": "k1"}}},
-		PollStatus: anthropic.BetaFederationIssuerPollStatus{ConsecutiveFailures: 2, LastFetchedAt: created},
+		JWKS:       anthropic.FederationIssuerJWKSUnion{Type: "inline", Keys: []map[string]any{{"kty": "RSA", "kid": "k1"}}},
+		PollStatus: anthropic.FederationIssuerPollStatus{ConsecutiveFailures: 2, LastFetchedAt: created},
 	}
 	want := FederationIssuerObservation{
 		ID: new("fdis_1"), Name: new("kind-cluster"), IssuerURL: new("https://kubernetes.default.svc.cluster.local"),

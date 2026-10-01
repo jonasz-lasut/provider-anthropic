@@ -110,7 +110,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	resp, err := e.client.Beta.Organization.Federation.Issuers.Get(ctx, id, anthropic.BetaOrganizationFederationIssuerGetParams{})
+	resp, err := e.client.Organization.Federation.Issuers.Get(ctx, id)
 	if err != nil {
 		var apiErr *anthropic.Error
 		if errors.As(err, &apiErr) && apiErr.StatusCode == 404 {
@@ -140,7 +140,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, xperrors.New(errNotFederationIssuer)
 	}
 
-	resp, err := e.client.Beta.Organization.Federation.Issuers.New(ctx, fi.ToAnthropicNew())
+	resp, err := e.client.Organization.Federation.Issuers.New(ctx, fi.ToAnthropicNew())
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
 	}
@@ -162,7 +162,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
-	if _, err := e.client.Beta.Organization.Federation.Issuers.Update(ctx, id, fi.ToAnthropicUpdate()); err != nil {
+	if _, err := e.client.Organization.Federation.Issuers.Update(ctx, id, fi.ToAnthropicUpdate()); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
 
@@ -181,7 +181,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	// The Admin API has no delete for this kind; archiving is permanent.
-	if _, err := e.client.Beta.Organization.Federation.Issuers.Archive(ctx, id, anthropic.BetaOrganizationFederationIssuerArchiveParams{}); err != nil {
+	if _, err := e.client.Organization.Federation.Issuers.Archive(ctx, id); err != nil {
 		var apiErr *anthropic.Error
 		if errors.As(err, &apiErr) && apiErr.StatusCode == 404 {
 			return managed.ExternalDelete{}, nil

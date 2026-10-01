@@ -48,8 +48,8 @@ type WorkspaceDataResidency struct {
 }
 
 // WorkspaceParameters defines the desired state of an Anthropic Workspace.
-// These fields map to BetaOrganizationWorkspaceNewParams /
-// BetaOrganizationWorkspaceUpdateParams from the Anthropic SDK.
+// These fields map to OrganizationWorkspaceNewParams /
+// OrganizationWorkspaceUpdateParams from the Anthropic SDK.
 type WorkspaceParameters struct {
 	// Required: Name of the workspace.
 	// +optional

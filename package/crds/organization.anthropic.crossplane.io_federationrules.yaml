@@ -520,7 +520,10 @@ spec:
                       description: UpdatedByActorID identifies who last modified the rule.
                       type: string
                     workspaceId:
-                      description: WorkspaceID is the observed primary workspace binding.
+                      description: |-
+                        WorkspaceID is the single workspace the rule is enabled for. The API no
+                        longer returns this legacy binding, so it is derived from WorkspaceIDs
+                        and left unset when the rule is enabled for zero or several workspaces.
                       type: string
                     workspaceIds:
                       description: WorkspaceIDs lists every workspace the rule is enabled for.

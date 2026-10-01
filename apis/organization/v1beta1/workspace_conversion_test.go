@@ -36,18 +36,18 @@ var optString = cmp.Comparer(func(a, b param.Opt[string]) bool {
 })
 
 var ignoreParamInternals = cmpopts.IgnoreUnexported(
-	anthropic.BetaOrganizationWorkspaceNewParams{},
-	anthropic.BetaOrganizationWorkspaceUpdateParams{},
-	anthropic.BetaDataResidencyCreateConfigParam{},
-	anthropic.BetaDataResidencyCreateConfigAllowedInferenceGeosUnionParam{},
-	anthropic.BetaDataResidencyUpdateConfigParam{},
-	anthropic.BetaDataResidencyUpdateConfigAllowedInferenceGeosUnionParam{},
+	anthropic.OrganizationWorkspaceNewParams{},
+	anthropic.OrganizationWorkspaceUpdateParams{},
+	anthropic.DataResidencyCreateConfigParam{},
+	anthropic.DataResidencyCreateConfigAllowedInferenceGeosUnionParam{},
+	anthropic.DataResidencyUpdateConfigParam{},
+	anthropic.DataResidencyUpdateConfigAllowedInferenceGeosUnionParam{},
 )
 
 func TestWorkspaceToAnthropicNew(t *testing.T) {
 	cases := map[string]struct {
 		args WorkspaceParameters
-		want anthropic.BetaOrganizationWorkspaceNewParams
+		want anthropic.OrganizationWorkspaceNewParams
 	}{
 		"AllFieldsWithGeoList": {
 			args: WorkspaceParameters{
@@ -61,16 +61,16 @@ func TestWorkspaceToAnthropicNew(t *testing.T) {
 					DefaultInferenceGeo:  new("us"),
 				},
 			},
-			want: anthropic.BetaOrganizationWorkspaceNewParams{
+			want: anthropic.OrganizationWorkspaceNewParams{
 				Name:          "prod",
 				DisplayColor:  anthropic.String("#6C5BB9"),
 				ExternalKeyID: anthropic.String("ekey_1"),
 				Tags:          map[string]string{"team": "platform"},
-				DataResidency: anthropic.BetaDataResidencyCreateConfigParam{
-					WorkspaceGeo:        anthropic.BetaDataResidencyCreateConfigWorkspaceGeoUs,
-					DefaultInferenceGeo: anthropic.BetaDataResidencyCreateConfigDefaultInferenceGeoUs,
-					AllowedInferenceGeos: anthropic.BetaDataResidencyCreateConfigAllowedInferenceGeosUnionParam{
-						OfGeos: []anthropic.BetaAllowedInferenceGeo{anthropic.BetaAllowedInferenceGeoUs, anthropic.BetaAllowedInferenceGeoGlobal},
+				DataResidency: anthropic.DataResidencyCreateConfigParam{
+					WorkspaceGeo:        anthropic.DataResidencyCreateConfigWorkspaceGeoUs,
+					DefaultInferenceGeo: anthropic.DataResidencyCreateConfigDefaultInferenceGeoUs,
+					AllowedInferenceGeos: anthropic.DataResidencyCreateConfigAllowedInferenceGeosUnionParam{
+						OfGeos: []anthropic.AllowedInferenceGeo{anthropic.AllowedInferenceGeoUs, anthropic.AllowedInferenceGeoGlobal},
 					},
 				},
 			},
@@ -80,10 +80,10 @@ func TestWorkspaceToAnthropicNew(t *testing.T) {
 				Name:          new("prod"),
 				DataResidency: &WorkspaceDataResidency{AllowedInferenceGeos: []string{"unrestricted"}},
 			},
-			want: anthropic.BetaOrganizationWorkspaceNewParams{
+			want: anthropic.OrganizationWorkspaceNewParams{
 				Name: "prod",
-				DataResidency: anthropic.BetaDataResidencyCreateConfigParam{
-					AllowedInferenceGeos: anthropic.BetaDataResidencyCreateConfigAllowedInferenceGeosUnionParam{
+				DataResidency: anthropic.DataResidencyCreateConfigParam{
+					AllowedInferenceGeos: anthropic.DataResidencyCreateConfigAllowedInferenceGeosUnionParam{
 						OfUnrestricted: constant.ValueOf[constant.Unrestricted](),
 					},
 				},
@@ -91,7 +91,7 @@ func TestWorkspaceToAnthropicNew(t *testing.T) {
 		},
 		"NameOnly": {
 			args: WorkspaceParameters{Name: new("prod")},
-			want: anthropic.BetaOrganizationWorkspaceNewParams{Name: "prod"},
+			want: anthropic.OrganizationWorkspaceNewParams{Name: "prod"},
 		},
 	}
 
@@ -114,7 +114,7 @@ func TestWorkspaceToAnthropicUpdate(t *testing.T) {
 			params   WorkspaceParameters
 			observed WorkspaceObservation
 		}
-		want anthropic.BetaOrganizationWorkspaceUpdateParams
+		want anthropic.OrganizationWorkspaceUpdateParams
 	}{
 		"MutableFieldsWithoutWorkspaceGeo": {
 			args: struct {
@@ -132,13 +132,13 @@ func TestWorkspaceToAnthropicUpdate(t *testing.T) {
 					},
 				},
 			},
-			want: anthropic.BetaOrganizationWorkspaceUpdateParams{
+			want: anthropic.OrganizationWorkspaceUpdateParams{
 				Name:         anthropic.String("renamed"),
 				DisplayColor: anthropic.String("#000000"),
 				Tags:         map[string]string{"team": "ml"},
-				DataResidency: anthropic.BetaDataResidencyUpdateConfigParam{
-					DefaultInferenceGeo: anthropic.BetaDataResidencyUpdateConfigDefaultInferenceGeoGlobal,
-					AllowedInferenceGeos: anthropic.BetaDataResidencyUpdateConfigAllowedInferenceGeosUnionParam{
+				DataResidency: anthropic.DataResidencyUpdateConfigParam{
+					DefaultInferenceGeo: anthropic.DataResidencyUpdateConfigDefaultInferenceGeoGlobal,
+					AllowedInferenceGeos: anthropic.DataResidencyUpdateConfigAllowedInferenceGeosUnionParam{
 						OfUnrestricted: constant.ValueOf[constant.Unrestricted](),
 					},
 				},
@@ -151,7 +151,7 @@ func TestWorkspaceToAnthropicUpdate(t *testing.T) {
 			}{
 				params: WorkspaceParameters{ExternalKeyID: new("ekey_1")},
 			},
-			want: anthropic.BetaOrganizationWorkspaceUpdateParams{ExternalKeyID: anthropic.String("ekey_1")},
+			want: anthropic.OrganizationWorkspaceUpdateParams{ExternalKeyID: anthropic.String("ekey_1")},
 		},
 		"ExternalKeyOmittedWhenAlreadyAttached": {
 			args: struct {
@@ -161,7 +161,7 @@ func TestWorkspaceToAnthropicUpdate(t *testing.T) {
 				params:   WorkspaceParameters{ExternalKeyID: new("ekey_1")},
 				observed: WorkspaceObservation{ExternalKeyID: new("ekey_1")},
 			},
-			want: anthropic.BetaOrganizationWorkspaceUpdateParams{},
+			want: anthropic.OrganizationWorkspaceUpdateParams{},
 		},
 	}
 
@@ -185,11 +185,11 @@ func TestWorkspaceFromAnthropicObservation(t *testing.T) {
 	created := time.Date(2026, 9, 8, 10, 0, 0, 0, time.UTC)
 
 	cases := map[string]struct {
-		args anthropic.BetaWorkspace
+		args anthropic.Workspace
 		want WorkspaceObservation
 	}{
 		"GeoListAndExternalKey": {
-			args: anthropic.BetaWorkspace{
+			args: anthropic.Workspace{
 				ID:            "wrkspc_1",
 				Name:          "prod",
 				DisplayColor:  "#6C5BB9",
@@ -198,10 +198,10 @@ func TestWorkspaceFromAnthropicObservation(t *testing.T) {
 				Tags:          map[string]string{"team": "platform"},
 				CreatedAt:     created,
 				ArchivedAt:    created,
-				DataResidency: anthropic.BetaDataResidency{
-					WorkspaceGeo:         anthropic.BetaDataResidencyWorkspaceGeoUs,
-					DefaultInferenceGeo:  anthropic.BetaDataResidencyDefaultInferenceGeoUs,
-					AllowedInferenceGeos: anthropic.BetaDataResidencyAllowedInferenceGeosUnion{OfGeos: []anthropic.BetaAllowedInferenceGeo{anthropic.BetaAllowedInferenceGeoUs}},
+				DataResidency: anthropic.DataResidency{
+					WorkspaceGeo:         anthropic.DataResidencyWorkspaceGeoUs,
+					DefaultInferenceGeo:  anthropic.DataResidencyDefaultInferenceGeoUs,
+					AllowedInferenceGeos: anthropic.DataResidencyAllowedInferenceGeosUnion{OfGeos: []anthropic.AllowedInferenceGeo{anthropic.AllowedInferenceGeoUs}},
 				},
 			},
 			want: WorkspaceObservation{
@@ -220,16 +220,16 @@ func TestWorkspaceFromAnthropicObservation(t *testing.T) {
 			},
 		},
 		"UnrestrictedAndNoExternalKey": {
-			args: anthropic.BetaWorkspace{
+			args: anthropic.Workspace{
 				ID:            "wrkspc_2",
 				Name:          "dev",
 				CompartmentID: "cmpt_1",
 				Tags:          map[string]string{},
 				CreatedAt:     created,
-				DataResidency: anthropic.BetaDataResidency{
-					WorkspaceGeo:         anthropic.BetaDataResidencyWorkspaceGeoUs,
-					DefaultInferenceGeo:  anthropic.BetaDataResidencyDefaultInferenceGeoGlobal,
-					AllowedInferenceGeos: anthropic.BetaDataResidencyAllowedInferenceGeosUnion{OfUnrestricted: constant.ValueOf[constant.Unrestricted]()},
+				DataResidency: anthropic.DataResidency{
+					WorkspaceGeo:         anthropic.DataResidencyWorkspaceGeoUs,
+					DefaultInferenceGeo:  anthropic.DataResidencyDefaultInferenceGeoGlobal,
+					AllowedInferenceGeos: anthropic.DataResidencyAllowedInferenceGeosUnion{OfUnrestricted: constant.ValueOf[constant.Unrestricted]()},
 				},
 			},
 			want: WorkspaceObservation{

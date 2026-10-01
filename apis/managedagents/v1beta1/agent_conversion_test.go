@@ -1,10 +1,12 @@
 package v1beta1_test
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
 	anthropic "github.com/anthropics/anthropic-sdk-go"
+	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	. "github.com/jonasz-lasut/provider-anthropic/apis/managedagents/v1beta1"
@@ -447,5 +449,140 @@ func TestAgentFromAnthropicObservation_NoMultiagent(t *testing.T) {
 	r.FromAnthropicObservation(resp)
 	if r.Status.AtProvider.Multiagent != nil {
 		t.Errorf("Multiagent = %+v, want nil", r.Status.AtProvider.Multiagent)
+	}
+}
+
+func TestAgentToolsWire(t *testing.T) {
+	cases := map[string]struct {
+		args AgentToolConfig
+		want map[string]any
+	}{
+		"AgentToolsetWithoutConfigs": {
+			args: AgentToolConfig{Type: new("agent_toolset_20260401")},
+			want: map[string]any{"type": "agent_toolset_20260401"},
+		},
+		"AgentToolsetDefaultAndOverrides": {
+			args: AgentToolConfig{
+				Type:          new("agent_toolset_20260401"),
+				DefaultConfig: &AgentToolsetDefaultConfig{Enabled: new(true), PermissionPolicy: new("always_allow")},
+				Configs: []AgentToolOverride{
+					{Name: new("bash"), PermissionPolicy: new("auto")},
+					{Name: new("web_fetch"), Enabled: new(false), AllowedDomains: []string{"docs.anthropic.com"}, MaxContentTokens: new(int64(5000))},
+					{Name: new("web_search"), BlockedDomains: []string{"ads.example.com"}, UserLocation: &AgentToolUserLocation{Country: new("US"), Timezone: new("America/Los_Angeles")}},
+				},
+			},
+			want: map[string]any{
+				"type":           "agent_toolset_20260401",
+				"default_config": map[string]any{"enabled": true, "permission_policy": map[string]any{"type": "always_allow"}},
+				"configs": []any{
+					map[string]any{"name": "bash", "type": "bash", "permission_policy": map[string]any{"type": "auto"}},
+					map[string]any{"name": "web_fetch", "type": "web_fetch", "enabled": false, "allowed_domains": []any{"docs.anthropic.com"}, "max_content_tokens": float64(5000)},
+					map[string]any{"name": "web_search", "type": "web_search", "blocked_domains": []any{"ads.example.com"}, "user_location": map[string]any{"type": "approximate", "country": "US", "timezone": "America/Los_Angeles"}},
+				},
+			},
+		},
+		"MCPToolsetDefaultAndOverrides": {
+			args: AgentToolConfig{
+				Type:          new("mcp_toolset"),
+				MCPServerName: new("probe"),
+				DefaultConfig: &AgentToolsetDefaultConfig{PermissionPolicy: new("auto")},
+				Configs:       []AgentToolOverride{{Name: new("some_tool"), PermissionPolicy: new("always_ask")}},
+			},
+			want: map[string]any{
+				"type":            "mcp_toolset",
+				"mcp_server_name": "probe",
+				"default_config":  map[string]any{"permission_policy": map[string]any{"type": "auto"}},
+				"configs":         []any{map[string]any{"name": "some_tool", "permission_policy": map[string]any{"type": "always_ask"}}},
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			r := &Agent{Spec: AgentSpec{ForProvider: AgentParameters{Tools: []AgentToolConfig{tc.args}}}}
+
+			for call, tool := range map[string]any{
+				"ToAnthropicNew":    r.ToAnthropicNew(nil).Tools[0],
+				"ToAnthropicUpdate": r.ToAnthropicUpdate(nil).Tools[0],
+			} {
+				raw, err := json.Marshal(tool)
+				if err != nil {
+					t.Fatalf("%s: json.Marshal(): %v", call, err)
+				}
+				var got map[string]any
+				if err := json.Unmarshal(raw, &got); err != nil {
+					t.Fatalf("%s: json.Unmarshal(): %v", call, err)
+				}
+				if diff := cmp.Diff(tc.want, got); diff != "" {
+					t.Errorf("%s() tool JSON: -want, +got:\n%s", call, diff)
+				}
+			}
+		})
+	}
+}
+
+// agentToolsResponse is shaped like a live Managed Agents response: the API
+// echoes only the per-tool overrides it was sent, each resolved against the
+// toolset default, in the order they were sent.
+const agentToolsResponse = `{
+  "id": "agent_1",
+  "tools": [
+    {
+      "type": "agent_toolset_20260401",
+      "default_config": {"enabled": true, "permission_policy": {"type": "always_allow"}},
+      "configs": [
+        {"name": "bash", "type": "bash", "enabled": true, "permission_policy": {"type": "auto"}},
+        {"name": "web_fetch", "type": "web_fetch", "enabled": false, "permission_policy": {"type": "always_allow"}, "allowed_domains": ["docs.anthropic.com"], "max_content_tokens": 5000},
+        {"name": "web_search", "type": "web_search", "enabled": true, "permission_policy": {"type": "always_allow"}, "user_location": {"type": "approximate", "city": null, "country": "US", "region": null, "timezone": "America/Los_Angeles"}}
+      ]
+    },
+    {
+      "type": "mcp_toolset",
+      "mcp_server_name": "probe",
+      "default_config": {"enabled": true, "permission_policy": {"type": "auto"}},
+      "configs": [{"name": "some_tool", "enabled": true, "permission_policy": {"type": "always_ask"}}]
+    },
+    {
+      "type": "mcp_toolset",
+      "mcp_server_name": "defaults",
+      "default_config": {"enabled": true, "permission_policy": {"type": "always_ask"}},
+      "configs": []
+    }
+  ]
+}`
+
+func TestAgentFromAnthropicObservation_ToolConfigs(t *testing.T) {
+	var resp anthropic.BetaManagedAgentsAgent
+	if err := json.Unmarshal([]byte(agentToolsResponse), &resp); err != nil {
+		t.Fatalf("json.Unmarshal(): %v", err)
+	}
+	want := []AgentToolConfig{
+		{
+			Type:          new("agent_toolset_20260401"),
+			DefaultConfig: &AgentToolsetDefaultConfig{Enabled: new(true), PermissionPolicy: new("always_allow")},
+			Configs: []AgentToolOverride{
+				{Name: new("bash"), Enabled: new(true), PermissionPolicy: new("auto")},
+				{Name: new("web_fetch"), Enabled: new(false), PermissionPolicy: new("always_allow"), AllowedDomains: []string{"docs.anthropic.com"}, MaxContentTokens: new(int64(5000))},
+				{Name: new("web_search"), Enabled: new(true), PermissionPolicy: new("always_allow"), UserLocation: &AgentToolUserLocation{Country: new("US"), Timezone: new("America/Los_Angeles")}},
+			},
+		},
+		{
+			Type:          new("mcp_toolset"),
+			MCPServerName: new("probe"),
+			DefaultConfig: &AgentToolsetDefaultConfig{Enabled: new(true), PermissionPolicy: new("auto")},
+			Configs:       []AgentToolOverride{{Name: new("some_tool"), Enabled: new(true), PermissionPolicy: new("always_ask")}},
+		},
+		{
+			Type:          new("mcp_toolset"),
+			MCPServerName: new("defaults"),
+			DefaultConfig: &AgentToolsetDefaultConfig{Enabled: new(true), PermissionPolicy: new("always_ask")},
+		},
+	}
+
+	r := &Agent{}
+	r.FromAnthropicObservation(resp)
+
+	if diff := cmp.Diff(want, r.Status.AtProvider.Tools); diff != "" {
+		t.Errorf("FromAnthropicObservation() tools: -want, +got:\n%s", diff)
 	}
 }

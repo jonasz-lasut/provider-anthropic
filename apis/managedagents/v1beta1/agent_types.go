@@ -160,6 +160,99 @@ type AgentToolConfig struct {
 	// Required for type "custom".
 	// +optional
 	InputSchema *AgentCustomToolInputSchema `json:"inputSchema,omitempty"`
+
+	// DefaultConfig applies to every tool of an "agent_toolset_20260401" or
+	// "mcp_toolset" that has no entry in Configs. When omitted, every tool is
+	// enabled with permission policy always_allow for "agent_toolset_20260401"
+	// and always_ask for "mcp_toolset".
+	// +optional
+	DefaultConfig *AgentToolsetDefaultConfig `json:"defaultConfig,omitempty"`
+
+	// Configs overrides DefaultConfig for individual tools of an
+	// "agent_toolset_20260401" or "mcp_toolset".
+	// +optional
+	Configs []AgentToolOverride `json:"configs,omitempty"`
+}
+
+// AgentToolsetDefaultConfig configures every tool of a toolset that has no
+// AgentToolOverride.
+type AgentToolsetDefaultConfig struct {
+	// Enabled makes the toolset's tools available to the agent. Defaults to true.
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// PermissionPolicy controls how tool calls are approved: always_allow runs
+	// them, always_ask waits for confirmation, and auto lets the server allow
+	// calls it judges safe, deny calls it judges high-risk, and ask about calls
+	// it cannot judge.
+	// +optional
+	// +kubebuilder:validation:Enum=always_allow;always_ask;auto
+	PermissionPolicy *string `json:"permissionPolicy,omitempty"`
+}
+
+// AgentToolOverride configures a single tool of a toolset, overriding the
+// toolset's DefaultConfig.
+type AgentToolOverride struct {
+	// Required: Name is the tool to configure. For "agent_toolset_20260401" it
+	// is one of bash, edit, read, write, glob, grep, web_fetch, or web_search;
+	// for "mcp_toolset" it is the MCP tool name.
+	// +optional
+	Name *string `json:"name,omitempty"`
+
+	// Enabled makes the tool available to the agent.
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// PermissionPolicy controls how calls to this tool are approved; see
+	// AgentToolsetDefaultConfig.PermissionPolicy.
+	// +optional
+	// +kubebuilder:validation:Enum=always_allow;always_ask;auto
+	PermissionPolicy *string `json:"permissionPolicy,omitempty"`
+
+	// AllowedDomains restricts web_fetch and web_search to these hostnames
+	// and their subdomains, such as "docs.example.com". Cannot be combined
+	// with BlockedDomains.
+	// +optional
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:MaxItems=64
+	AllowedDomains []string `json:"allowedDomains,omitempty"`
+
+	// BlockedDomains excludes these hostnames and their subdomains from
+	// web_fetch and web_search. Cannot be combined with AllowedDomains.
+	// +optional
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:MaxItems=64
+	BlockedDomains []string `json:"blockedDomains,omitempty"`
+
+	// MaxContentTokens caps the tokens of fetched text content web_fetch adds
+	// to the context per call. It does not apply to binary content such as
+	// PDFs.
+	// +optional
+	MaxContentTokens *int64 `json:"maxContentTokens,omitempty"`
+
+	// UserLocation localizes web_search results.
+	// +optional
+	UserLocation *AgentToolUserLocation `json:"userLocation,omitempty"`
+}
+
+// AgentToolUserLocation is the approximate user location for web_search.
+type AgentToolUserLocation struct {
+	// City name.
+	// +optional
+	City *string `json:"city,omitempty"`
+
+	// Country is a two-letter uppercase ISO 3166-1 country code.
+	// +optional
+	// +kubebuilder:validation:Pattern=`^[A-Z]{2}$`
+	Country *string `json:"country,omitempty"`
+
+	// Region or state name.
+	// +optional
+	Region *string `json:"region,omitempty"`
+
+	// Timezone is an IANA timezone identifier, such as "America/Los_Angeles".
+	// +optional
+	Timezone *string `json:"timezone,omitempty"`
 }
 
 // AgentCustomToolInputSchema defines the JSON Schema for a custom tool's input.

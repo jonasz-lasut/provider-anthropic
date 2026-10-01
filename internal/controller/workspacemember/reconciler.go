@@ -119,7 +119,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	resp, err := e.client.Beta.Organization.Workspaces.Members.Get(ctx, userID, anthropic.BetaOrganizationWorkspaceMemberGetParams{
+	resp, err := e.client.Organization.Workspaces.Members.Get(ctx, userID, anthropic.OrganizationWorkspaceMemberGetParams{
 		WorkspaceID: workspaceID,
 	})
 	if err != nil {
@@ -157,7 +157,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, xperrors.New(errMissingWorkspace)
 	}
 
-	resp, err := e.client.Beta.Organization.Workspaces.Members.Add(ctx, workspaceID, m.ToAnthropicNew())
+	resp, err := e.client.Organization.Workspaces.Members.Add(ctx, workspaceID, m.ToAnthropicNew())
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
 	}
@@ -184,7 +184,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, xperrors.New(errMissingWorkspace)
 	}
 
-	if _, err := e.client.Beta.Organization.Workspaces.Members.Update(ctx, userID, m.ToAnthropicUpdate()); err != nil {
+	if _, err := e.client.Organization.Workspaces.Members.Update(ctx, userID, m.ToAnthropicUpdate()); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
 
@@ -208,7 +208,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalDelete{}, nil
 	}
 
-	_, err := e.client.Beta.Organization.Workspaces.Members.Remove(ctx, userID, anthropic.BetaOrganizationWorkspaceMemberRemoveParams{
+	_, err := e.client.Organization.Workspaces.Members.Remove(ctx, userID, anthropic.OrganizationWorkspaceMemberRemoveParams{
 		WorkspaceID: workspaceID,
 	})
 	if err == nil {
@@ -234,7 +234,7 @@ func (e *external) Disconnect(_ context.Context) error { return nil }
 // API answers member reads and removals for an archived workspace with 400,
 // so callers use this after any non-404 error.
 func (e *external) workspaceGone(ctx context.Context, workspaceID string) bool {
-	ws, err := e.client.Beta.Organization.Workspaces.Get(ctx, workspaceID)
+	ws, err := e.client.Organization.Workspaces.Get(ctx, workspaceID)
 	if err != nil {
 		var apiErr *anthropic.Error
 		return errors.As(err, &apiErr) && apiErr.StatusCode == 404

@@ -22,15 +22,15 @@ import (
 	anthropic "github.com/anthropics/anthropic-sdk-go"
 )
 
-// ToAnthropicNew converts ForProvider to BetaOrganizationExternalKeyNewParams.
-func (r *ExternalKey) ToAnthropicNew() anthropic.BetaOrganizationExternalKeyNewParams {
+// ToAnthropicNew converts ForProvider to OrganizationExternalKeyNewParams.
+func (r *ExternalKey) ToAnthropicNew() anthropic.OrganizationExternalKeyNewParams {
 	p := r.Spec.ForProvider
-	params := anthropic.BetaOrganizationExternalKeyNewParams{}
+	params := anthropic.OrganizationExternalKeyNewParams{}
 	if p.DisplayName != nil {
 		params.DisplayName = anthropic.String(*p.DisplayName)
 	}
 	if p.Geo != nil {
-		params.Geo = anthropic.BetaOrganizationExternalKeyNewParamsGeo(*p.Geo)
+		params.Geo = anthropic.OrganizationExternalKeyNewParamsGeo(*p.Geo)
 	}
 	if pc := p.ProviderConfig; pc != nil && pc.Type != nil {
 		switch *pc.Type {
@@ -45,15 +45,15 @@ func (r *ExternalKey) ToAnthropicNew() anthropic.BetaOrganizationExternalKeyNewP
 	return params
 }
 
-// ToAnthropicUpdate converts ForProvider to BetaOrganizationExternalKeyUpdateParams.
-func (r *ExternalKey) ToAnthropicUpdate() anthropic.BetaOrganizationExternalKeyUpdateParams {
+// ToAnthropicUpdate converts ForProvider to OrganizationExternalKeyUpdateParams.
+func (r *ExternalKey) ToAnthropicUpdate() anthropic.OrganizationExternalKeyUpdateParams {
 	p := r.Spec.ForProvider
-	params := anthropic.BetaOrganizationExternalKeyUpdateParams{}
+	params := anthropic.OrganizationExternalKeyUpdateParams{}
 	if p.DisplayName != nil {
 		params.DisplayName = anthropic.String(*p.DisplayName)
 	}
 	if p.Geo != nil {
-		params.Geo = anthropic.BetaOrganizationExternalKeyUpdateParamsGeo(*p.Geo)
+		params.Geo = anthropic.OrganizationExternalKeyUpdateParamsGeo(*p.Geo)
 	}
 	if pc := p.ProviderConfig; pc != nil && pc.Type != nil {
 		switch *pc.Type {
@@ -68,8 +68,8 @@ func (r *ExternalKey) ToAnthropicUpdate() anthropic.BetaOrganizationExternalKeyU
 	return params
 }
 
-func awsExternalKeyConfig(pc *ExternalKeyProviderConfig) *anthropic.BetaAWSExternalKeyConfigParam {
-	cfg := &anthropic.BetaAWSExternalKeyConfigParam{}
+func awsExternalKeyConfig(pc *ExternalKeyProviderConfig) *anthropic.AWSExternalKeyConfigParam {
+	cfg := &anthropic.AWSExternalKeyConfigParam{}
 	if pc.KMSARN != nil {
 		cfg.KMSARN = *pc.KMSARN
 	}
@@ -79,16 +79,16 @@ func awsExternalKeyConfig(pc *ExternalKeyProviderConfig) *anthropic.BetaAWSExter
 	return cfg
 }
 
-func gcpExternalKeyConfig(pc *ExternalKeyProviderConfig) *anthropic.BetaGCPExternalKeyConfigParam {
-	cfg := &anthropic.BetaGCPExternalKeyConfigParam{}
+func gcpExternalKeyConfig(pc *ExternalKeyProviderConfig) *anthropic.GCPExternalKeyConfigParam {
+	cfg := &anthropic.GCPExternalKeyConfigParam{}
 	if pc.KeyName != nil {
 		cfg.KeyName = *pc.KeyName
 	}
 	return cfg
 }
 
-func azureExternalKeyConfig(pc *ExternalKeyProviderConfig) *anthropic.BetaAzureExternalKeyConfigParam {
-	cfg := &anthropic.BetaAzureExternalKeyConfigParam{}
+func azureExternalKeyConfig(pc *ExternalKeyProviderConfig) *anthropic.AzureExternalKeyConfigParam {
+	cfg := &anthropic.AzureExternalKeyConfigParam{}
 	if pc.KeyName != nil {
 		cfg.KeyName = *pc.KeyName
 	}
@@ -104,8 +104,8 @@ func azureExternalKeyConfig(pc *ExternalKeyProviderConfig) *anthropic.BetaAzureE
 	return cfg
 }
 
-// FromAnthropicObservation populates AtProvider from a BetaExternalKey.
-func (r *ExternalKey) FromAnthropicObservation(resp anthropic.BetaExternalKey) {
+// FromAnthropicObservation populates AtProvider from a ExternalKey.
+func (r *ExternalKey) FromAnthropicObservation(resp anthropic.ExternalKey) {
 	r.Status.AtProvider.ID = &resp.ID
 	r.Status.AtProvider.DisplayName = &resp.DisplayName
 	r.Status.AtProvider.Geo = &resp.Geo
@@ -120,7 +120,7 @@ func (r *ExternalKey) FromAnthropicObservation(resp anthropic.BetaExternalKey) {
 	r.Status.AtProvider.UpdatedAt = &updatedAt
 }
 
-func externalKeyProviderConfigObservation(u anthropic.BetaExternalKeyProviderConfigUnion) *ExternalKeyProviderConfig {
+func externalKeyProviderConfigObservation(u anthropic.ExternalKeyProviderConfigUnion) *ExternalKeyProviderConfig {
 	out := &ExternalKeyProviderConfig{}
 	set := func(dst **string, v string) {
 		if v != "" {

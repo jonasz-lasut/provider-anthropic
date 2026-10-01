@@ -20,6 +20,16 @@ spec:
       example: "true"
     tools:
       - type: agent_toolset_20260401
+        defaultConfig:
+          permissionPolicy: always_ask
+        configs:
+          - name: read
+            permissionPolicy: always_allow
+          - name: bash
+            permissionPolicy: auto
+          - name: web_fetch
+            allowedDomains:
+              - docs.anthropic.com
       - type: custom
         name: get_weather
         description: Returns the current weather for a given city.

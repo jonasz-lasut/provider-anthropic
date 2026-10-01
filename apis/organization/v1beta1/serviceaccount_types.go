@@ -24,8 +24,8 @@ import (
 )
 
 // ServiceAccountParameters defines the desired state of an Anthropic
-// ServiceAccount. These fields map to BetaOrganizationServiceAccountNewParams /
-// BetaOrganizationServiceAccountUpdateParams from the Anthropic SDK.
+// ServiceAccount. These fields map to OrganizationServiceAccountNewParams /
+// OrganizationServiceAccountUpdateParams from the Anthropic SDK.
 type ServiceAccountParameters struct {
 	// Required: Name of the service account. Immutable after creation.
 	// +optional

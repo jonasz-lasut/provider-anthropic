@@ -53,8 +53,8 @@ type FederationRuleMatch struct {
 
 // FederationRuleParameters defines the desired state of an Anthropic
 // FederationRule. These fields map to
-// BetaOrganizationFederationRuleNewParams /
-// BetaOrganizationFederationRuleUpdateParams from the Anthropic SDK.
+// OrganizationFederationRuleNewParams /
+// OrganizationFederationRuleUpdateParams from the Anthropic SDK.
 type FederationRuleParameters struct {
 	// Required: Name is a slug (lowercase, digits, hyphens), unique within
 	// the organization; a duplicate returns 409.
@@ -177,7 +177,9 @@ type FederationRuleObservation struct {
 	// +optional
 	Match *FederationRuleMatch `json:"match,omitempty"`
 
-	// WorkspaceID is the observed primary workspace binding.
+	// WorkspaceID is the single workspace the rule is enabled for. The API no
+	// longer returns this legacy binding, so it is derived from WorkspaceIDs
+	// and left unset when the rule is enabled for zero or several workspaces.
 	// +optional
 	WorkspaceID *string `json:"workspaceId,omitempty"`
 

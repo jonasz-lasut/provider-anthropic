@@ -60,8 +60,8 @@ type ExternalKeyProviderConfig struct {
 }
 
 // ExternalKeyParameters defines the desired state of an Anthropic ExternalKey.
-// These fields map to BetaOrganizationExternalKeyNewParams /
-// BetaOrganizationExternalKeyUpdateParams from the Anthropic SDK.
+// These fields map to OrganizationExternalKeyNewParams /
+// OrganizationExternalKeyUpdateParams from the Anthropic SDK.
 type ExternalKeyParameters struct {
 	// DisplayName is the human-friendly name of the key configuration.
 	// +optional

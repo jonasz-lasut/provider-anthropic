@@ -110,7 +110,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	resp, err := e.client.Beta.Organization.ExternalKeys.Get(ctx, kID)
+	resp, err := e.client.Organization.ExternalKeys.Get(ctx, kID)
 	if err != nil {
 		var apiErr *anthropic.Error
 		if errors.As(err, &apiErr) && apiErr.StatusCode == 404 {
@@ -135,7 +135,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, xperrors.New(errNotExternalKey)
 	}
 
-	resp, err := e.client.Beta.Organization.ExternalKeys.New(ctx, k.ToAnthropicNew())
+	resp, err := e.client.Organization.ExternalKeys.New(ctx, k.ToAnthropicNew())
 	if err != nil {
 		return managed.ExternalCreation{}, xperrors.Wrap(err, errCreate)
 	}
@@ -157,7 +157,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, xperrors.New("external name not yet set; skipping update")
 	}
 
-	if _, err := e.client.Beta.Organization.ExternalKeys.Update(ctx, kID, k.ToAnthropicUpdate()); err != nil {
+	if _, err := e.client.Organization.ExternalKeys.Update(ctx, kID, k.ToAnthropicUpdate()); err != nil {
 		return managed.ExternalUpdate{}, xperrors.Wrap(err, errUpdate)
 	}
 
@@ -175,7 +175,7 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalDelete{}, nil
 	}
 
-	if _, err := e.client.Beta.Organization.ExternalKeys.Delete(ctx, kID); err != nil {
+	if _, err := e.client.Organization.ExternalKeys.Delete(ctx, kID); err != nil {
 		var apiErr *anthropic.Error
 		if errors.As(err, &apiErr) && apiErr.StatusCode == 404 {
 			return managed.ExternalDelete{}, nil

@@ -247,7 +247,7 @@ func TestFederationOptions(t *testing.T) {
 			defer srv.Close()
 
 			c := anthropic.NewClient(append(federationOptions(&fed, tc.args.workspaceID), option.WithBaseURL(srv.URL))...)
-			if _, err := c.Beta.Organization.Workspaces.Get(context.Background(), "wrkspc_1"); err != nil {
+			if _, err := c.Organization.Workspaces.Get(context.Background(), "wrkspc_1"); err != nil {
 				t.Fatalf("Workspaces.Get(): %v", err)
 			}
 

@@ -29,7 +29,7 @@ import (
 func TestWorkspaceMemberToAnthropicNew(t *testing.T) {
 	cases := map[string]struct {
 		args WorkspaceMemberParameters
-		want anthropic.BetaOrganizationWorkspaceMemberAddParams
+		want anthropic.OrganizationWorkspaceMemberAddParams
 	}{
 		"UserAndRole": {
 			args: WorkspaceMemberParameters{
@@ -37,14 +37,14 @@ func TestWorkspaceMemberToAnthropicNew(t *testing.T) {
 				UserID:        new("user_1"),
 				WorkspaceRole: new("workspace_developer"),
 			},
-			want: anthropic.BetaOrganizationWorkspaceMemberAddParams{
+			want: anthropic.OrganizationWorkspaceMemberAddParams{
 				UserID:        "user_1",
-				WorkspaceRole: anthropic.BetaNoBillingWorkspaceRoleWorkspaceDeveloper,
+				WorkspaceRole: anthropic.NoBillingWorkspaceRoleWorkspaceDeveloper,
 			},
 		},
 		"Empty": {
 			args: WorkspaceMemberParameters{},
-			want: anthropic.BetaOrganizationWorkspaceMemberAddParams{},
+			want: anthropic.OrganizationWorkspaceMemberAddParams{},
 		},
 	}
 
@@ -54,7 +54,7 @@ func TestWorkspaceMemberToAnthropicNew(t *testing.T) {
 
 			got := r.ToAnthropicNew()
 
-			if diff := cmp.Diff(tc.want, got, cmpopts.IgnoreUnexported(anthropic.BetaOrganizationWorkspaceMemberAddParams{})); diff != "" {
+			if diff := cmp.Diff(tc.want, got, cmpopts.IgnoreUnexported(anthropic.OrganizationWorkspaceMemberAddParams{})); diff != "" {
 				t.Errorf("ToAnthropicNew(): -want, +got:\n%s", diff)
 			}
 		})
@@ -64,7 +64,7 @@ func TestWorkspaceMemberToAnthropicNew(t *testing.T) {
 func TestWorkspaceMemberToAnthropicUpdate(t *testing.T) {
 	cases := map[string]struct {
 		args WorkspaceMemberParameters
-		want anthropic.BetaOrganizationWorkspaceMemberUpdateParams
+		want anthropic.OrganizationWorkspaceMemberUpdateParams
 	}{
 		"WorkspaceAndRole": {
 			args: WorkspaceMemberParameters{
@@ -72,9 +72,9 @@ func TestWorkspaceMemberToAnthropicUpdate(t *testing.T) {
 				UserID:        new("user_1"),
 				WorkspaceRole: new("workspace_admin"),
 			},
-			want: anthropic.BetaOrganizationWorkspaceMemberUpdateParams{
+			want: anthropic.OrganizationWorkspaceMemberUpdateParams{
 				WorkspaceID:   "wrkspc_1",
-				WorkspaceRole: anthropic.BetaWorkspaceRoleWorkspaceAdmin,
+				WorkspaceRole: anthropic.WorkspaceRoleWorkspaceAdmin,
 			},
 		},
 	}
@@ -85,7 +85,7 @@ func TestWorkspaceMemberToAnthropicUpdate(t *testing.T) {
 
 			got := r.ToAnthropicUpdate()
 
-			if diff := cmp.Diff(tc.want, got, cmpopts.IgnoreUnexported(anthropic.BetaOrganizationWorkspaceMemberUpdateParams{})); diff != "" {
+			if diff := cmp.Diff(tc.want, got, cmpopts.IgnoreUnexported(anthropic.OrganizationWorkspaceMemberUpdateParams{})); diff != "" {
 				t.Errorf("ToAnthropicUpdate(): -want, +got:\n%s", diff)
 			}
 		})
@@ -94,14 +94,14 @@ func TestWorkspaceMemberToAnthropicUpdate(t *testing.T) {
 
 func TestWorkspaceMemberFromAnthropicObservation(t *testing.T) {
 	cases := map[string]struct {
-		args anthropic.BetaWorkspaceMember
+		args anthropic.WorkspaceMember
 		want WorkspaceMemberObservation
 	}{
 		"AllFields": {
-			args: anthropic.BetaWorkspaceMember{
+			args: anthropic.WorkspaceMember{
 				UserID:        "user_1",
 				WorkspaceID:   "wrkspc_1",
-				WorkspaceRole: anthropic.BetaWorkspaceRoleWorkspaceBilling,
+				WorkspaceRole: anthropic.WorkspaceRoleWorkspaceBilling,
 			},
 			want: WorkspaceMemberObservation{
 				UserID:        new("user_1"),
