@@ -1,0 +1,62 @@
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Session
+metadata:
+  name: example-session-public-repo
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: public-repo
+  annotations:
+    meta.upbound.io/example-id: managedagents/v1beta1/session-public-repo
+spec:
+  forProvider:
+    title: Example session with a public repository
+    metadata:
+      example: "true"
+    agentIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: public-repo
+    environmentIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: public-repo
+    resources:
+      - type: github_repository
+        url: https://github.com/octocat/Hello-World
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Agent
+metadata:
+  name: example-agent-public-repo
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: public-repo
+  annotations:
+    meta.upbound.io/example-id: managedagents/v1beta1/session-public-repo
+spec:
+  forProvider:
+    model: claude-opus-4-8
+    name: example-agent-public-repo
+    description: Example agent for the public repository session E2E test.
+    metadata:
+      example: "true"
+    tools:
+      - type: agent_toolset_20260401
+---
+apiVersion: managedagents.anthropic.crossplane.io/v1beta1
+kind: Environment
+metadata:
+  name: example-environment-public-repo
+  namespace: crossplane-system
+  labels:
+    testing.upbound.io/example-name: public-repo
+  annotations:
+    meta.upbound.io/example-id: managedagents/v1beta1/session-public-repo
+spec:
+  forProvider:
+    name: example-environment-public-repo
+    description: Example environment for the public repository session E2E test.
+    metadata:
+      example: "true"
+    config:
+      networking:
+        type: unrestricted
