@@ -69,17 +69,6 @@
         '/^Makefile$/',
       ],
       matchStrings: [
-        'CRDDIFF_VERSION \\??= (?<currentValue>\\S+)',
-      ],
-      depNameTemplate: 'upbound/uptest',
-      datasourceTemplate: 'github-tags',
-    },
-    {
-      customType: 'regex',
-      managerFilePatterns: [
-        '/^Makefile$/',
-      ],
-      matchStrings: [
         'CROSSPLANE_VERSION \\??= (?<currentValue>\\S+)',
       ],
       depNameTemplate: 'crossplane/crossplane',
@@ -117,17 +106,6 @@
         "DOCKER_BUILDX_VERSION: '(?<currentValue>[^']+)'",
       ],
       depNameTemplate: 'docker/buildx',
-      datasourceTemplate: 'github-releases',
-    },
-    {
-      customType: 'regex',
-      managerFilePatterns: [
-        '/^\\.github/workflows/supplychain\\.yaml$/',
-      ],
-      matchStrings: [
-        'UP_VERSION: (?<currentValue>v\\S+)',
-      ],
-      depNameTemplate: 'upbound/up',
       datasourceTemplate: 'github-releases',
     },
   ],
