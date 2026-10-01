@@ -39,7 +39,7 @@ GO_SUBDIRS += cmd internal apis
 # ====================================================================================
 # Setup Kubernetes tools
 
-KIND_VERSION = v0.31.0
+KIND_VERSION = v0.33.0
 UPTEST_VERSION = v2.2.0
 # crddiff ships in the upbound/uptest module; crossplane/uptest does not carry it.
 CRDDIFF_VERSION = v0.12.1
