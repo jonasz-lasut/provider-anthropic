@@ -1,5 +1,9 @@
 # provider-anthropic
 
+> [!CAUTION]
+> This repository is archived as of 19.11.2026 because I've stopped using Anthropic's managed agents and there seems to be no community interest in this provider.
+> I may come back to developing it if Upjet supports OpenAPI-based providers as this way I won't have to actively bump the provider with agents and review the breaking changes directly from code.
+
 `provider-anthropic` is a [Crossplane](https://crossplane.io/) Provider that enables deployment
 and management of resources on the [Anthropic platform](https://docs.anthropic.com) using the
 [Managed Agents beta API](https://docs.anthropic.com/en/api/managed-agents-overview):
